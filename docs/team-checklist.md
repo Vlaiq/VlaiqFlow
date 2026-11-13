@@ -7,8 +7,16 @@ Agentul AI nu poate face aceste lucruri. Bifați-le și notați rezultatul (link
 - [ ] **Regulile hackathonului:** este permis cod scris înainte de start? Ce unelte AI sunt permise? Care sunt cerințele de submisie? → link: ___
 - [ ] **Eligibilitatea pentru fiecare challenge** (Green Mobility, NetRom, Living Labs, Gemini, ElevenLabs, Tiger Data, Vultr, Auth0, Entire) și ce dovezi se cer → ___
 - [ ] **Programul exact:** ora de start, ora limită de submisie, ora jurizării → completați în spec §15
-- [ ] **Operatorul de transport și sursa GTFS:** STPT? Unde e publicat feed-ul, sub ce licență și când a fost actualizat? → ___
-- [ ] **data.primariatm.ro:** ce seturi de date există despre parcări, tarife și zone? Ce licență au? → ___
+- [x] **Sursa GTFS:** feed-ul oficial e publicat de SMTT (autoritatea metropolitană); STPT operează vehiculele. Detalii în spec §5.2 și în [ghidul Primăriei](https://ghid-pmt.vercel.app/unihack)
+- [x] **Date despre parcări:** zonele, parcările și străzile Timpark, cu tarife și coduri SMS, vin din endpoint-ul Primăriei `cont.primariatm.ro/api/mobile/parking`. Ocuparea nu există nicăieri
+- [ ] **Întrebări pe Discord-ul UniHack** (echipa digitală a Primăriei):
+    - Se suprapune ideea noastră (comparație parcare + transport + mers pe jos) cu ceva din CityApp?
+    - Tarifele din endpoint-ul de parcări sunt în euro (câmpul se numește `eur`)? Există și valoarea în lei?
+    - Trebuie să fie aplicație de PC (`.exe`) sau e acceptată o aplicație web instalabilă?
+    → răspunsuri: ___
+- [ ] **Licența proiectului:** MIT sau Apache-2.0 (ghidul cere open source) → ___
+- [ ] **Cine ar prelua proiectul** după hackathon (Timpark, SMTT, echipa digitală a Primăriei)? → îl spunem în pitch
+- [ ] **Numărul de urmărit** (un singur indicator că proiectul funcționează) → ___
 - [ ] **Tarifele de parcare** pentru zona demo (Piața Victoriei, Piața Unirii): sursa oficială și data verificării → ___
 - [ ] **Factorii de emisie** (mașină g/km, transport public g/pasager-km) cu sursă citabilă → spec D4
 - [ ] **Cotele actuale** openrouteservice: directions, matrix, autocomplete → spec D3
@@ -38,6 +46,8 @@ Agentul AI nu poate face aceste lucruri. Bifați-le și notați rezultatul (link
 - [ ] Ziua 2: top 3 probleme reparate, apoi runda 2 cu aceeași sarcină
 - [ ] Testare pe Android Chrome **și** pe iPhone Safari (inclusiv „Add to Home Screen”)
 - [ ] Testare cu GPS refuzat, rețea lentă și Gemini/ElevenLabs dezactivate
+- [ ] Dimineața zilei de 15: descărcați din nou GTFS-ul SMTT și datele Timpark; verificați versiunea în `feed_info.txt`
+- [ ] Verificare WCAG 2.1 AA pe fluxul principal (tastatură, contrast, texte alternative, text mărit)
 - [ ] Codul QR trimite către URL-ul de producție (verificat cu 2 telefoane diferite)
 - [ ] Înregistrarea de rezervă a demo-ului (pașii 2–7)
 - [ ] Dovezi pentru challenge-uri în `docs/challenge-evidence/` (capturi de ecran, loguri, linkuri)

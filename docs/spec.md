@@ -10,10 +10,13 @@
 | # | Item | Default until changed |
 |---|---|---|
 | D1 | Hackathon rules on pre-existing code and AI tools **[VERIFY]** | No app code is written before the official start |
-| D2 | Transit operator & GTFS source **[VERIFY]** | Operator assumed to be **STPT** (Societatea de Transport Public Timișoara). The original doc said "SMTT", which is likely wrong |
-| D3 | Routing / geocoding quotas **[VERIFY]** | openrouteservice free plan; check the current daily limits for directions, matrix and autocomplete |
+| D2 | Transit data source | **Resolved:** the official GTFS is published by **SMTT** (metropolitan transport authority); STPT operates the vehicles. See §5.2 |
+| D3 | Routing quotas and handover **[VERIFY]** | openrouteservice free plan for directions + matrix. A key on one person's account is a handover risk (§17): document it, or move to a self-hostable router later |
+| D8 | Product format **[VERIFY with organizers]** | Web app (installable). If a desktop app is required, wrap the same React code in Electron |
+| D9 | Overlap with the city's CityApp **[VERIFY on Discord]** | We position as an extension of CityApp (§2). Ask the City Hall digital team whether a parking + transit comparison is already planned |
+| D10 | Currency of Timpark tariffs **[VERIFY]** | The City Hall parking endpoint returns tariffs in a field named `eur`. Display exactly what the source gives, with its unit; never convert with an invented rate |
 | D4 | Emission factors **[VERIFY]** | `EMISSION_FACTOR_CAR_G_PER_KM` and `EMISSION_FACTOR_TRANSIT_G_PER_PKM` live in config with a cited source. No number is shipped without a source |
-| D5 | UI language **[DECIDE]** | English UI, Romanian strings where cheap; assistant understands RO + EN |
+| D5 | UI language | **Romanian first** (the city guide requires it), English as a second language for students and visitors; assistant understands RO + EN |
 | D6 | Final product name **[DECIDE]** | VLAIQ FLOW |
 | D7 | Domain for backend HTTPS **[DECIDE]** | Cheap domain or `sslip.io` hostname pointing to the Vultr VM |
 
@@ -24,7 +27,9 @@
 - **Event:** UniHack 2026, Timișoara, Nov 13–15, ~48 h of development.
 - **Team:** VLAIQ, 4 members.
 - **Goal:** first place in **Green Mobility** (competition "The Bloom"), plus a few sponsor challenges that fit naturally (§11.2).
-- Only use datasets and systems whose access is confirmed. The municipality may provide data during the event.
+- Only use datasets and systems whose access is confirmed.
+- **The City Hall's guide for this hackathon is the reference for data and constraints:** https://ghid-pmt.vercel.app/unihack. It lists what the city already runs, the open data, the public endpoints and the known pitfalls. Read it before adding a data source.
+- The City Hall's digital team answers questions on the UniHack Discord (data, endpoints, overlap with what the city is building).
 
 ## 2. Problem & differentiator
 
@@ -40,11 +45,19 @@ Then we explain the recommendation with real numbers.
 
 We are not rebuilding a full navigation app. We are building a parking-first, multimodal decision tool with turn-by-turn guidance to the chosen parking.
 
+**Position relative to what the city already runs:**
+- **Timișoara CityApp** (iOS/Android, in pilot) already has a transit journey planner, live departures and Timpark payment by SMS. We do **not** rebuild those. We add what it lacks: comparing *whole journeys* that combine driving, a specific parking, walking and transit, with real Timpark tariffs.
+- **Payment is handed off.** Once the user picks a Timpark zone or lot, we show its SMS code and number (from the City Hall data) or link to CityApp. We never take payments.
+- **Problems go to Sesizări.** A wrong or closed parking is reported through sesizari.primariatm.ro (we link to it). We do not run a second complaints inbox.
+- **Live arrivals already exist** (stop displays, Tranzy, Google Maps, CityApp). We use scheduled times for planning and never present them as live.
+
 **Target users:** drivers going into the center, visitors unfamiliar with Timișoara, budget-conscious commuters, people preferring greener options, users who need accessibility information, and (secondary) city authorities via aggregated analytics.
 
 ## 3. Product format
 
 A **PWA** reachable on a public HTTPS URL and through a QR code. It is usable without installing or logging in.
+
+The format is not final (D8). If the organizers require a desktop application, the same React frontend is packaged with **Electron** (native window, installer, taskbar icon). Keep the frontend free of browser-only assumptions that would block this: no reliance on the address bar, and every external link opens in the system browser.
 
 Platform constraints to design around:
 - **iOS install** is manual ("Share → Add to Home Screen"), so show a hint.
@@ -59,10 +72,13 @@ Platform constraints to design around:
  Phone / desktop browser (PWA, React + MapLibre)
    │  HTTPS (JSON)
    ▼
- Backend (Express on Vultr, Caddy TLS)  ──►  openrouteservice (directions, matrix, geocoding)
-   │   ├─ SmartMatch engine (pure TS)    ──►  Gemini API (function calling)
-   │   ├─ provider cache (in-memory LRU) ──►  ElevenLabs TTS
+ Backend (Express on Vultr, Caddy TLS)  ──►  openrouteservice (directions, matrix)
+   │   ├─ SmartMatch engine (pure TS)    ──►  City Hall endpoints (*.primariatm.ro): Timpark, transit,
+   │   │                                       zones, street register — snapshotted, not polled
+   │   ├─ provider cache (in-memory LRU) ──►  Gemini API (function calling), ElevenLabs TTS
    │   └─ rate limiting, zod validation
+   │
+   │  data snapshots in shared/src/data (GTFS digest, Timpark, zones, streets) with version + date
    ▼
  Tiger Cloud Postgres (TimescaleDB + PostGIS)   ← optional for P0
 ```
@@ -87,15 +103,29 @@ UI badge: text label plus color (§10). A listed parking ≠ a free space.
 
 ### 5.2 Sources
 
+Source of truth for what exists: the City Hall guide (§1). Checked on 13 Nov 2026.
+
 | Data | Source | Status |
 |---|---|---|
-| Parking locations, capacity (sometimes), fee tags | OpenStreetMap via Overpass (`amenity=parking` in the Timișoara bbox), exported to GeoJSON; ODbL attribution required | Real, but hand-check the demo-area parkings |
-| Parking prices | Municipality / operator pages, data.primariatm.ro **[VERIFY]** | Real only where checked by a human; otherwise `unknown` |
-| Live occupancy | None confirmed | `simulated` (demo) or `estimated` (community reports) |
-| Transit stops / lines / schedules | STPT GTFS static, if published and licensed **[VERIFY]** | Real schedules. **Never** shown as live arrivals |
+| **Paid parking: zones, lots, streets, tariffs, SMS codes, schedule** | City Hall `GET https://cont.primariatm.ro/api/mobile/parking` (Timpark data as used by CityApp, checked against the 2026 tariff annex). Response: `features[]` with `kind` = `zone` (35), `lot` (49), `street` (711), polygon `coordinates` as [lng, lat], `tariff` colour, `progressive`, `checked`; plus `tariffs` (hourly price per colour, progressive steps, day ticket, SMS number, schedule) | **Real, official** → tariffs are `confirmed`. A feature with `checked: false` gets `estimated` for its geometry |
+| Other parkings (free, private-public, malls) | OpenStreetMap via Overpass (`amenity=parking`), ODbL | Real locations; capacity `estimated`; price `unknown` unless it lies in a Timpark zone |
+| Live occupancy | **No source exists** | `simulated` (demo) or `estimated` (community reports). Never presented as real |
+| Transit network, stops, schedules | Official **SMTT GTFS**: `smtt.ro/transit/gtfs/maps/smtt-timisoara-ro.zip` (58 lines, 889 stops; v4.31 valid 5 Nov – 31 Dec 2026). Also City Hall endpoints `/api/mobile/transit/network`, `/lines/{routeId}`, `/stops/{stopId}/timetable` | Real **scheduled** times. Never shown as live arrivals. Re-download before the demo and show `feed_info.txt` version |
+| Ticket prices | City Hall `/api/mobile/wallet/types?category=transport` | Real, `confirmed` |
+| Neighbourhoods | City Hall `/api/zones` (40 polygons, GeoJSON) | Real |
+| Destinations | City Hall street register `servicii.primariatm.ro/api/nomenclator/strazi` (1,370 streets, backend only: no CORS), `/api/mobile/pois` (20 landmarks), preset list | Real. Match addresses through the register, not geocoder text |
 | Road / walking routes | openrouteservice | Real |
 | Emissions | Configured factors with a cited source (D4) | `estimated` |
-| Street (on-street zone) parking | Much of central parking is on-street zones, not facilities | P1: model zones as polygons if data exists; otherwise out of scope, and say so |
+
+**Rules for City Hall endpoints** (from the guide):
+- GET only, no key, no uptime guarantee; response shapes may change after the hackathon.
+- Call them **from the backend or a script**, never on every user request. The data changes rarely: snapshot it into `shared/src/data` with the fetch date and the `version` field, and refresh it on demand.
+- Send a `User-Agent` that names the team. Use only `*.primariatm.ro` hosts.
+- Coordinate order varies between datasets ([lat, lng] in NGSI-LD files, [lng, lat] in GeoJSON and transit). Check one known point before plotting.
+
+**Not available for the weekend:** journey planning, place search and geocoding from the city. We build ours on GTFS + OpenStreetMap, following OSM's usage policy.
+
+**GTFS limits:** no wheelchair fields, and every trip has `bikes_allowed = 2` (no). Detours and suspended lines are announced as text, not data. Do not claim step-free or bike-and-ride routes from this feed.
 
 ### 5.3 Simulation
 
@@ -116,12 +146,21 @@ Full-screen map centered on Timișoara with a floating search bar, locate-me but
 - **Bad readings:** ignore fixes with `accuracy > 100 m` for navigation, and ignore jumps > 150 m within 2 s.
 
 ### 6.3 Destination search
-- openrouteservice autocomplete through the backend, restricted to the Timișoara bbox, debounced to 300 ms, with results cached.
-- Preset chips: Piața Victoriei, Piața Unirii, Iulius Town, Centru. These work even when geocoding is down.
+- **Local search first**, with no external call: the City Hall street register (1,370 streets, with neighbourhood and house-number ranges), the 20 City Hall landmarks (`/api/mobile/pois`, RO + EN) and preset chips (Piața Victoriei, Piața Unirii, Iulius Town, Centru). Searched in the browser from a snapshot, accent-insensitive ("piata" finds "Piața").
+- A street is placed on the map using its OSM geometry, matched by the register name. Geocoders spell names differently ("Strada Doctor Ioan Mureșan" vs "Dr. Ioan Mureșan"), so never trust free-text geocoder matches.
+- Optional fallback for addresses outside the snapshot: openrouteservice geocoding through the backend, bbox-limited, debounced to 300 ms, cached, and labelled as approximate.
 - **Do not use Nominatim for autocomplete** (its usage policy forbids it).
 
 ### 6.4 Parking discovery
 After a destination is set, show parkings within a radius (default 1.5 km walking).
+
+Candidates:
+- **Timpark lots** (49), from the City Hall data, with their real tariff.
+- **Timpark street parking:** the nearest paid street segments to the destination, grouped per zone, with the zone's tariff and SMS code.
+- **OSM parkings** that are not Timpark (malls, free lots), with price `unknown` unless verified.
+- The map shows Timpark zones as tinted polygons by tariff colour, with a legend.
+
+Paying: the details panel shows "Pay by SMS: send `<code>` to `<number>`" from the City Hall data, and a link to CityApp. We do not process payments.
 
 Each parking shows: name, type, address?, capacity?, price (`Sourced`), availability (`Sourced`), walking distance and time, source, last update and quality badge.
 
@@ -181,7 +220,7 @@ mic or text → SpeechRecognition → POST /api/assistant/command → Gemini wit
 - `findParking(destinationId?)`
 - `setRoutePreference(mode)`
 - `setMaxWalkingMinutes(n: 1–30)`
-- `setParkingBudget(ron: 0–100)`
+- `setParkingBudget(amount: 0–100)` (in the tariff source's currency)
 - `setTransitPreference(avoid|prefer|neutral)`
 - `requireAccessibleParking(bool)`
 - `explainRecommendation(optionId)`
@@ -205,8 +244,11 @@ mic or text → SpeechRecognition → POST /api/assistant/command → Gemini wit
 - Cache audio by text hash, cap characters per session (quota protection) and fall back to `speechSynthesis`.
 - Never play prerecorded audio as if it were dynamic.
 
-### 6.13 Community reports (P2)
-- **Report types:** spaces available / full / wrong info / closed / confirm an existing report.
+### 6.13 Community reports (P3)
+Demoted from P2: the city guide warns against a second complaints inbox.
+- **Problems** (wrong info, closed parking, broken payment machine) are **not** collected by us: we link to sesizari.primariatm.ro with the location pre-explained.
+- We only keep short-lived **availability signals** ("I just found it full"), which Sesizări does not handle.
+- **Report types:** spaces available / full / confirm an existing report.
 - **No login** is needed for anonymous reports: use an anonymous device UUID plus an IP rate limit (1 report per parking per 10 min).
 - Auth0 users are "trusted" and get a higher weight.
 - **Aggregation:**
@@ -225,6 +267,7 @@ mic or text → SpeechRecognition → POST /api/assistant/command → Gemini wit
 - Each chart labels simulated vs. real rows.
 
 ### 6.15 Accessibility
+- **Target: WCAG 2.1 AA**, which public-sector sites and apps in Romania must meet.
 - Semantic controls, keyboard navigation and visible focus.
 - ARIA labels on map controls and touch targets of at least 44 px.
 - `prefers-reduced-motion` respected and WCAG AA contrast.
@@ -234,12 +277,12 @@ mic or text → SpeechRecognition → POST /api/assistant/command → Gemini wit
 ## 7. SmartMatch algorithm
 
 ### 7.1 Candidates
-Parkings within the walking radius, plus up to 2 park-and-ride parkings next to a transit stop with a line to within 500 m of the destination (P1).
+Parkings within the walking radius (§6.4), plus up to 2 park-and-ride options (P1): a parking outside the paid central zones, within 300 m of an SMTT stop served by a line that stops within 500 m of the destination. Transit legs use GTFS scheduled times for the planned departure; the fare comes from the City Hall ticket types.
 
 ### 7.2 Hard filters
 Apply first, from the user's preferences:
 - `walk_min ≤ maxWalk`
-- `cost ≤ budget` (an unknown cost passes but is flagged)
+- `cost ≤ budget`, in the source's currency (an unknown cost passes but is flagged)
 - accessible parking required
 - avoid or prefer transit
 - `availability = 'full' (confirmed)` → excluded
@@ -255,7 +298,10 @@ Apply first, from the user's preferences:
   - > 95 % → 6 min
   - unknown → 3 min (`quality='estimated'`)
 - **Total time:** `total_min = drive_min + search_min + walk_min + transit_wait_min + transit_min + transfers × 5`. Each segment is counted once.
-- **Cost:** `cost_ron` = price × stay duration (default 2 h, user-adjustable); `null` if unknown.
+- **Cost:** `cost` = tariff × stay duration (default 2 h, user-adjustable), in the currency the source gives (D10); `null` if unknown.
+    - Timpark: the hourly tariff of the lot's or street's colour. Inside the schedule only (weekdays 8–20; on Saturday the green tariff 8–17, per the `schedule` field); outside it, cost 0 with the note "free outside paid hours".
+    - Progressive lots use the `progressive` steps. A day ticket replaces hourly pricing when it is cheaper and the colour allows it.
+    - Park & ride: parking cost + transit fare for the trip there and back.
 - **Emissions:** `co2_g = drive_km × EF_car (+ transit_km × EF_transit)`, quality `estimated` (D4).
 - **Availability probability `p_free`:**
   - confirmed → `free / capacity` mapped to 0.05–0.98;
@@ -360,8 +406,11 @@ All bodies are validated with zod schemas from `shared/src/schemas`. Errors use 
 | Method & path | Purpose |
 |---|---|
 | `GET /api/health` | Status of each dependency (routing, gemini, tts, db) |
-| `GET /api/geocode/autocomplete?q=` | Proxied, bbox-limited, cached |
-| `GET /api/parkings?near=lat,lng&radius=` | Parkings with current `Sourced` availability |
+| `GET /api/destinations` | Snapshot of the street register + City Hall landmarks for local search (cached, versioned) |
+| `GET /api/geocode/autocomplete?q=` | Optional fallback; proxied, bbox-limited, cached, marked approximate |
+| `GET /api/parkings?near=lat,lng&radius=` | Timpark lots and streets + OSM parkings, with `Sourced` price and availability |
+| `GET /api/city/parking-zones` | Timpark zones and tariffs snapshot (for the map layer and SmartMatch) |
+| `GET /api/transit/stops?near=lat,lng` | SMTT stops and lines from the GTFS digest |
 | `GET /api/parkings/:id` | Details |
 | `POST /api/recommendations` | `{origin, destination, preferences, demoOverrides?}` → ranked options for all 3 modes + explanations |
 | `POST /api/routes` | `{from, to, profile: 'driving-car'\|'foot-walking'}` → geometry + maneuvers (cached) |
@@ -422,8 +471,8 @@ Each screen has loading (skeletons), empty, error, offline, permission-denied, r
 
 **P0 (must work by end of day 1, deployed):**
 - PWA shell and map of Timișoara with attribution
-- search + preset destinations
-- OSM parkings (static GeoJSON) with quality badges
+- local destination search (street register + landmarks + presets)
+- Timpark lots, streets and zones with real tariffs and SMS codes, plus OSM parkings, with quality badges
 - SmartMatch with Fastest + one other mode
 - real driving route geometry
 - Demo Simulation Mode with the offline route fallback
@@ -442,9 +491,9 @@ Each screen has loading (skeletons), empty, error, offline, permission-denied, r
 - Gemini assistant
 - ElevenLabs voice
 - Tiger Data analytics
-- community reports (+ Auth0)
 
 **P3 (only if time is left):**
+- availability signals from users (+ Auth0); problems go to Sesizări (§6.13)
 - computer-vision occupancy (authorized images only; no faces or plates)
 - predictive availability
 - wheelchair routing
@@ -471,8 +520,8 @@ Organizers must confirm eligibility for each challenge **[VERIFY]**.
 ## 12. Live demo script (≈4 min)
 
 1. **Open the URL:** map of Timișoara, one sentence on the problem.
-2. **Try Demo, then Piața Victoriei:** parkings appear with honest quality badges.
-3. **Fastest / Cheapest / Greenest:** show why the winners differ (comparison table, km of driving avoided).
+2. **Try Demo, then Piața Victoriei:** Timpark zones and parkings appear, with real tariffs and honest quality badges ("availability unknown").
+3. **Fastest / Cheapest / Greenest:** show why the winners differ (comparison table with real Timpark prices and SMTT fares, km of driving avoided), and the "Pay by SMS" handoff.
 4. **Start the simulated navigation:** the car follows the real route; ETA and distance update.
 5. **Scenario "Parking A full":** the banner appears, the presenter taps **Switch**, and the new route animates in.
 6. **Assistant:** say or type "cheaper parking, max 5 minutes walking". Show the function call and the new recommendation, spoken (ElevenLabs or browser TTS).
@@ -523,6 +572,10 @@ Organizers must confirm eligibility for each challenge **[VERIFY]**.
 | GTFS not available or wrong license | Park-and-ride becomes "nearest stop + lines" only, or is cut; say so |
 | Late integration / merge conflicts | Shared zod contracts on day 1, small PRs, deploy on every merge to `main` |
 | Scope creep | Feature freeze Nov 15 morning [DECIDE exact hour]; afterwards only bug fixes and the pitch |
+| City Hall endpoints slow, down or changed | Snapshots in `shared/src/data` with date and version; the app runs from snapshots |
+| GTFS version changes before the demo | Re-download on the morning of Nov 15; show the version in the app's "About data" |
+| Overlap with CityApp's journey planner | Ask on Discord (D9); pitch as an extension that hands off to CityApp and Timpark SMS |
+| Overpass public servers overloaded (seen on 13 Nov) | Script retries 3 instances; Timpark data covers the paid parkings without Overpass |
 
 ## 15. Team & timeline
 
@@ -576,3 +629,24 @@ Organizers must confirm eligibility for each challenge **[VERIFY]**.
 8. No secrets in the client bundle or the repo.
 9. The README explains setup, architecture, data sources, licenses, and what is real vs. simulated vs. future.
 10. The demo is repeatable, and the backup recording exists.
+11. Romanian UI (English available), WCAG 2.1 AA checked on the main flow.
+12. Every figure shows its source and date, including the GTFS version and the Timpark snapshot date.
+13. The project meets the adoptability checklist in §17.
+
+## 17. Adoptability (from the City Hall guide)
+
+The judges and the city look for a project someone else can run after Monday.
+
+- **Named owner:** the pitch names who would run it. Candidates: Timpark (parking), SMTT (transit), or the City Hall digital team as a CityApp feature **[DECIDE]**.
+- **Fits existing channels:** hands off to Timpark SMS / CityApp for payment and to Sesizări for problems; reads city data from the source.
+- **Runs without the team:**
+    - open-source licence, MIT or Apache-2.0 **[DECIDE]**;
+    - a README someone else can follow;
+    - no paid API on a personal card; every free account documented in `docs/third-party.md`;
+    - nothing that needs a server tended at night.
+- **Romanian first**, written plainly, the way a clerk would explain it at the counter.
+- **Accessible:** WCAG 2.1 AA.
+- **Private by default:** collect the minimum, keep location on the device where possible, no third-party trackers, and state what is stored and for how long.
+- **Honest about data:** source and last update next to every figure; "unknown" instead of a guess.
+- **Tried with real people:** at least 5 residents (§13).
+- **One number to watch [DECIDE]:** for example, estimated minutes of parking search avoided per trip, or km of driving through the centre avoided.
