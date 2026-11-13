@@ -70,3 +70,4 @@ API request and response types are defined **once** in `shared/src/schemas` (zod
 - `pnpm data:city` — refresh the City Hall snapshots (Timpark, street register, landmarks, neighbourhoods); restart the backend afterwards
 - `pnpm data:osm-places` — refresh OSM named streets and major places (one Overpass query); restart the backend afterwards
 - `pnpm -F backend start` — run the backend without watch (production on Vultr)
+- If a change in `shared/` does not show in the browser, restart the frontend dev server: Vite's watcher has missed edits there (seen on 13 Nov). Check with the tests first, then in the browser.

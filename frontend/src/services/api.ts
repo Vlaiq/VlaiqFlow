@@ -9,7 +9,8 @@ async function get<S extends z.ZodTypeAny>(path: string, schema: S): Promise<z.i
   const ctrl = new AbortController();
   const timer = setTimeout(() => ctrl.abort(), TIMEOUT_MS);
   try {
-    const res = await fetch(`${BASE}${path}`, { signal: ctrl.signal });
+    // 'no-cache' = always revalidate with the server (ETag → cheap 304), never trust a stale stored copy.
+    const res = await fetch(`${BASE}${path}`, { signal: ctrl.signal, cache: 'no-cache' });
     if (!res.ok) throw new Error(`${path} → HTTP ${res.status}`);
     return schema.parse(await res.json());
   } finally {

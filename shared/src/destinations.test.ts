@@ -101,6 +101,13 @@ describe('buildDestinations', () => {
     expect(searchDestinations(index, 'lloyd palace')[0]?.id).toBe('poi-lloyd');
     expect(searchDestinations(index, '   ')).toEqual([]);
   });
+
+  it('still suggests a place when only some words match, but ranks full matches first', () => {
+    const index = buildSearchIndex(dests);
+    expect(searchDestinations(index, 'lloyd hotel')[0]?.id).toBe('poi-lloyd');
+    // short words alone ("de") never produce partial matches
+    expect(searchDestinations(index, 'de xyz')).toEqual([]);
+  });
 });
 
 describe('real City Hall snapshots', () => {
@@ -124,7 +131,9 @@ describe('real City Hall snapshots', () => {
 
     const index = buildSearchIndex(dests);
     if (existsSync(file('osm-places.json'))) {
-      expect(searchDestinations(index, 'iulius')[0]?.kind).toBe('place');
+      for (const q of ['iulius', 'Iulius Mall', 'iulius town', 'IULIUS']) {
+        expect(searchDestinations(index, q)[0]?.name, q).toBe('Iulius Mall');
+      }
     }
     for (const q of ['piata victoriei', 'piata unirii']) {
       const top = searchDestinations(index, q)[0];

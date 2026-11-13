@@ -295,29 +295,49 @@ const PRECISION_RANK: Record<Destination['precision'], number> = { exact: 0, str
 export interface SearchIndexEntry {
   destination: Destination;
   name: string; // normalised name
-  tokens: string[]; // normalised tokens of the name and aliases
+  nameTokens: string[]; // tokens of the name itself
+  tokens: string[]; // tokens of the name and aliases
 }
 
 export function buildSearchIndex(destinations: Destination[]): SearchIndexEntry[] {
   return destinations.map((d) => {
     const name = normalize(d.name);
+    const nameTokens = name.split(' ').filter(Boolean);
     const tokens = [name, ...d.aliases.map(normalize)].join(' ').split(' ').filter(Boolean);
-    return { destination: d, name, tokens };
+    return { destination: d, name, nameTokens, tokens };
   });
 }
 
-/** Accent-insensitive prefix search: every query word must start a word of the name or an alias. */
+/**
+ * Accent-insensitive prefix search. Results where every query word starts a word of the name or an alias
+ * come first; then results that match only some words (so "iulius town" still finds "Iulius Mall").
+ * Words of 1–2 letters ("de", "la") never count on their own as a partial match.
+ */
 export function searchDestinations(index: SearchIndexEntry[], query: string, limit = 8): Destination[] {
   const words = normalize(query).split(' ').filter(Boolean);
   if (words.length === 0) return [];
   const q = words.join(' ');
+  const significant = words.filter((w) => w.length >= 3);
 
   const scored: { d: Destination; score: number }[] = [];
   for (const e of index) {
-    if (!words.every((w) => e.tokens.some((t) => t.startsWith(w)))) continue;
+    const matched = words.filter((w) => e.tokens.some((t) => t.startsWith(w)));
+    const all = matched.length === words.length;
+    const partial = !all && matched.some((w) => significant.includes(w));
+    if (!all && !partial) continue;
     const starts = e.name.startsWith(q) || withoutType(e.name).startsWith(q) ? 0 : 1;
+    const missing = words.length - matched.length;
+    // For partial matches: the first word typed matters most, and the real name beats a translation.
+    const firstWordMissed = matched.includes(words[0]!) ? 0 : 1;
+    const nameHits = matched.filter((w) => e.nameTokens.some((t) => t.startsWith(w))).length;
+    const aliasOnly = matched.length - nameHits;
+    const partialPenalty = all ? 0 : 1000 + missing * 100 + firstWordMissed * 400 + aliasOnly * 50;
     const score =
-      starts * 100 + KIND_RANK[e.destination.kind] * 10 + PRECISION_RANK[e.destination.precision] + e.name.length / 1000;
+      partialPenalty +
+      starts * 100 +
+      KIND_RANK[e.destination.kind] * 10 +
+      PRECISION_RANK[e.destination.precision] +
+      e.name.length / 1000;
     scored.push({ d: e.destination, score });
   }
   return scored
