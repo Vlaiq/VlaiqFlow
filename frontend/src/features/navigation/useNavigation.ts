@@ -11,24 +11,9 @@ import {
   tripMetrics,
 } from './geometry';
 
-export const DESTINATIONS = [
-  {
-    name: 'Parcarea 700',
-    area: 'Piața 700 · Timișoara',
-    coordinate: [21.2208, 45.7585] as Coordinate,
-  },
-  {
-    name: 'Iulius Town',
-    area: 'Zona de acces · Timișoara',
-    coordinate: [21.2222, 45.7669] as Coordinate,
-  },
-  {
-    name: 'Gara de Nord',
-    area: 'Bulevardul Gării · Timișoara',
-    coordinate: [21.206, 45.7503] as Coordinate,
-  },
-];
-export const DEMO_ORIGIN: Coordinate = [21.206, 45.7503];
+import type { NavPlace, NavPlaces } from './places';
+
+// Destinations and the demo origin come from the data snapshots (places.ts), never typed in by hand.
 export type Mode = 'preview' | 'acquiring' | 'live' | 'demo';
 export interface Fix {
   coordinate: Coordinate;
@@ -39,9 +24,10 @@ export interface Fix {
   timestamp: number;
 }
 
-export function useNavigation() {
+export function useNavigation(places: NavPlaces) {
+  const DEMO_ORIGIN = places.origin.coordinate;
   const [mode, setMode] = useState<Mode>('preview');
-  const [destination, setDestination] = useState(DESTINATIONS[0]!);
+  const [destination, setDestination] = useState<NavPlace>(places.destinations[0]!);
   const [routes, setRoutes] = useState<NavigationRoute[]>([]);
   const [selected, setSelected] = useState(0);
   const route = routes[selected];
@@ -439,6 +425,8 @@ export function useNavigation() {
 
   return {
     mode,
+    destinations: places.destinations,
+    originName: places.origin.name,
     destination,
     setDestination,
     routes,

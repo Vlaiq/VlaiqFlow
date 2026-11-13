@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import {
   ArrowDown,
   ArrowLeft,
@@ -28,7 +28,8 @@ import {
 } from 'lucide-react';
 import type { NavigationRoute } from '@vlaiq/shared';
 import { brand } from '@vlaiq/shared';
-import { DESTINATIONS, useNavigation } from './useNavigation';
+import { useNavigation } from './useNavigation';
+import { loadNavPlaces, type NavPlaces } from './places';
 import { formatDistance, instruction } from './geometry';
 import { NavigationMap } from './NavigationMap';
 import './navigation.css';
@@ -45,8 +46,55 @@ function TurnIcon({ step }: { step?: NavigationRoute['steps'][number] }) {
 }
 const minutes = (seconds: number) => Math.max(1, Math.ceil(seconds / 60));
 
+/** Loads the destinations from the data snapshots, then shows the navigation view. */
 export function NavigationScreen() {
-  const nav = useNavigation();
+  const [places, setPlaces] = useState<NavPlaces | null>(null);
+  const [failed, setFailed] = useState<string | null>(null);
+  const [attempt, setAttempt] = useState(0);
+
+  useEffect(() => {
+    let alive = true;
+    setFailed(null);
+    loadNavPlaces(window.location.search).then(
+      (p) => alive && setPlaces(p),
+      (e: unknown) => alive && setFailed(e instanceof Error ? e.message : 'Destinațiile nu sunt disponibile.'),
+    );
+    return () => {
+      alive = false;
+    };
+  }, [attempt]);
+
+  if (failed) {
+    return (
+      <main className="flex h-full items-center justify-center p-6">
+        <section role="alert" className="max-w-sm rounded-card border border-border bg-surface p-6">
+          <h1 className="text-lg font-semibold">Navigația nu poate porni</h1>
+          <p className="mt-2 text-sm text-muted">{failed} Verifică dacă backend-ul rulează.</p>
+          <button
+            className="mt-4 min-h-11 rounded-xl bg-primary px-4 text-sm font-semibold text-primary-fg"
+            onClick={() => setAttempt((a) => a + 1)}
+          >
+            Încearcă din nou
+          </button>
+          <a href="/" className="ml-4 inline-flex min-h-11 items-center text-sm text-primary">
+            Înapoi la hartă
+          </a>
+        </section>
+      </main>
+    );
+  }
+  if (!places) {
+    return (
+      <div role="status" className="flex h-full items-center justify-center text-muted">
+        Se încarcă destinațiile…
+      </div>
+    );
+  }
+  return <NavigationView places={places} />;
+}
+
+function NavigationView({ places }: { places: NavPlaces }) {
+  const nav = useNavigation(places);
   const [expanded, setExpanded] = useState(false);
   const [recenter, setRecenter] = useState(0);
   const active = nav.mode === 'live' || nav.mode === 'demo';
@@ -134,7 +182,7 @@ export function NavigationScreen() {
                   className="origin-select"
                   onClick={() => nav.setPickOrigin(!nav.pickOrigin)}
                 >
-                  {nav.manualOrigin ? 'Punct ales pe hartă' : 'Gara de Nord'}
+                  {nav.manualOrigin ? 'Punct ales pe hartă' : nav.originName}
                   <ChevronDown size={15} />
                 </button>
               </div>
@@ -146,13 +194,15 @@ export function NavigationScreen() {
                 <label htmlFor="nav-destination">DESTINAȚIE</label>
                 <select
                   id="nav-destination"
-                  value={nav.destination.name}
+                  value={nav.destination.id}
                   onChange={(e) =>
-                    nav.setDestination(DESTINATIONS.find((d) => d.name === e.target.value)!)
+                    nav.setDestination(nav.destinations.find((d) => d.id === e.target.value)!)
                   }
                 >
-                  {DESTINATIONS.map((d) => (
-                    <option key={d.name}>{d.name}</option>
+                  {nav.destinations.map((d) => (
+                    <option key={d.id} value={d.id}>
+                      {d.name}
+                    </option>
                   ))}
                 </select>
               </div>

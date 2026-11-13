@@ -1,6 +1,7 @@
-import { MapPin, X } from 'lucide-react';
+import { MapPin, Navigation, X } from 'lucide-react';
 import type { Destination } from '@vlaiq/shared';
 import { QualityBadge } from '../../components/QualityBadge';
+import { navigationHref } from '../navigation/places';
 import { kindLabel, PRECISION_LABEL } from './labels';
 
 interface Props {
@@ -9,6 +10,7 @@ interface Props {
 }
 
 export function DestinationCard({ destination: d, onClear }: Props) {
+  const navHref = navigationHref(d);
   return (
     <div>
       <div className="flex items-start gap-3">
@@ -42,6 +44,15 @@ export function DestinationCard({ destination: d, onClear }: Props) {
         Parcările din jur sunt pe hartă: zonele și străzile colorate sunt Timpark, punctele sunt parcări din
         OpenStreetMap. Apasă pe una pentru detalii.
       </p>
+      {navHref && (
+        <a
+          href={navHref}
+          className="mt-3 inline-flex min-h-11 items-center gap-2 rounded-xl bg-primary px-4 text-sm font-semibold text-primary-fg focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
+        >
+          <Navigation className="h-4 w-4" aria-hidden />
+          Navighează aici
+        </a>
+      )}
     </div>
   );
 }

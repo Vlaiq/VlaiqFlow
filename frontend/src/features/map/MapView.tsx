@@ -94,8 +94,12 @@ export function MapView({ parkings, timpark, destination }: Props) {
     const timeout = window.setTimeout(() => {
       if (!map.isStyleLoaded()) setMapError('Harta nu se poate încărca. Verifică conexiunea și accesul la serviciul de hărți.');
     }, 12000);
+    // Only errors that stop the map from starting count. After the first load, a single tile or
+    // sprite failing (common on busy networks) must not cover a working map (same rule as NavigationMap).
     map.on('error', () => {
-      setMapError('Serviciul de hărți nu este disponibil. Poți reîncerca încărcarea.');
+      if (!loadedRef.current && !map.isStyleLoaded()) {
+        setMapError('Serviciul de hărți nu este disponibil. Poți reîncerca încărcarea.');
+      }
     });
 
 
