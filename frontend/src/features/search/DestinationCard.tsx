@@ -38,7 +38,10 @@ export function DestinationCard({ destination: d, onClear }: Props) {
           ? `Sursa poziției: ${d.locationSource}.`
           : 'Strada există în registrul Primăriei, dar nu avem încă poziția ei pe hartă.'}
       </p>
-      <p className="mt-2 text-xs text-muted">Recomandarea de parcare pentru această destinație vine în pasul următor.</p>
+      <p className="mt-2 text-xs text-muted">
+        Parcările din jur sunt pe hartă: zonele și străzile colorate sunt Timpark, punctele sunt parcări din
+        OpenStreetMap. Apasă pe una pentru detalii.
+      </p>
     </div>
   );
 }

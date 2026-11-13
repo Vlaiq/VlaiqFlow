@@ -7,20 +7,26 @@ import {
   isPaidAt,
   type TimparkSnapshot,
 } from '@vlaiq/shared';
+import { ChevronDown } from 'lucide-react';
 import { QualityBadge } from '../../components/QualityBadge';
 
-/** Timpark tariffs exactly as published by the City Hall, with source and date. */
+/**
+ * Timpark tariffs exactly as published by the City Hall, with source and date.
+ * A native <details>: keyboard and screen-reader friendly, and it can be folded to free the map.
+ */
 export function TariffLegend({ snapshot }: { snapshot: TimparkSnapshot }) {
   const { tariffs, version } = snapshot.data;
   const now = new Date();
   const fetched = new Date(snapshot.fetchedAt).toLocaleDateString('ro-RO');
 
   return (
-    <div>
-      <div className="mb-2 flex items-center gap-2">
+    <details open className="group">
+      <summary className="flex cursor-pointer list-none items-center gap-2 rounded focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary [&::-webkit-details-marker]:hidden">
         <h2 className="text-sm font-semibold">Tarife Timpark</h2>
         <QualityBadge quality="confirmed" />
-      </div>
+        <ChevronDown className="ml-auto h-4 w-4 text-muted transition-transform group-open:rotate-180" aria-hidden />
+      </summary>
+      <div className="mt-2">
       <ul className="grid grid-cols-2 gap-x-4 gap-y-1 text-sm" aria-label="Tarife pe oră">
         {TariffColor.options.map((color) => {
           const p = tariffs.hourly[color];
@@ -44,6 +50,7 @@ export function TariffLegend({ snapshot }: { snapshot: TimparkSnapshot }) {
         Sursa: Primăria Timișoara, date Timpark (versiunea {version}), preluate pe {fetched}. Moneda e cea din sursă.
         Locurile libere nu sunt cunoscute.
       </p>
-    </div>
+      </div>
+    </details>
   );
 }

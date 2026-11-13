@@ -45,9 +45,13 @@ export function App() {
     <main className="relative h-full w-full overflow-hidden">
       <MapView parkings={parkingList} timpark={timparkData} destination={destination} />
 
-      {/* Floating top bar — safe-area aware for notched phones */}
-      <header className="pointer-events-none absolute inset-x-0 top-0 z-10 p-4 pt-[max(1rem,env(safe-area-inset-top))]">
-        <div className="pointer-events-auto mx-auto flex max-w-xl items-center gap-3 rounded-card border border-border bg-surface/95 px-4 py-3 shadow-lg">
+      {/*
+        Layout: on phones a floating search bar on top and an info sheet at the bottom;
+        on laptops and desktops (≥ 1024 px) both stack in a left side panel and the map keeps the rest (spec §10).
+      */}
+      <div className="lg:pointer-events-none lg:absolute lg:inset-y-0 lg:left-0 lg:z-10 lg:flex lg:w-[440px] lg:flex-col lg:gap-3 lg:p-4">
+      <header className="pointer-events-none absolute inset-x-0 top-0 z-10 p-4 pt-[max(1rem,env(safe-area-inset-top))] lg:static lg:p-0">
+        <div className="pointer-events-auto mx-auto flex max-w-xl items-center gap-3 rounded-card border border-border bg-surface/95 px-4 py-3 shadow-lg lg:max-w-none">
           <span className="hidden text-sm font-semibold tracking-wide text-primary sm:inline">{brand.product}</span>
           <DestinationSearch
             destinations={destinations.state === 'ok' ? destinations.data.destinations : null}
@@ -57,12 +61,13 @@ export function App() {
         </div>
       </header>
 
-      {/* Info sheet — becomes the results bottom sheet when recommendations arrive */}
+      {/* Info panel — bottom sheet on phones, side panel on laptops; holds the recommendations later */}
       <section
         aria-live="polite"
-        className="absolute inset-x-0 bottom-0 z-10 p-4 pb-[max(1rem,env(safe-area-inset-bottom))]"
+        aria-label="Informații despre destinație și parcare"
+        className="absolute inset-x-0 bottom-0 z-10 p-4 pb-[max(1rem,env(safe-area-inset-bottom))] lg:static lg:min-h-0 lg:flex-1 lg:p-0"
       >
-        <div className="mx-auto max-h-[45vh] max-w-xl overflow-auto rounded-card border border-border bg-surface/95 p-4 text-sm shadow-lg">
+        <div className="pointer-events-auto mx-auto max-h-[40vh] max-w-xl overflow-auto rounded-card border border-border bg-surface/95 p-4 text-sm shadow-lg lg:max-h-full lg:max-w-none">
           {destination && (
             <div className="mb-3 border-b border-border pb-3">
               <DestinationCard destination={destination} onClear={() => setDestination(null)} />
@@ -84,6 +89,7 @@ export function App() {
           </p>
         </div>
       </section>
+      </div>
     </main>
   );
 }

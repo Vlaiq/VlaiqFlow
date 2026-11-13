@@ -37,6 +37,15 @@ interface Props {
 
 const FLY_ZOOM: Record<Destination['precision'], number> = { exact: 16.5, street: 16, neighbourhood: 14.5, none: 14 };
 
+/**
+ * Keeps a flown-to point in the part of the map the panels leave visible:
+ * left of the 440 px side panel on laptops, above the bottom sheet on phones. Matches App.tsx.
+ */
+function visibleMapPadding(): maplibregl.PaddingOptions {
+  if (window.matchMedia('(min-width: 1024px)').matches) return { left: 460, top: 20, right: 60, bottom: 20 };
+  return { left: 0, top: 90, right: 0, bottom: Math.round(window.innerHeight * 0.42) };
+}
+
 function destinationMarkerElement(approximate: boolean): HTMLElement {
   const el = document.createElement('div');
   el.setAttribute('aria-hidden', 'true');
@@ -174,7 +183,13 @@ export function MapView({ parkings, timpark, destination }: Props) {
       .setLngLat([lng, lat])
       .addTo(map);
     const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-    map.flyTo({ center: [lng, lat], zoom: FLY_ZOOM[destination.precision], animate: !reduceMotion, essential: false });
+    map.flyTo({
+      center: [lng, lat],
+      zoom: FLY_ZOOM[destination.precision],
+      padding: visibleMapPadding(),
+      animate: !reduceMotion,
+      essential: false,
+    });
     return () => {
       marker.remove();
     };
