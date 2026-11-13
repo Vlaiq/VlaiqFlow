@@ -1,0 +1,19 @@
+/* Design tokens — spec §10. Stored as "R G B" so Tailwind can apply opacity (bg-primary/20). */
+:root {
+  --bg: 16 25 22;           /* #101916 */
+  --surface: 22 34 29;      /* #16221D */
+  --surface-2: 30 45 39;    /* #1E2D27 */
+  --border: 42 59 52;       /* #2A3B34 */
+  --text: 242 247 244;      /* #F2F7F4 */
+  --text-muted: 163 181 172;/* #A3B5AC */
+  --primary: 34 197 94;     /* #22C55E */
+  --primary-fg: 11 20 16;   /* #0B1410 — dark text on green; white fails WCAG */
+  --mint: 234 246 237;      /* #EAF6ED */
+  --warning: 245 158 11;    /* #F59E0B */
+  --danger: 239 68 68;      /* #EF4444 */
+  --q-confirmed: 34 197 94;
+  --q-estimated: 56 189 248;
+  --q-unknown: 138 154 146;
+  --q-simulated: 167 139 250;
+  color-scheme: dark;
+}

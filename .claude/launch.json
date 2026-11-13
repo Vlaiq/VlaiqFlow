@@ -1,0 +1,17 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "backend",
+      "runtimeExecutable": "pnpm.cmd",
+      "runtimeArgs": ["-F", "backend", "dev"],
+      "port": 8787
+    },
+    {
+      "name": "frontend",
+      "runtimeExecutable": "node",
+      "runtimeArgs": ["frontend/node_modules/vite/bin/vite.js", "frontend", "--port", "5173", "--strictPort"],
+      "port": 5173
+    }
+  ]
+}

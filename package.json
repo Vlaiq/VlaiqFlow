@@ -1,0 +1,16 @@
+{
+  "name": "vlaiq-flow",
+  "private": true,
+  "version": "0.1.0",
+  "packageManager": "pnpm@12.18.0",
+  "engines": {
+    "node": ">=20.11"
+  },
+  "scripts": {
+    "dev": "pnpm -r --parallel dev",
+    "build": "pnpm -F frontend build",
+    "test": "pnpm -r test",
+    "typecheck": "pnpm -r typecheck",
+    "data:parkings": "node scripts/fetch-osm-parkings.mjs"
+  }
+}
