@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import maplibregl, { type GeoJSONSource } from 'maplibre-gl';
-import { TIMISOARA_CENTER, type Destination, type Parking, type RecommendationOption, type TimparkSnapshot } from '@vlaiq/shared';
+import { TIMISOARA_CENTER, type Coordinate, type Destination, type Parking, type RecommendationOption, type TimparkSnapshot } from '@vlaiq/shared';
 import {
   addTimparkLayers,
   TIMPARK_CLICKABLE_LAYERS,
@@ -17,6 +17,8 @@ const TAP_TOLERANCE_PX = 8;
 const STYLE_URL = 'https://tiles.openfreemap.org/styles/dark';
 const PARKINGS_SOURCE = 'parkings';
 const PARKINGS_LAYER = 'parkings-circle';
+const ROUTE_SOURCE = 'drive-route';
+const ROUTE_LAYER = 'drive-route-line';
 
 function parkingsToGeoJSON(parkings: Parking[]): GeoJSON.FeatureCollection<GeoJSON.Point> {
   return {
@@ -38,6 +40,8 @@ interface Props {
   /** Bumped by the panel when the user picks an option: the map flies to it. */
   focusRecommendation?: { id: string; n: number } | null;
   onSelectRecommendation?: (id: string) => void;
+  /** Driving route to the open parking, exactly as returned by the routing provider. */
+  route?: Coordinate[] | null;
 }
 
 const FLY_ZOOM: Record<Destination['precision'], number> = { exact: 16.5, street: 16, neighbourhood: 14.5, none: 14 };
@@ -89,7 +93,7 @@ function destinationMarkerElement(approximate: boolean): HTMLElement {
   return el;
 }
 
-export function MapView({ parkings, timpark, destination, recommendations = [], selectedRecommendationId = null, focusRecommendation = null, onSelectRecommendation }: Props) {
+export function MapView({ parkings, timpark, destination, recommendations = [], selectedRecommendationId = null, focusRecommendation = null, onSelectRecommendation, route = null }: Props) {
   const [mapError, setMapError] = useState<string | null>(null);
   const [attempt, setAttempt] = useState(0);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -247,6 +251,43 @@ export function MapView({ parkings, timpark, destination, recommendations = [], 
       marker.remove();
     };
   }, [destination, attempt]);
+
+  // Driving route line (provider geometry, never a straight line). Drawn under the parking dots.
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map) return;
+    const apply = () => {
+      const data: GeoJSON.FeatureCollection<GeoJSON.LineString> = {
+        type: 'FeatureCollection',
+        features: route && route.length >= 2 ? [{ type: 'Feature', geometry: { type: 'LineString', coordinates: route }, properties: {} }] : [],
+      };
+      const source = map.getSource(ROUTE_SOURCE) as GeoJSONSource | undefined;
+      if (source) source.setData(data);
+      else {
+        map.addSource(ROUTE_SOURCE, { type: 'geojson', data });
+        const before = map.getLayer(PARKINGS_LAYER) ? PARKINGS_LAYER : undefined;
+        map.addLayer(
+          { id: `${ROUTE_LAYER}-casing`, type: 'line', source: ROUTE_SOURCE, layout: { 'line-cap': 'round', 'line-join': 'round' }, paint: { 'line-color': '#101916', 'line-width': 9 } },
+          before,
+        );
+        map.addLayer(
+          { id: ROUTE_LAYER, type: 'line', source: ROUTE_SOURCE, layout: { 'line-cap': 'round', 'line-join': 'round' }, paint: { 'line-color': '#22C55E', 'line-width': 5 } },
+          before,
+        );
+      }
+      if (route && route.length >= 2) {
+        const bounds = new maplibregl.LngLatBounds(route[0], route[0]);
+        for (const c of route) bounds.extend(c);
+        const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+        map.fitBounds(bounds, { padding: visibleMapPadding(), maxZoom: 16.5, animate: !reduceMotion });
+      }
+    };
+    if (loadedRef.current) apply();
+    else map.once('load', apply);
+    return () => {
+      map.off('load', apply);
+    };
+  }, [route, attempt]);
 
   // Numbered markers for the SmartMatch options; HTML buttons so they are keyboard-reachable.
   const onSelectRef = useRef(onSelectRecommendation);

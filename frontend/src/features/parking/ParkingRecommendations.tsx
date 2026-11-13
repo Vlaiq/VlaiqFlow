@@ -1,8 +1,7 @@
 import { useEffect, useState } from 'react';
-import { Footprints, Info, Navigation, ParkingSquare, RotateCcw } from 'lucide-react';
+import { ChevronRight, Footprints, Info, ParkingSquare, RotateCcw } from 'lucide-react';
 import {
   TARIFF_LABEL_RO,
-  formatAmountRo,
   type Destination,
   type RecommendationMode,
   type RecommendationOption,
@@ -10,6 +9,7 @@ import {
 } from '@vlaiq/shared';
 import { QualityBadge } from '../../components/QualityBadge';
 import { api } from '../../services/api';
+import { KIND_LABEL, pct, priceText, stayLabel } from './recommendationLabels';
 
 const MODES: { id: RecommendationMode; label: string; hint: string }[] = [
   { id: 'balanced', label: 'Echilibrat', hint: 'timp, șanse de loc și preț' },
@@ -17,27 +17,12 @@ const MODES: { id: RecommendationMode; label: string; hint: string }[] = [
   { id: 'sure', label: 'Loc sigur', hint: 'evită parcările care se pot umple' },
 ];
 const STAYS = [30, 60, 120, 180, 300, 480];
-const stayLabel = (m: number) => (m < 60 ? `${m} min` : `${m / 60} h`);
-
-const KIND_LABEL: Record<RecommendationOption['kind'], string> = {
-  timpark_lot: 'Parcare Timpark',
-  timpark_street: 'Parcare cu plată pe stradă (Timpark)',
-  osm: 'Parcare din OpenStreetMap',
-};
 
 /** Value for <input type="datetime-local"> in the device's local time. */
 function localInputValue(d: Date): string {
   const pad = (n: number) => String(n).padStart(2, '0');
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
 }
-
-function priceText(o: RecommendationOption): string {
-  if (o.price.total == null) return 'Necunoscut';
-  if (o.price.total === 0) return 'Gratuit';
-  return `${formatAmountRo(o.price.total)} ${o.price.currency ?? ''}`.trim();
-}
-
-const fmt1 = (n: number) => n.toLocaleString('ro-RO', { maximumFractionDigits: 1 });
 
 type State =
   | { state: 'loading' }
@@ -46,16 +31,17 @@ type State =
 
 interface Props {
   destination: Destination;
-  smsNumber: string | null;
   selectedId: string | null;
   onSelect: (id: string | null) => void;
   /** The user picked an option in the list: select it and show it on the map. */
   onPick: (id: string) => void;
-  onOptions: (options: RecommendationOption[]) => void;
+  /** Opens the presentation of one parking (details + directions). */
+  onOpen: (id: string) => void;
+  onResult: (data: RecommendationResponse | null) => void;
 }
 
 /** SmartMatch results for the chosen destination (spec §6.5–6.6). Every number comes from the backend engine. */
-export function ParkingRecommendations({ destination, smsNumber, selectedId, onSelect, onPick, onOptions }: Props) {
+export function ParkingRecommendations({ destination, selectedId, onSelect, onPick, onOpen, onResult }: Props) {
   const [mode, setMode] = useState<RecommendationMode>('balanced');
   const [stay, setStay] = useState(120);
   const [arrive, setArrive] = useState<string | null>(null); // null = now
@@ -67,7 +53,11 @@ export function ParkingRecommendations({ destination, smsNumber, selectedId, onS
   useEffect(() => {
     if (!loc) return;
     const ctrl = new AbortController();
-    const timer = window.setTimeout(() => ctrl.abort(), 20000);
+    let timedOut = false;
+    const timer = window.setTimeout(() => {
+      timedOut = true;
+      ctrl.abort();
+    }, 20000);
     setResult({ state: 'loading' });
     api
       .recommend(
@@ -83,13 +73,13 @@ export function ParkingRecommendations({ destination, smsNumber, selectedId, onS
       .then(
         (data) => {
           setResult({ state: 'ok', data });
-          onOptions(data.options);
+          onResult(data);
           onSelect(data.options[0]?.id ?? null);
         },
         (e: unknown) => {
-          if (ctrl.signal.aborted && !(e instanceof Error && e.name === 'TimeoutError')) return;
-          setResult({ state: 'error', message: e instanceof Error ? e.message : String(e) });
-          onOptions([]);
+          if (ctrl.signal.aborted && !timedOut) return;
+          setResult({ state: 'error', message: timedOut ? 'Serverul nu a răspuns la timp.' : e instanceof Error ? e.message : String(e) });
+          onResult(null);
         },
       );
     return () => {
@@ -99,7 +89,7 @@ export function ParkingRecommendations({ destination, smsNumber, selectedId, onS
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [loc?.lng, loc?.lat, mode, stay, arrive, maxWalk, attempt]);
 
-  useEffect(() => () => onOptions([]), [onOptions]);
+  useEffect(() => () => onResult(null), [onResult]);
 
   if (!loc) return null;
 
@@ -210,8 +200,7 @@ export function ParkingRecommendations({ destination, smsNumber, selectedId, onS
                   rank={i + 1}
                   selected={o.id === selectedId}
                   onSelect={() => onPick(o.id)}
-                  smsNumber={smsNumber}
-                  destinationName={destination.name}
+                  onOpen={() => onOpen(o.id)}
                   stayMinutes={result.data.stayMinutes}
                 />
               ))}
@@ -229,23 +218,16 @@ function OptionCard({
   rank,
   selected,
   onSelect,
-  smsNumber,
-  destinationName,
+  onOpen,
   stayMinutes,
 }: {
   option: RecommendationOption;
   rank: number;
   selected: boolean;
   onSelect: () => void;
-  smsNumber: string | null;
-  destinationName: string;
+  onOpen: () => void;
   stayMinutes: number;
 }) {
-  const navHref = `/navigation?${new URLSearchParams({
-    to: `${o.coordinate[0].toFixed(6)},${o.coordinate[1].toFixed(6)}`,
-    name: o.name,
-    area: `Parcare pentru ${destinationName}`,
-  }).toString()}`;
   const badge = rank === 1 ? 'Recomandat' : rank === 2 ? 'Rezervă' : null;
 
   return (
@@ -282,7 +264,7 @@ function OptionCard({
         </div>
         <div>
           <dt className="text-muted">Șanse de loc</dt>
-          <dd className="font-semibold tabular-nums">~{Math.round(o.pFree.value * 100)}%</dd>
+          <dd className="font-semibold tabular-nums">~{pct(o.pFree.value)}</dd>
           <dd><QualityBadge quality={o.pFree.quality} /></dd>
         </div>
         <div>
@@ -298,33 +280,15 @@ function OptionCard({
         </ul>
       )}
 
-      <details className="mt-2 text-xs">
-        <summary className="cursor-pointer text-muted hover:text-text">De ce această poziție?</summary>
-        <ul className="mt-1 space-y-0.5 text-muted">
-          <li>Șanse de loc estimate din: {o.pFree.factors.join('; ')}.</li>
-          <li>Preț: {o.price.note}</li>
-          <li>
-            Scor: mers {fmt1(o.cost.walk)} + risc de plin {fmt1(o.cost.risk)} + preț {fmt1(o.cost.price)} ={' '}
-            <strong className="text-text">{fmt1(o.cost.total)} min echivalente</strong> (mai puțin = mai bine).
-          </li>
-          <li>Capacitate: {o.capacity.value != null ? `${o.capacity.value} locuri (${o.capacity.source})` : 'necunoscută'}.</li>
-          <li>Mers pe jos: {o.walk.source}.</li>
-        </ul>
-      </details>
-
-      {o.smsCode && smsNumber && o.price.total !== 0 && (
-        <p className="mt-2 text-xs">
-          Plată prin SMS: trimite <strong>{o.smsCode}</strong> la <strong>{smsNumber}</strong> sau plătește în CityApp.
-        </p>
-      )}
-
-      <a
-        href={navHref}
-        className="mt-2 inline-flex min-h-11 items-center gap-2 rounded-xl bg-primary px-4 text-sm font-semibold text-primary-fg focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
+      <button
+        type="button"
+        onClick={onOpen}
+        className={`mt-2 inline-flex min-h-11 items-center gap-1 rounded-xl px-4 text-sm font-semibold focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary ${
+          rank === 1 ? 'bg-primary text-primary-fg' : 'border border-border text-text'
+        }`}
       >
-        <Navigation className="h-4 w-4" aria-hidden />
-        Navighează la parcare
-      </a>
+        Detalii și traseu <ChevronRight className="h-4 w-4" aria-hidden />
+      </button>
     </li>
   );
 }

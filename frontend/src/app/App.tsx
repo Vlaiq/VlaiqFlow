@@ -1,16 +1,18 @@
-import { lazy, Suspense, useCallback, useEffect, useState } from 'react';
+import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   brand,
   type Destination,
   type DestinationsResponse,
   type HealthResponse,
   type ParkingsResponse,
-  type RecommendationOption,
+  type Coordinate,
+  type RecommendationResponse,
   type TimparkSnapshot,
 } from '@vlaiq/shared';
 import { MapView } from '../features/map/MapView';
 import { TariffLegend } from '../features/parking/TariffLegend';
 import { ParkingRecommendations } from '../features/parking/ParkingRecommendations';
+import { ParkingDetail, type Origin } from '../features/parking/ParkingDetail';
 import { DestinationSearch } from '../features/search/DestinationSearch';
 import { DestinationCard } from '../features/search/DestinationCard';
 import { api } from '../services/api';
@@ -47,9 +49,27 @@ function Explore() {
   const timpark = useLoad<TimparkSnapshot>(api.timpark);
   const destinations = useLoad<DestinationsResponse>(api.destinations);
   const [destination, setDestination] = useState<Destination | null>(null);
-  const [options, setOptions] = useState<RecommendationOption[]>([]);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [focus, setFocus] = useState<{ id: string; n: number } | null>(null);
+  const [reco, setReco] = useState<RecommendationResponse | null>(null);
+  const panelRef = useRef<HTMLDivElement>(null);
+  const options = reco?.options ?? [];
+  const [detailId, setDetailId] = useState<string | null>(null);
+  const [driveRoute, setDriveRoute] = useState<Coordinate[] | null>(null);
+  const onResult = useCallback((data: RecommendationResponse | null) => {
+    setReco(data);
+    setDetailId(null); // a new ranking closes the open presentation
+  }, []);
+  const openDetail = useCallback((id: string) => {
+    setSelectedId(id);
+    setDetailId(id);
+    setFocus((f) => ({ id, n: (f?.n ?? 0) + 1 }));
+    panelRef.current?.scrollTo({ top: 0 });
+  }, []);
+  const closeDetail = useCallback(() => {
+    setDetailId(null);
+    setDriveRoute(null);
+  }, []);
   const pickOption = useCallback((id: string | null) => {
     setSelectedId(id);
     if (id) setFocus((f) => ({ id, n: (f?.n ?? 0) + 1 }));
@@ -57,6 +77,14 @@ function Explore() {
 
   const parkingList = parkings.state === 'ok' ? parkings.data.parkings : [];
   const timparkData = timpark.state === 'ok' ? timpark.data : null;
+  const detailIndex = detailId ? options.findIndex((o) => o.id === detailId) : -1;
+  const detail = detailIndex >= 0 ? options[detailIndex]! : null;
+  // Example driving origin for directions (same as the navigation demo): Timișoara Nord station, from the snapshot.
+  const demoOrigin = useMemo<Origin | null>(() => {
+    if (destinations.state !== 'ok') return null;
+    const d = destinations.data.destinations.find((x) => x.id === 'place-osm-node-9322434969');
+    return d?.location ? { name: d.name, coordinate: [d.location.lng, d.location.lat] } : null;
+  }, [destinations]);
 
   return (
     <main className="relative h-full w-full overflow-hidden">
@@ -65,9 +93,10 @@ function Explore() {
         timpark={timparkData}
         destination={destination}
         recommendations={options}
+        route={driveRoute}
         selectedRecommendationId={selectedId}
         focusRecommendation={focus}
-        onSelectRecommendation={setSelectedId}
+        onSelectRecommendation={openDetail}
       />
 
       {/*
@@ -94,30 +123,48 @@ function Explore() {
         aria-label="Informații despre destinație și parcare"
         className="absolute inset-x-0 bottom-0 z-10 p-4 pb-[max(1rem,env(safe-area-inset-bottom))] lg:relative lg:min-h-0 lg:flex-1 lg:p-0"
       >
-        <div className="pointer-events-auto mx-auto max-h-[40vh] max-w-xl overflow-auto rounded-card border border-border bg-surface/95 p-4 text-sm shadow-lg lg:max-h-full lg:max-w-none">
-          <a href="/motion" className="mb-3 flex min-h-11 items-center justify-between rounded-xl border border-border bg-surface-2 px-3 py-2 text-xs text-primary"><span>VLAIQ MOTION · Mișcare și FLOW Coins</span><span aria-hidden="true">→</span></a>
-          {destination && (
+        <div ref={panelRef} className="pointer-events-auto mx-auto max-h-[40vh] max-w-xl overflow-auto rounded-card border border-border bg-surface/95 p-4 text-sm shadow-lg lg:max-h-full lg:max-w-none">
+          {!detail && (
+            <a href="/motion" className="mb-3 flex min-h-11 items-center justify-between rounded-xl border border-border bg-surface-2 px-3 py-2 text-xs text-primary"><span>VLAIQ MOTION · Mișcare și FLOW Coins</span><span aria-hidden="true">→</span></a>
+          )}
+          {destination && !detail && (
             <div className="mb-3 border-b border-border pb-3">
               <DestinationCard destination={destination} onClear={() => setDestination(null)} />
             </div>
           )}
+          {destination && detail && reco && (
+            <ParkingDetail
+              key={detail.id}
+              option={detail}
+              rank={detailIndex + 1}
+              destinationName={destination.name}
+              stayMinutes={reco.stayMinutes}
+              smsNumber={timparkData?.data.tariffs.smsNumber ?? null}
+              demoOrigin={demoOrigin}
+              onBack={closeDetail}
+              onRoute={setDriveRoute}
+            />
+          )}
+          {/* Kept mounted while a parking is open, so its settings and results survive "back". */}
           {destination?.location && (
+            <div hidden={!!detail}>
             <ParkingRecommendations
               key={destination.id}
               destination={destination}
-              smsNumber={timparkData?.data.tariffs.smsNumber ?? null}
               selectedId={selectedId}
               onSelect={setSelectedId}
               onPick={pickOption}
-              onOptions={setOptions}
+              onOpen={openDetail}
+              onResult={onResult}
             />
+            </div>
           )}
 
           {timpark.state === 'loading' && <p className="text-muted">Se încarcă zonele de parcare…</p>}
           {timpark.state === 'error' && (
             <p className="text-warning">Zonele Timpark nu sunt disponibile. Rulează pnpm data:city și repornește backend-ul.</p>
           )}
-          {timparkData && <TariffLegend snapshot={timparkData} />}
+          {timparkData && !detail && <TariffLegend snapshot={timparkData} />}
 
           <p className="mt-3 border-t border-border pt-2 text-xs text-muted">
             {parkings.state === 'ok' && parkingList.length > 0
