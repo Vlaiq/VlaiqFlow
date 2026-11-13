@@ -1,13 +1,20 @@
-import { useEffect, useState } from 'react';
+import { lazy, Suspense, useEffect, useState } from 'react';
 import { Search } from 'lucide-react';
 import { brand, type HealthResponse, type ParkingsResponse } from '@vlaiq/shared';
 import { MapView } from '../features/map/MapView';
 import { QualityBadge } from '../components/QualityBadge';
 import { api } from '../services/api';
+const NavigationScreen = lazy(() => import('../features/navigation/NavigationScreen').then(module => ({ default: module.NavigationScreen })));
 
 type Load<T> = { state: 'loading' } | { state: 'ok'; data: T } | { state: 'error'; message: string };
 
 export function App() {
+  return window.location.pathname.replace(/\/+$/, '') === '/navigation'
+    ? <Suspense fallback={<div role="status" className="flex h-full items-center justify-center text-muted">Se încarcă navigația…</div>}><NavigationScreen /></Suspense>
+    : <Explore />;
+}
+
+function Explore() {
   const [health, setHealth] = useState<Load<HealthResponse>>({ state: 'loading' });
   const [parkings, setParkings] = useState<Load<ParkingsResponse>>({ state: 'loading' });
 
@@ -31,8 +38,9 @@ export function App() {
       {/* Floating top bar — safe-area aware for notched phones */}
       <header className="pointer-events-none absolute inset-x-0 top-0 z-10 p-4 pt-[max(1rem,env(safe-area-inset-top))]">
         <div className="pointer-events-auto mx-auto flex max-w-xl items-center gap-3 rounded-card border border-border bg-surface/95 px-4 py-3 shadow-lg">
-          <span className="text-sm font-semibold tracking-wide text-primary">{brand.product}</span>
-          <label className="flex flex-1 items-center gap-2 rounded-xl bg-surface-2 px-3 py-2">
+          <span className="shrink-0 text-sm font-semibold tracking-wide text-primary">{brand.product}</span>
+          <a href="/navigation" className="shrink-0 rounded-xl border border-border px-3 py-2 text-xs text-primary">Navigație 3D</a>
+          <label className="flex min-w-0 flex-1 items-center gap-2 rounded-xl bg-surface-2 px-3 py-2">
             <Search className="h-4 w-4 text-muted" aria-hidden />
             <span className="sr-only">Caută destinația</span>
             <input
@@ -56,7 +64,7 @@ export function App() {
           )}
           {parkings.state === 'ok' && list.length === 0 && (
             <p className="text-muted">
-              Nicio parcare încărcată. Rulează <code className="text-text">pnpm data:parkings</code> și repornește backend-ul.
+                Nicio parcare încărcată. Datele despre parcări sunt momentan indisponibile.
             </p>
           )}
           {parkings.state === 'ok' && list.length > 0 && (

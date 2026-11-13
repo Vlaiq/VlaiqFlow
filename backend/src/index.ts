@@ -5,6 +5,7 @@ import type { ApiError } from '@vlaiq/shared';
 import { config } from './config';
 import { healthRouter } from './routes/health';
 import { parkingsRouter } from './routes/parkings';
+import { navigationRouter } from './routes/navigation';
 
 const app = express();
 
@@ -16,6 +17,7 @@ app.use('/api', rateLimit({ windowMs: 60_000, limit: 60, standardHeaders: 'draft
 
 app.use('/api/health', healthRouter);
 app.use('/api/parkings', parkingsRouter);
+app.use('/api/navigation', navigationRouter);
 
 app.use('/api', (_req, res) => {
   const body: ApiError = { error: { code: 'NOT_FOUND', message: 'Unknown endpoint' } };

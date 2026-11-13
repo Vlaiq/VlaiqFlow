@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import maplibregl, { type GeoJSONSource } from 'maplibre-gl';
 import { TIMISOARA_CENTER, type Parking } from '@vlaiq/shared';
 
@@ -22,6 +22,8 @@ interface Props {
 }
 
 export function MapView({ parkings }: Props) {
+  const [mapError, setMapError] = useState<string | null>(null);
+  const [attempt, setAttempt] = useState(0);
   const containerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<maplibregl.Map | null>(null);
   const parkingsRef = useRef(parkings);
@@ -30,14 +32,28 @@ export function MapView({ parkings }: Props) {
   // Create the map once; tear it down on unmount.
   useEffect(() => {
     if (!containerRef.current) return;
-    const map = new maplibregl.Map({
+    setMapError(null);
+    let map: maplibregl.Map;
+    try {
+      map = new maplibregl.Map({
       container: containerRef.current,
       style: STYLE_URL,
       center: [TIMISOARA_CENTER.lng, TIMISOARA_CENTER.lat],
       zoom: 13.5,
       attributionControl: { compact: true },
-    });
+      });
+    } catch {
+      containerRef.current.replaceChildren();
+      setMapError('Browserul nu a putut porni harta. Încearcă un browser cu WebGL și accelerare grafică activate.');
+      return;
+    }
     mapRef.current = map;
+    const timeout = window.setTimeout(() => {
+      if (!map.isStyleLoaded()) setMapError('Harta nu se poate încărca. Verifică conexiunea și accesul la serviciul de hărți.');
+    }, 12000);
+    map.on('error', () => {
+      setMapError('Serviciul de hărți nu este disponibil. Poți reîncerca încărcarea.');
+    });
 
     map.addControl(new maplibregl.NavigationControl({ showCompass: false }), 'bottom-right');
     map.addControl(
@@ -46,6 +62,8 @@ export function MapView({ parkings }: Props) {
     );
 
     map.on('load', () => {
+      window.clearTimeout(timeout);
+      setMapError(null);
       map.addSource(SOURCE_ID, { type: 'geojson', data: toGeoJSON(parkingsRef.current) });
       map.addLayer({
         id: 'parkings-circle',
@@ -75,10 +93,11 @@ export function MapView({ parkings }: Props) {
     });
 
     return () => {
+      window.clearTimeout(timeout);
       map.remove();
       mapRef.current = null;
     };
-  }, []);
+  }, [attempt]);
 
   // Push new data straight into MapLibre instead of re-rendering React.
   useEffect(() => {
@@ -86,5 +105,12 @@ export function MapView({ parkings }: Props) {
     source?.setData(toGeoJSON(parkings));
   }, [parkings]);
 
-  return <div ref={containerRef} className="absolute inset-0" role="region" aria-label="Harta Timișoarei" />;
+  return <div className="absolute inset-0">
+    <div ref={containerRef} className="absolute inset-0" role="region" aria-label="Harta Timișoarei" />
+    {mapError && <div role="alert" className="absolute left-1/2 top-1/3 z-10 w-[calc(100%-2rem)] max-w-sm -translate-x-1/2 rounded-card border border-border bg-surface p-5 shadow-xl">
+      <h1 className="text-base font-semibold">Harta este temporar indisponibilă</h1>
+      <p className="mt-2 text-sm leading-relaxed text-muted">{mapError}</p>
+      <button className="mt-4 min-h-11 rounded-xl bg-primary px-4 text-sm font-semibold text-primary-fg" onClick={() => setAttempt(a => a + 1)}>Reîncarcă harta</button>
+    </div>}
+  </div>;
 }
