@@ -9,6 +9,8 @@ import {
   timparkPopupContent,
 } from './timparkLayers';
 
+import { osmParkingPopupContent } from './osmParkingPopup';
+
 const TAP_TOLERANCE_PX = 8;
 
 // OpenFreeMap: free vector tiles, no API key. Its style carries the OSM/OpenMapTiles attribution.
@@ -22,7 +24,7 @@ function parkingsToGeoJSON(parkings: Parking[]): GeoJSON.FeatureCollection<GeoJS
     features: parkings.map((p) => ({
       type: 'Feature',
       geometry: { type: 'Point', coordinates: [p.lng, p.lat] },
-      properties: { id: p.id, name: p.name, quality: p.availability.quality },
+      properties: { id: p.id, name: p.name, access: p.access },
     })),
   };
 }
@@ -93,9 +95,10 @@ export function MapView({ parkings, timpark, destination }: Props) {
         source: PARKINGS_SOURCE,
         paint: {
           'circle-radius': ['interpolate', ['linear'], ['zoom'], 11, 3, 16, 8],
-          'circle-color': '#EAF6ED', // mint: kept distinct from the Timpark tariff colours
-          'circle-stroke-color': '#101916',
-          'circle-stroke-width': 1.5,
+          // Mint, kept distinct from the Timpark tariff colours; customer-only parkings are hollow.
+          'circle-color': ['case', ['==', ['get', 'access'], 'customers'], '#101916', '#EAF6ED'],
+          'circle-stroke-color': ['case', ['==', ['get', 'access'], 'customers'], '#EAF6ED', '#101916'],
+          'circle-stroke-width': 2,
         },
       });
 
@@ -104,10 +107,12 @@ export function MapView({ parkings, timpark, destination }: Props) {
       map.on('click', PARKINGS_LAYER, (e) => {
         const f = e.features?.[0];
         if (!f || f.geometry.type !== 'Point') return;
-        const el = document.createElement('div');
-        el.className = 'vlaiq-popup';
-        el.textContent = `${String(f.properties?.name ?? '')} · Disponibilitate: necunoscută · Sursa: OpenStreetMap`;
-        popup.setLngLat(f.geometry.coordinates as [number, number]).setDOMContent(el).addTo(map);
+        const parking = parkingsRef.current.find((p) => p.id === f.properties?.id);
+        if (!parking) return;
+        popup
+          .setLngLat(f.geometry.coordinates as [number, number])
+          .setDOMContent(osmParkingPopupContent(parking))
+          .addTo(map);
       });
 
       // One handler for all Timpark layers: the topmost feature under the cursor wins.

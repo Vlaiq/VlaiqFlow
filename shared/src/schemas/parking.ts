@@ -17,6 +17,10 @@ export const Parking = z.object({
   lat: z.number().min(-90).max(90),
   lng: z.number().min(-180).max(180),
   type: ParkingType,
+  // OSM access tag: open to everyone, only to customers (malls, shops, hotels), or not stated.
+  // access=private / no are excluded at import: those are not destinations for the public.
+  access: z.enum(['public', 'customers', 'unknown']),
+  operator: z.string().nullable(),
   capacity: sourced(z.number().int().nonnegative()),
   capacityDisabled: sourced(z.number().int().nonnegative()),
   price: sourced(z.object({ perHourRon: z.number().nonnegative(), note: z.string().optional() })),

@@ -16,6 +16,7 @@ const OVERPASS_URLS = [
   'https://overpass-api.de/api/interpreter',
   'https://overpass.kumi.systems/api/interpreter',
   'https://overpass.private.coffee/api/interpreter',
+  'https://maps.mail.ru/osm/tools/overpass/api/interpreter',
 ];
 // Bounding box around Timișoara: south, west, north, east
 const BBOX = [45.7, 21.15, 45.81, 21.31];
@@ -71,6 +72,12 @@ function toParking(el) {
     lat,
     lng,
     type: parkingType(tags),
+    access: ['yes', 'public', 'permissive', 'destination'].includes(tags.access)
+      ? 'public'
+      : tags.access === 'customers'
+        ? 'customers'
+        : 'unknown',
+    operator: tags.operator ?? null,
     // OSM is crowd-sourced: treat counts as "estimated" until a human verifies them.
     capacity: capacity == null ? unknown() : { value: capacity, quality: 'estimated', source: `${SOURCE} capacity tag` },
     capacityDisabled:
@@ -86,6 +93,22 @@ function toParking(el) {
 }
 
 async function main() {
+  // Overpass asks automated clients to back off exponentially when it is at capacity.
+  const waits = [0, 30, 60, 120, 240, 480]; // seconds before each round (~15 min in total)
+  let json;
+  for (const [round, wait] of waits.entries()) {
+    if (json) break;
+    if (wait) {
+      console.log(`Round ${round + 1}/${waits.length}: waiting ${wait}s before retrying…`);
+      await new Promise((r) => setTimeout(r, wait * 1000));
+    }
+    json = await tryInstances();
+  }
+  if (!json) throw new Error('All Overpass instances failed after backing off — try again later.');
+  return writeOut(json);
+}
+
+async function tryInstances() {
   let json;
   for (const url of OVERPASS_URLS) {
     console.log(`Querying ${url} for amenity=parking in Timișoara…`);
@@ -94,7 +117,7 @@ async function main() {
         method: 'POST',
         headers: {
           'Content-Type': 'application/x-www-form-urlencoded',
-          'User-Agent': 'VLAIQ-Flow-hackathon-prototype',
+          'User-Agent': 'VLAIQ-UniHack2026-team',
         },
         body: new URLSearchParams({ data: query }),
       });
@@ -102,10 +125,13 @@ async function main() {
       json = await res.json();
       break;
     } catch (err) {
-      console.warn(`  failed: ${err.message}`);
+      console.warn(`  failed: ${err.message}${err.cause ? ` (${err.cause.code ?? err.cause.message})` : ''}`);
     }
   }
-  if (!json) throw new Error('All Overpass instances failed — try again in a few minutes.');
+  return json;
+}
+
+function writeOut(json) {
   const parkings = json.elements.map(toParking).filter(Boolean);
 
   const out = {

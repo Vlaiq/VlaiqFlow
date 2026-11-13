@@ -77,8 +77,8 @@ export function App() {
 
           <p className="mt-3 border-t border-border pt-2 text-xs text-muted">
             {parkings.state === 'ok' && parkingList.length > 0
-              ? `${parkingList.length} parcări din OpenStreetMap (puncte deschise la culoare)`
-              : 'Parcările din OpenStreetMap nu sunt încă încărcate'}
+              ? `${parkingList.length} parcări publice și private din OpenStreetMap (punct plin: acces public sau nespecificat; punct gol: doar clienți)`
+              : 'Parcările publice și private din OpenStreetMap nu sunt încă încărcate (serverele OSM sunt suprasolicitate)'}
             {' · Backend: '}
             {health.state === 'ok' ? 'online' : health.state === 'loading' ? 'se verifică…' : 'offline'}
           </p>
