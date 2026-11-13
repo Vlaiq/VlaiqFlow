@@ -1,5 +1,9 @@
 # Third-party code, data and services
 
+The FLOW Coin in `frontend/src/features/motion/FlowCoin.tsx` is original layered SVG artwork.
+Motion uses existing React/Lucide dependencies and the system font stack; it adds no external
+image assets, copied logos, downloadable fonts or animation libraries.
+
 Add a row before using any third-party code, data or service. A repository without a license cannot be copied.
 
 | Name | Used for | License / terms | Obligations |

@@ -34,7 +34,9 @@ function useLoad<T>(fn: () => Promise<T>): Load<T> {
 }
 
 const NavigationScreen = lazy(() => import('../features/navigation/NavigationScreen').then(module => ({ default: module.NavigationScreen })));
+const MotionScreen = lazy(() => import('../features/motion/MotionScreen').then(module => ({ default: module.MotionScreen })));
 export function App() {
+  if (window.location.pathname.replace(/\/+$/, '') === '/motion') return <Suspense fallback={<div role="status" className="flex h-full items-center justify-center text-muted">Se încarcă Motion…</div>}><MotionScreen /></Suspense>;
   return window.location.pathname.replace(/\/+$/, '') === '/navigation'
     ? <Suspense fallback={<div role="status" className="flex h-full items-center justify-center text-muted">Se încarcă navigația…</div>}><NavigationScreen /></Suspense>
     : <Explore />;
@@ -93,6 +95,7 @@ function Explore() {
         className="absolute inset-x-0 bottom-0 z-10 p-4 pb-[max(1rem,env(safe-area-inset-bottom))] lg:relative lg:min-h-0 lg:flex-1 lg:p-0"
       >
         <div className="pointer-events-auto mx-auto max-h-[40vh] max-w-xl overflow-auto rounded-card border border-border bg-surface/95 p-4 text-sm shadow-lg lg:max-h-full lg:max-w-none">
+          <a href="/motion" className="mb-3 flex min-h-11 items-center justify-between rounded-xl border border-border bg-surface-2 px-3 py-2 text-xs text-primary"><span>VLAIQ MOTION · Mișcare și FLOW Coins</span><span aria-hidden="true">→</span></a>
           {destination && (
             <div className="mb-3 border-b border-border pb-3">
               <DestinationCard destination={destination} onClear={() => setDestination(null)} />

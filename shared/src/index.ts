@@ -1,4 +1,5 @@
 export * from './brand';
+export * from './motion';
 export * from './schemas/quality';
 export * from './schemas/parking';
 export * from './schemas/health';

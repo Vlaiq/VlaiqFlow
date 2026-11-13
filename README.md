@@ -30,6 +30,10 @@ On Windows PowerShell use `Copy-Item` instead of `cp`.
 
 ## Scripts
 
+**VLAIQ MOTION:** open the Motion link or `/motion` for activity recording, FLOW Coins,
+the prototype wallet and an explicitly separate demo. See [Motion documentation](docs/motion.md)
+for eligibility, privacy, device requirements and the complete demonstration flow.
+
 | Command | What it does |
 |---|---|
 | `pnpm dev` | Runs frontend (Vite) and backend (tsx watch) together |

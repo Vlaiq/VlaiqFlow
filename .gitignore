@@ -4,6 +4,7 @@ dist/
 coverage/
 playwright-report/
 test-results/
+backend/.data/
 *.tsbuildinfo
 
 # secrets — only .env.example files are committed
