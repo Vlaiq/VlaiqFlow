@@ -8,6 +8,8 @@ const base = {
   lat: 45.75,
   lng: 21.22,
   type: 'surface' as const,
+  access: 'public' as const,
+  operator: null,
   capacity: unknownValue<number>(),
   capacityDisabled: unknownValue<number>(),
   price: unknownValue<{ perHourRon: number }>(),

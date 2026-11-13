@@ -4,6 +4,7 @@ Parking-first, multimodal navigation PWA for Timișoara. Built by team **VLAIQ**
 
 - Full requirements: `docs/spec.md`. Read the section for the feature you are touching before you change it.
 - Things only humans can do (rules, licenses, accounts, user tests): `docs/team-checklist.md`. Do not pretend to have done them.
+- The City Hall's hackathon guide (https://ghid-pmt.vercel.app/unihack) lists the official data, endpoints and pitfalls. Spec §5.2 summarises it. We extend the city's **CityApp**, Timpark and Sesizări; we do not duplicate them (spec §2).
 - Working product name **VLAIQ FLOW**, tagline "Park smarter. Move greener." The name is not final, so keep all branding in `shared/src/brand.ts`. Never rename the team.
 
 ## Non-negotiable rules
@@ -18,6 +19,10 @@ Parking-first, multimodal navigation PWA for Timișoara. Built by team **VLAIQ**
 8. **Verify before claiming.** Run the code or the tests before saying something works. Report status as done / partial / blocked.
 9. **Third-party code.** Check the license before copying anything and record it in `docs/third-party.md`. A repo with no license cannot be reused.
 10. **Scope discipline.** Do not start P2/P3 work (spec §11) while any P0 item is broken. Do not rewrite working modules.
+11. **City Hall endpoints** (`*.primariatm.ro` only): call them from the backend or `scripts/`, never per user request; snapshot the result into `shared/src/data` with its date and version; send a `User-Agent` naming the team. Check coordinate order ([lng, lat] vs [lat, lng]) against a known point.
+12. **No second inbox, no payments.** Problems link to Sesizări; parking payment hands off to Timpark SMS / CityApp.
+13. **Romanian first** in the UI (English second), plain wording, WCAG 2.1 AA.
+14. **Adoptable:** open-source, a README anyone can follow, no paid service on a personal account (spec §17).
 
 ## Stack (decided — change only with team agreement)
 
@@ -26,7 +31,10 @@ Parking-first, multimodal navigation PWA for Timișoara. Built by team **VLAIQ**
 | Monorepo | pnpm workspaces: `frontend`, `backend`, `shared` |
 | Frontend | React 18 + TypeScript (strict) + Vite, Tailwind, shadcn/ui, lucide-react, Motion (sparingly) |
 | Map | MapLibre GL JS, OpenFreeMap vector tiles (no key); MapTiler as fallback |
-| Routing + geocoding | openrouteservice (directions, matrix, geocode/autocomplete) via backend proxy |
+| City data | Timpark zones/lots/streets + tariffs, SMTT GTFS, neighbourhoods, street register — City Hall endpoints, snapshotted |
+| Routing | openrouteservice (directions, matrix) via backend proxy |
+| Destination search | Local: street register + City Hall landmarks + presets; ORS geocoding only as a labelled fallback |
+| Format | Installable web app (PWA) — confirmed as allowed by the organizers (spec D8) |
 | Backend | Node 22 + Express + zod, deployed on a Vultr VM behind Caddy (HTTPS on a real domain) |
 | Database | Postgres on Tiger Cloud (TimescaleDB + PostGIS). Not required for P0 |
 | AI | Gemini API function calling (server-side) |
@@ -59,4 +67,7 @@ API request and response types are defined **once** in `shared/src/schemas` (zod
 - `pnpm dev` — frontend on http://localhost:5173 (proxies `/api`) + backend on http://localhost:8787
 - `pnpm test` / `pnpm typecheck` — all packages
 - `pnpm data:parkings` — regenerate `shared/src/data/parkings.osm.json` from OpenStreetMap
+- `pnpm data:city` — refresh the City Hall snapshots (Timpark, street register, landmarks, neighbourhoods); restart the backend afterwards
+- `pnpm data:osm-places` — refresh OSM named streets and major places (one Overpass query); restart the backend afterwards
 - `pnpm -F backend start` — run the backend without watch (production on Vultr)
+- If a change in `shared/` does not show in the browser, restart the frontend dev server: Vite's watcher has missed edits there (seen on 13 Nov). Check with the tests first, then in the browser.

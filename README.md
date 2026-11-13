@@ -10,6 +10,12 @@
 - pnpm 9 (`npm install -g pnpm` or `corepack enable`)
 - git
 
+## Quick start on Windows
+
+Double-click **`start.cmd`** in the project folder. It installs dependencies the first time, opens two windows (backend on port 8787, frontend on port 5173) and then the app at http://localhost:5173. Close the two windows to stop it.
+
+If PowerShell refuses `npm` or `pnpm` ("running scripts is disabled"), type `npm.cmd` / `pnpm.cmd` instead, or use `start.cmd`.
+
 ## Setup
 
 ```bash

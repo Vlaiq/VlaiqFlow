@@ -1,4 +1,4 @@
-import { HealthResponse, ParkingsResponse, RoutesResponse, type Coordinate } from '@vlaiq/shared';
+import { DestinationsResponse, HealthResponse, ParkingsResponse, TimparkSnapshot, RoutesResponse, type Coordinate } from '@vlaiq/shared';
 import type { z } from 'zod';
 
 // In dev the base is empty and Vite proxies /api to the backend.
@@ -9,7 +9,8 @@ async function get<S extends z.ZodTypeAny>(path: string, schema: S): Promise<z.i
   const ctrl = new AbortController();
   const timer = setTimeout(() => ctrl.abort(), TIMEOUT_MS);
   try {
-    const res = await fetch(`${BASE}${path}`, { signal: ctrl.signal });
+    // 'no-cache' = always revalidate with the server (ETag → cheap 304), never trust a stale stored copy.
+    const res = await fetch(`${BASE}${path}`, { signal: ctrl.signal, cache: 'no-cache' });
     if (!res.ok) throw new Error(`${path} → HTTP ${res.status}`);
     return schema.parse(await res.json());
   } finally {
@@ -31,4 +32,6 @@ export const api = {
   },
   health: () => get('/api/health', HealthResponse),
   parkings: () => get('/api/parkings', ParkingsResponse),
+  timpark: () => get('/api/city/parking-zones', TimparkSnapshot),
+  destinations: () => get('/api/destinations', DestinationsResponse),
 };

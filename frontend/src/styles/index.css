@@ -16,6 +16,27 @@ body {
   overscroll-behavior: none;
 }
 
+/* Keep map controls below the floating header */
+.maplibregl-ctrl-top-right {
+  top: calc(max(1rem, env(safe-area-inset-top)) + 80px);
+}
+
+/* MapLibre popups: dark text on the default white popup background for contrast */
+.vlaiq-popup {
+  color: #101916;
+  font-size: 13px;
+  line-height: 1.4;
+}
+.vlaiq-popup-title {
+  font-weight: 600;
+  margin-bottom: 2px;
+  padding-right: 16px;
+}
+.vlaiq-popup-muted {
+  color: #3d4a44;
+  font-size: 12px;
+}
+
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,
