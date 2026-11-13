@@ -10,7 +10,7 @@ cityRouter.get('/parking-zones', (_req, res) => {
     const body: ApiError = { error: { code: 'UNAVAILABLE', message: 'Timpark data not loaded. Run `pnpm data:city`.' } };
     return res.status(503).json(body);
   }
-  // The data changes rarely; let browsers and proxies keep it for an hour.
-  res.set('Cache-Control', 'public, max-age=3600');
+  // Revalidate every time: Express sends an ETag, so unchanged data costs a tiny 304, and refreshed data shows at once.
+  res.set('Cache-Control', 'no-cache');
   res.json(snapshot);
 });

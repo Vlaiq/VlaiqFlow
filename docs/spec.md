@@ -148,10 +148,12 @@ Full-screen map centered on Timișoara with a floating search bar, locate-me but
 ### 6.3 Destination search
 - **Local search first**, with no external call: the City Hall street register (1,370 streets, with neighbourhood and house-number ranges), the 20 City Hall landmarks (`/api/mobile/pois`, RO + EN) and preset chips (Piața Victoriei, Piața Unirii, Iulius Town, Centru). Searched in the browser from a snapshot, accent-insensitive ("piata" finds "Piața").
 - **Implemented (13 Nov):** `GET /api/destinations` builds the list from the City Hall snapshots; the browser searches it locally. Every result shows how precisely we know its position:
-    - `exact`: the 20 City Hall landmarks;
-    - `street`: the street's Timpark geometry, or a landmark whose address names it (253 streets);
-    - `neighbourhood`: the approximate centre of its official neighbourhood (623 streets);
-    - `none`: listed but not placed on the map (489 streets), until OSM street geometry is added.
+    - `exact`: the 20 City Hall landmarks, plus 127 major places from OSM (malls, stations, bus stations, hospitals, universities, stadiums, parks), deduplicated and limited to the municipality;
+    - `street`: the street's Timpark geometry, its OSM geometry matched by the official name, or a landmark whose address names it (1,241 streets);
+    - `neighbourhood`: the approximate centre of its official neighbourhood (46 streets);
+    - `none`: listed but not placed on the map (78 streets).
+- "Inside the municipality" = inside one of the City Hall's 40 neighbourhood outlines; OSM points outside them (Dumbrăvița, Giroc…) are not used to place register streets.
+- Parkings are not search results: they appear on the map and in recommendations.
 - The register's neighbourhood field is free text (about 360 spellings, including typos such as "Cretate") and only partly matches the 40 official outlines. We show it as written in the source.
 - Later: place every street using its OSM geometry, matched by the register name, once Overpass is reachable. Geocoders spell names differently ("Strada Doctor Ioan Mureșan" vs "Dr. Ioan Mureșan"), so never trust free-text geocoder matches.
 - Optional fallback for addresses outside the snapshot: openrouteservice geocoding through the backend, bbox-limited, debounced to 300 ms, cached, and labelled as approximate.
@@ -163,7 +165,7 @@ After a destination is set, show parkings within a radius (default 1.5 km walkin
 Candidates:
 - **Timpark lots** (49), from the City Hall data, with their real tariff.
 - **Timpark street parking:** the nearest paid street segments to the destination, grouped per zone, with the zone's tariff and SMS code.
-- **OSM parkings** that are not Timpark (malls, free lots), with price `unknown` unless verified.
+- **OSM parkings** that are not Timpark (malls, free lots), with price `unknown` unless verified. Parkings that OSM leaves unnamed get a **position-based name** ("Parcare lângă Strada X", else "Parcare în cartierul Y"), flagged `nameIsDerived` and labelled in the UI as not official.
 - The map shows Timpark zones as tinted polygons by tariff colour, with a legend.
 
 Paying: the details panel shows "Pay by SMS: send `<code>` to `<number>`" from the City Hall data, and a link to CityApp. We do not process payments.

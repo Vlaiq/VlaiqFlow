@@ -27,7 +27,12 @@ export function osmParkingPopupContent(p: Parking): HTMLElement {
   };
 
   line(p.name, 'vlaiq-popup-title');
-  line(`${TYPE_LABEL[p.type]} · ${ACCESS_LABEL[p.access]}${p.operator ? ` · ${p.operator}` : ''}`);
+  if (p.nameIsDerived) line('Denumire după poziție (parcarea nu are nume în OSM)', 'vlaiq-popup-muted');
+  line(
+    `${TYPE_LABEL[p.type]} · ${ACCESS_LABEL[p.access]}${p.operator ? ` · ${p.operator}` : ''}${
+      p.neighbourhood ? ` · cartierul ${p.neighbourhood}` : ''
+    }`,
+  );
   if (p.capacity.value != null) line(`Capacitate: ${p.capacity.value} locuri (estimat, din OSM)`);
   if (p.capacityDisabled.value != null) line(`Locuri pentru persoane cu dizabilități: ${p.capacityDisabled.value} (estimat)`);
   line(

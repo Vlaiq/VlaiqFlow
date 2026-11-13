@@ -3,6 +3,8 @@ import { fileURLToPath } from 'node:url';
 import {
   buildDestinations,
   NeighbourhoodsSnapshot,
+  OsmPlacesSnapshot,
+  OsmStreetsSnapshot,
   PoisSnapshot,
   StreetsSnapshot,
   TimparkSnapshot,
@@ -30,6 +32,8 @@ const timpark = load('timpark.json', TimparkSnapshot);
 const streets = load('streets.json', StreetsSnapshot);
 const pois = load('pois.json', PoisSnapshot);
 const neighbourhoods = load('neighbourhoods.json', NeighbourhoodsSnapshot);
+const osmStreets = load('osm-streets.json', OsmStreetsSnapshot);
+const osmPlaces = load('osm-places.json', OsmPlacesSnapshot);
 
 if (timpark) {
   console.log(`[city] Timpark: ${timpark.data.features.length} features, version ${timpark.data.version}, fetched ${timpark.fetchedAt}`);
@@ -42,12 +46,16 @@ function buildDestinationsResponse(): DestinationsResponse | null {
     pois: pois?.data.pois ?? [],
     neighbourhoods: neighbourhoods?.data.features ?? [],
     timparkStreets: timpark?.data.features.filter((f) => f.kind === 'street') ?? [],
+    osmStreets: osmStreets?.data.streets ?? [],
+    osmPlaces: osmPlaces?.data.places ?? [],
   });
   const sources = [
     streets && { name: 'Registrul oficial de străzi', source: streets.source, fetchedAt: streets.fetchedAt },
     pois && { name: 'Obiective turistice', source: pois.source, fetchedAt: pois.fetchedAt },
     neighbourhoods && { name: 'Contururile cartierelor', source: neighbourhoods.source, fetchedAt: neighbourhoods.fetchedAt },
     timpark && { name: 'Geometria străzilor Timpark', source: timpark.source, fetchedAt: timpark.fetchedAt },
+    osmStreets && { name: 'Geometria străzilor (OpenStreetMap)', source: osmStreets.source, fetchedAt: osmStreets.fetchedAt },
+    osmPlaces && { name: 'Locuri importante (OpenStreetMap)', source: osmPlaces.source, fetchedAt: osmPlaces.fetchedAt },
   ].filter((s): s is DestinationsResponse['sources'][number] => Boolean(s));
   console.log(`[city] destinations: ${destinations.length}`);
   return { destinations, sources };
@@ -59,4 +67,6 @@ export const cityData = {
   timpark: () => timpark,
   timparkCount: () => timpark?.data.features.length ?? 0,
   destinations: () => destinations,
+  neighbourhoodFeatures: () => neighbourhoods?.data.features ?? [],
+  osmStreetList: () => osmStreets?.data.streets ?? [],
 };

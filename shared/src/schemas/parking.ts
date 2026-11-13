@@ -14,6 +14,9 @@ export type ParkingType = z.infer<typeof ParkingType>;
 export const Parking = z.object({
   id: z.string(), // e.g. 'osm-way-123456'
   name: z.string(),
+  // true when OSM has no name and `name` was built from the position ("Parcare lângă Strada X").
+  nameIsDerived: z.boolean().default(false),
+  neighbourhood: z.string().nullable().default(null), // official neighbourhood containing the parking
   lat: z.number().min(-90).max(90),
   lng: z.number().min(-180).max(180),
   type: ParkingType,

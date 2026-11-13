@@ -11,6 +11,7 @@ destinationsRouter.get('/', (_req, res) => {
     const err: ApiError = { error: { code: 'UNAVAILABLE', message: 'Destination data not loaded. Run `pnpm data:city`.' } };
     return res.status(503).json(err);
   }
-  res.set('Cache-Control', 'public, max-age=3600');
+  // Revalidate every time: Express sends an ETag, so unchanged data costs a tiny 304, and refreshed data shows at once.
+  res.set('Cache-Control', 'no-cache');
   res.json(body);
 });

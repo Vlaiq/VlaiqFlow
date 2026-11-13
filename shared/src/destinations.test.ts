@@ -8,7 +8,14 @@ import {
   normalizeStreetName,
   searchDestinations,
 } from './destinations';
-import { NeighbourhoodsSnapshot, PoisSnapshot, StreetsSnapshot, type RegisterStreet } from './schemas/city';
+import {
+  NeighbourhoodsSnapshot,
+  OsmPlacesSnapshot,
+  OsmStreetsSnapshot,
+  PoisSnapshot,
+  StreetsSnapshot,
+  type RegisterStreet,
+} from './schemas/city';
 import { TimparkSnapshot, type TimparkFeature } from './schemas/timpark';
 
 describe('normalize', () => {
@@ -109,11 +116,16 @@ describe('real City Hall snapshots', () => {
       pois: load(PoisSnapshot, 'pois.json').data.pois,
       neighbourhoods: load(NeighbourhoodsSnapshot, 'neighbourhoods.json').data.features,
       timparkStreets: load(TimparkSnapshot, 'timpark.json').data.features.filter((f) => f.kind === 'street'),
+      osmStreets: existsSync(file('osm-streets.json')) ? load(OsmStreetsSnapshot, 'osm-streets.json').data.streets : [],
+      osmPlaces: existsSync(file('osm-places.json')) ? load(OsmPlacesSnapshot, 'osm-places.json').data.places : [],
     });
     const streetDests = dests.filter((d) => d.kind === 'street');
     expect(streetDests.length).toBe(streets.filter((s) => s.status === 'Existenta').length);
 
     const index = buildSearchIndex(dests);
+    if (existsSync(file('osm-places.json'))) {
+      expect(searchDestinations(index, 'iulius')[0]?.kind).toBe('place');
+    }
     for (const q of ['piata victoriei', 'piata unirii']) {
       const top = searchDestinations(index, q)[0];
       expect(top?.location, `${q} should be located`).not.toBeNull();

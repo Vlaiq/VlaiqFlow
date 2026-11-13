@@ -1,4 +1,4 @@
-import { normalize, type Destination, type LocationPrecision } from '@vlaiq/shared';
+import { normalize, PLACE_CATEGORY_RO, type Destination, type LocationPrecision } from '@vlaiq/shared';
 
 const STREET_TYPE_LABEL: [string, string][] = [
   ['piata', 'Piață'],
@@ -13,6 +13,7 @@ const STREET_TYPE_LABEL: [string, string][] = [
 /** "Piață", "Bulevard", "Stradă"… taken from the official name, so a square is not called a street. */
 export function kindLabel(d: Destination): string {
   if (d.kind === 'landmark') return 'Obiectiv';
+  if (d.kind === 'place') return d.category ? PLACE_CATEGORY_RO[d.category] : 'Loc';
   if (d.kind === 'neighbourhood') return 'Cartier';
   const first = normalize(d.name).split(' ')[0] ?? '';
   return STREET_TYPE_LABEL.find(([k]) => k === first)?.[1] ?? 'Stradă';

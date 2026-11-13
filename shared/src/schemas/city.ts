@@ -44,9 +44,26 @@ export const NeighbourhoodsSnapshot = snapshot(
 );
 export type NeighbourhoodsSnapshot = z.infer<typeof NeighbourhoodsSnapshot>;
 
+// ---- OpenStreetMap snapshots (scripts/fetch-osm-places.mjs) ------------------------------------------
+
+const osmSnapshot = <T extends z.ZodTypeAny>(data: T) =>
+  z.object({ source: z.string(), fetchedAt: z.string(), attribution: z.string(), data });
+
+export const OsmStreet = z.object({ name: z.string(), points: z.array(z.tuple([z.number(), z.number()])) });
+export type OsmStreet = z.infer<typeof OsmStreet>;
+export const OsmStreetsSnapshot = osmSnapshot(z.object({ streets: z.array(OsmStreet) }));
+export type OsmStreetsSnapshot = z.infer<typeof OsmStreetsSnapshot>;
+
+export const PlaceCategory = z.enum(['mall', 'station', 'bus_station', 'hospital', 'university', 'stadium', 'park']);
+export type PlaceCategory = z.infer<typeof PlaceCategory>;
+export const OsmPlace = z.object({ id: z.string(), name: z.string(), category: PlaceCategory, lat: z.number(), lng: z.number() });
+export type OsmPlace = z.infer<typeof OsmPlace>;
+export const OsmPlacesSnapshot = osmSnapshot(z.object({ places: z.array(OsmPlace) }));
+export type OsmPlacesSnapshot = z.infer<typeof OsmPlacesSnapshot>;
+
 // ---- Destinations served to the app -------------------------------------------------------------
 
-export const DestinationKind = z.enum(['landmark', 'street', 'neighbourhood']);
+export const DestinationKind = z.enum(['landmark', 'place', 'street', 'neighbourhood']);
 export type DestinationKind = z.infer<typeof DestinationKind>;
 
 /** How precisely we know where the destination is. Shown to the user. */
@@ -59,6 +76,7 @@ export const Destination = z.object({
   name: z.string(),
   nameEn: z.string().nullable(),
   detail: z.string().nullable(), // neighbourhood, address or previous name
+  category: PlaceCategory.nullable().default(null), // for kind = place
   aliases: z.array(z.string()), // extra names to search (previous name, English name)
   location: z.object({ lat: z.number(), lng: z.number() }).nullable(),
   precision: LocationPrecision,

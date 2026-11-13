@@ -1,10 +1,13 @@
 import type {
   Destination,
   NeighbourhoodFeature,
+  OsmPlace,
+  OsmStreet,
   Poi,
   RegisterStreet,
 } from './schemas/city';
 import type { TimparkFeature } from './schemas/timpark';
+import { distanceM, inNeighbourhood, neighbourhoodAt, representativePoint } from './geo';
 
 // ---- Text normalisation --------------------------------------------------------------------------
 
@@ -91,6 +94,31 @@ export interface DestinationInputs {
   pois: Poi[];
   neighbourhoods: NeighbourhoodFeature[];
   timparkStreets: TimparkFeature[];
+  osmStreets?: OsmStreet[];
+  osmPlaces?: OsmPlace[];
+}
+
+export const PLACE_CATEGORY_RO: Record<OsmPlace['category'], string> = {
+  mall: 'Centru comercial',
+  station: 'Gară',
+  bus_station: 'Autogară',
+  hospital: 'Spital / clinică',
+  university: 'Universitate',
+  stadium: 'Stadion',
+  park: 'Parc',
+};
+
+/** Same name and category within 400 m → one destination (OSM often maps a building and its campus). */
+function dedupePlaces(places: OsmPlace[]): OsmPlace[] {
+  const kept: OsmPlace[] = [];
+  for (const p of places) {
+    const key = normalize(p.name);
+    const dup = kept.some(
+      (k) => k.category === p.category && normalize(k.name) === key && distanceM([k.lng, k.lat], [p.lng, p.lat]) < 400,
+    );
+    if (!dup) kept.push(p);
+  }
+  return kept;
 }
 
 /** Finds the official neighbourhood outline for the register's free-text neighbourhood ("Circumvalațiunii I"). */
@@ -100,8 +128,18 @@ function matchNeighbourhood(registerName: string, outlines: { parts: string[]; f
   return outlines.find((o) => o.parts.some((p) => n === p || n.startsWith(`${p} `) || p.startsWith(`${n} `)))?.feature ?? null;
 }
 
-export function buildDestinations({ streets, pois, neighbourhoods, timparkStreets }: DestinationInputs): Destination[] {
+export function buildDestinations({
+  streets,
+  pois,
+  neighbourhoods,
+  timparkStreets,
+  osmStreets = [],
+  osmPlaces = [],
+}: DestinationInputs): Destination[] {
   const out: Destination[] = [];
+  // Points outside every official neighbourhood are outside the municipality (Dumbrăvița, Giroc…).
+  const insideCity = (p: [number, number]) =>
+    neighbourhoods.length === 0 || neighbourhoods.some((n) => inNeighbourhood(p, n));
 
   // Landmarks: exact coordinates from the City Hall.
   for (const p of pois) {
@@ -111,6 +149,7 @@ export function buildDestinations({ streets, pois, neighbourhoods, timparkStreet
       name: p.name,
       nameEn: p.nameEn,
       detail: p.address,
+      category: null,
       aliases: p.nameEn ? [p.nameEn] : [],
       location: { lat: p.lat, lng: p.lng },
       precision: 'exact',
@@ -128,6 +167,36 @@ export function buildDestinations({ streets, pois, neighbourhoods, timparkStreet
     // "Babac, Nicolae" → "nicolae babac"
     const swapped = t.name.match(/^([^,]+),\s*([^,]+)$/);
     push(byBare, swapped?.[1] && swapped[2] ? normalize(`${swapped[2]} ${swapped[1]}`) : withoutType(full));
+  }
+
+  // Major places from OpenStreetMap that the register does not list (malls, stations, hospitals…).
+  for (const p of dedupePlaces(osmPlaces)) {
+    if (!insideCity([p.lng, p.lat])) continue;
+    const hood = neighbourhoodAt([p.lng, p.lat], neighbourhoods);
+    out.push({
+      id: `place-${p.id}`,
+      kind: 'place',
+      name: p.name,
+      nameEn: null,
+      detail: hood ? hood.properties.name : null,
+      category: p.category,
+      aliases: [],
+      location: { lat: p.lat, lng: p.lng },
+      precision: 'exact',
+      locationSource: 'OpenStreetMap',
+    });
+  }
+
+  // OpenStreetMap street geometry inside the municipality, keyed like the Timpark map below.
+  const osmByFull = new Map<string, [number, number][]>();
+  const osmByBare = new Map<string, [number, number][]>();
+  for (const s of osmStreets) {
+    const points = s.points.filter(insideCity);
+    if (points.length === 0) continue;
+    const full = normalizeStreetName(s.name);
+    osmByFull.set(full, [...(osmByFull.get(full) ?? []), ...points]);
+    const bare = withoutType(full);
+    osmByBare.set(bare, [...(osmByBare.get(bare) ?? []), ...points]);
   }
 
   // Landmarks whose address names the street ("Piața Victoriei nr. 2").
@@ -161,10 +230,16 @@ export function buildDestinations({ streets, pois, neighbourhoods, timparkStreet
 
     const timpark = byFull.get(full) ?? (uniqueBare ? byBare.get(bare) : undefined);
     const landmark = landmarkOnStreet.get(full);
+    const osm = osmByFull.get(full) ?? (uniqueBare ? osmByBare.get(bare) : undefined);
+    const osmPoint = osm ? representativePoint(osm) : null;
     if (timpark) {
       location = pointOnLongest(timpark);
       precision = 'street';
       locationSource = 'Geometria străzii din datele Timpark (Primăria Timișoara)';
+    } else if (osmPoint) {
+      location = { lng: osmPoint[0], lat: osmPoint[1] };
+      precision = 'street';
+      locationSource = 'Geometria străzii din OpenStreetMap, potrivită după numele oficial';
     } else if (landmark) {
       location = { lat: landmark.lat, lng: landmark.lng };
       precision = 'street';
@@ -185,6 +260,7 @@ export function buildDestinations({ streets, pois, neighbourhoods, timparkStreet
       name: s.name,
       nameEn: null,
       detail: s.neighbourhood,
+      category: null,
       aliases: s.previous && normalize(s.previous) !== bare ? [s.previous] : [],
       location,
       precision,
@@ -200,6 +276,7 @@ export function buildDestinations({ streets, pois, neighbourhoods, timparkStreet
       name: n.properties.name,
       nameEn: null,
       detail: 'Cartier',
+      category: null,
       aliases: [],
       location: centre,
       precision: centre ? 'neighbourhood' : 'none',
@@ -212,7 +289,7 @@ export function buildDestinations({ streets, pois, neighbourhoods, timparkStreet
 
 // ---- Search --------------------------------------------------------------------------------------
 
-const KIND_RANK: Record<Destination['kind'], number> = { landmark: 0, street: 1, neighbourhood: 2 };
+const KIND_RANK: Record<Destination['kind'], number> = { landmark: 0, place: 1, street: 2, neighbourhood: 3 };
 const PRECISION_RANK: Record<Destination['precision'], number> = { exact: 0, street: 1, neighbourhood: 2, none: 3 };
 
 export interface SearchIndexEntry {
