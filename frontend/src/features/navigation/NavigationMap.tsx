@@ -27,6 +27,13 @@ interface Props {
   theme?: 'dark' | 'light';
 }
 const empty: GeoJSON.FeatureCollection = { type: 'FeatureCollection', features: [] };
+/**
+ * A style change (theme switch or local fallback) removes our sources until 'style.load' adds them
+ * again; updates arriving in between are skipped instead of crashing the screen.
+ */
+function setSourceData(m: maplibregl.Map, id: string, data: GeoJSON.GeoJSON) {
+  (m.getSource(id) as GeoJSONSource | undefined)?.setData(data);
+}
 const line = (coordinates: Coordinate[]): GeoJSON.Feature<GeoJSON.LineString> => ({
   type: 'Feature',
   geometry: { type: 'LineString', coordinates },
@@ -46,6 +53,8 @@ export function NavigationMap(props: Props) {
   const [styleRevision, setStyleRevision] = useState(0);
   const [localFallback, setLocalFallback] = useState(false);
   const fallbackRef = useRef(false);
+  /** True once the provider style has loaded: later tile/sprite errors must not swap in the fallback. */
+  const providerLoaded = useRef(false);
   const lastCamera = useRef(0);
   const cameraControls = useRef('');
   const previousTheme = useRef(props.theme ?? 'dark');
@@ -56,6 +65,7 @@ export function NavigationMap(props: Props) {
     setReady(false);
     setMapError(false);
     fallbackRef.current = false;
+    providerLoaded.current = false;
     setLocalFallback(false);
     let m: maplibregl.Map;
     try {
@@ -94,16 +104,22 @@ export function NavigationMap(props: Props) {
       setLocalFallback(true);
       setReady(false);
       setMapError(false);
-      m.setStyle(localFallbackStyle(latest.current.theme ?? 'dark'));
+      m.setStyle(localFallbackStyle(latest.current.theme ?? 'dark'), { diff: false });
     };
+    // Fall back only when the provider style never loaded. A single failed tile or sprite on a busy
+    // network fires 'error' while isStyleLoaded() is still false; that is not an outage.
     const timeout = window.setTimeout(() => {
-      if (!m.isStyleLoaded()) showLocalFallback();
+      if (!providerLoaded.current) showLocalFallback();
     }, 12000);
-    m.on('error', () => {
-      if (!m.isStyleLoaded()) showLocalFallback();
+    m.on('error', (e) => {
+      if (providerLoaded.current || fallbackRef.current) return;
+      const failed = (e as { error?: { url?: string } }).error?.url ?? '';
+      // Only a failure of the style document itself means the provider is unavailable.
+      if (failed.includes('/styles/') || !m.getStyle()) showLocalFallback();
     });
     m.on('style.load', () => {
       if (map.current !== m) return;
+      if (!fallbackRef.current) providerLoaded.current = true;
       clearTimeout(timeout);
       setMapError(false);
       addCountyScope(m, latest.current.theme ?? 'dark');
@@ -213,7 +229,7 @@ export function NavigationMap(props: Props) {
     if (!m || !ready) return;
     const alternatives =
       props.mode === 'preview' ? props.routes.filter((r) => r !== props.route) : [];
-    (m.getSource('nav-alternatives') as GeoJSONSource).setData({
+    setSourceData(m, 'nav-alternatives', {
       type: 'FeatureCollection',
       features: alternatives.map((r) => line(r.geometry)),
     });
@@ -233,16 +249,16 @@ export function NavigationMap(props: Props) {
     const m = map.current;
     if (!m || !ready) return;
     if (!props.route) {
-      (m.getSource('nav-upcoming') as GeoJSONSource).setData(empty);
-      (m.getSource('nav-traveled') as GeoJSONSource).setData(empty);
+      setSourceData(m, 'nav-upcoming', empty);
+      setSourceData(m, 'nav-traveled', empty);
       return;
     }
     const { route, progress, lengths } = props;
     const p = sample(route.geometry, lengths, progress);
     const upcoming = [p.coordinate, ...route.geometry.slice(p.index)];
     const traveled = [...route.geometry.slice(0, p.index), p.coordinate];
-    (m.getSource('nav-upcoming') as GeoJSONSource).setData(line(upcoming));
-    (m.getSource('nav-traveled') as GeoJSONSource).setData(progress > 0 ? line(traveled) : empty);
+    setSourceData(m, 'nav-upcoming', line(upcoming));
+    setSourceData(m, 'nav-traveled', progress > 0 ? line(traveled) : empty);
   }, [ready, styleRevision, props.route, props.progress, props.lengths]);
 
   useEffect(() => {
@@ -251,7 +267,7 @@ export function NavigationMap(props: Props) {
     if (!props.fix || props.mode === 'preview' || props.mode === 'acquiring') {
       vehicle.current?.remove();
       vehicle.current = undefined;
-      (m.getSource('nav-accuracy') as GeoJSONSource).setData(empty);
+      setSourceData(m, 'nav-accuracy', empty);
       return;
     }
     if (!vehicle.current) {
@@ -282,7 +298,7 @@ export function NavigationMap(props: Props) {
         c[1] + (Math.sin(angle) * accuracy) / 111195,
       ];
     });
-    (m.getSource('nav-accuracy') as GeoJSONSource).setData(
+    setSourceData(m, 'nav-accuracy', 
       accuracy > 15
         ? { type: 'Feature', properties: {}, geometry: { type: 'Polygon', coordinates: [ring] } }
         : empty,
@@ -354,6 +370,8 @@ export function NavigationMap(props: Props) {
       fallbackRef.current
         ? localFallbackStyle(props.theme ?? 'dark')
         : `https://tiles.openfreemap.org/styles/${props.theme === 'light' ? 'liberty' : 'dark'}`,
+      // A diffed style change does not fire 'style.load', so our sources and layers would never come back.
+      { diff: false },
     );
   }, [props.theme]);
 

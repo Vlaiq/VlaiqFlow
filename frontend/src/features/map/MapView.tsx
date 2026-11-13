@@ -145,6 +145,8 @@ export function MapView({
   const containerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<maplibregl.Map | null>(null);
   const loadedRef = useRef(false);
+  /** True once the provider style has loaded: later tile/sprite errors never swap in the fallback. */
+  const providerLoadedRef = useRef(false);
   const parkingsRef = useRef(parkings);
   parkingsRef.current = parkings;
   const timparkRef = useRef(timpark);
@@ -182,17 +184,19 @@ export function MapView({
       setLocalFallback(true);
       loadedRef.current = false;
       setMapError(null);
-      map.setStyle(localFallbackStyle(themeRef.current));
+      map.setStyle(localFallbackStyle(themeRef.current), { diff: false });
     };
+    providerLoadedRef.current = false;
     const timeout = window.setTimeout(() => {
-      if (!map.isStyleLoaded()) showLocalFallback();
+      if (!providerLoadedRef.current) showLocalFallback();
     }, 12000);
-    // Only errors that stop the map from starting count. After the first load, a single tile or
-    // sprite failing (common on busy networks) must not cover a working map (same rule as NavigationMap).
-    map.on('error', () => {
-      if (!loadedRef.current && !map.isStyleLoaded()) {
-        showLocalFallback();
-      }
+    // Only a failure of the style document itself means the provider is down. A single tile or sprite
+    // failing (common on busy networks) fires 'error' before the map is idle; it must not replace a
+    // working street map with the generalized fallback (same rule as NavigationMap).
+    map.on('error', (e) => {
+      if (providerLoadedRef.current || fallbackRef.current) return;
+      const failed = (e as { error?: { url?: string } }).error?.url ?? '';
+      if (failed.includes('/styles/') || !map.getStyle()) showLocalFallback();
     });
 
     // Dev-only handle for debugging in the browser console (stripped from production builds).
@@ -226,6 +230,7 @@ export function MapView({
       window.clearTimeout(timeout);
       setMapError(null);
       loadedRef.current = true;
+      if (!fallbackRef.current) providerLoadedRef.current = true;
       addCountyScope(map, themeRef.current);
       setStyleRevision((v) => v + 1);
 
@@ -481,6 +486,8 @@ export function MapView({
       fallbackRef.current
         ? localFallbackStyle(theme)
         : `https://tiles.openfreemap.org/styles/${theme === 'light' ? 'liberty' : 'dark'}`,
+      // A diffed style change does not fire 'style.load', so parkings, Timpark and route layers would be lost.
+      { diff: false },
     );
   }, [theme]);
   useEffect(() => {
