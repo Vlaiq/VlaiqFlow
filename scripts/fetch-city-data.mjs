@@ -16,20 +16,61 @@ const SOURCES = [
     url: 'https://cont.primariatm.ro/api/mobile/parking',
     out: '../shared/src/data/timpark.json',
   },
+  {
+    name: 'Official street register',
+    url: 'https://servicii.primariatm.ro/api/nomenclator/strazi',
+    out: '../shared/src/data/streets.json',
+    // Keep only the fields we use, to keep the repository small.
+    transform: (raw) => ({
+      streets: raw.strazi.map((s) => ({
+        id: s.id,
+        name: s.denumireCompleta,
+        current: s.numeActual,
+        previous: s.numeAnterior || null,
+        type: s.tipArtera,
+        neighbourhood: s.cartier || null,
+        status: s.stare,
+      })),
+    }),
+    count: (d) => `${d.streets.length} streets`,
+  },
+  {
+    name: 'City landmarks (tourist guide)',
+    url: 'https://cont.primariatm.ro/api/mobile/pois',
+    out: '../shared/src/data/pois.json',
+    transform: (raw) => ({
+      pois: raw.pois.map((p) => ({
+        id: p.id,
+        name: p.name,
+        nameEn: p.nameEn ?? null,
+        address: p.address ?? null,
+        lat: p.latitude,
+        lng: p.longitude,
+      })),
+    }),
+    count: (d) => `${d.pois.length} landmarks`,
+  },
+  {
+    name: 'Neighbourhood outlines',
+    url: 'https://cont.primariatm.ro/api/zones',
+    out: '../shared/src/data/neighbourhoods.json',
+    count: (d) => `${d.features.length} neighbourhoods`,
+  },
 ];
 
-async function snapshot({ name, url, out }) {
+async function snapshot({ name, url, out, transform, count }) {
   console.log(`Fetching ${name}: ${url}`);
   const res = await fetch(url, { headers: { 'User-Agent': USER_AGENT, Accept: 'application/json' } });
   if (!res.ok) throw new Error(`${url} responded ${res.status} ${res.statusText}`);
-  const data = await res.json();
+  const raw = await res.json();
+  const data = transform ? transform(raw) : raw;
 
   const file = fileURLToPath(new URL(out, import.meta.url));
   mkdirSync(dirname(file), { recursive: true });
   const body = { source: url, fetchedAt: new Date().toISOString(), data };
   writeFileSync(file, JSON.stringify(body) + '\n', 'utf8');
-  const count = Array.isArray(data.features) ? `${data.features.length} features` : 'saved';
-  console.log(`  ${count}, version ${data.version ?? 'n/a'} → ${file}`);
+  const summary = count ? count(data) : Array.isArray(data.features) ? `${data.features.length} features` : 'saved';
+  console.log(`  ${summary}${data.version ? `, version ${data.version}` : ''} → ${file}`);
 }
 
 let failed = false;

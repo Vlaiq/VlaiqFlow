@@ -1,6 +1,6 @@
 import { useEffect, useRef } from 'react';
 import maplibregl, { type GeoJSONSource } from 'maplibre-gl';
-import { TIMISOARA_CENTER, type Parking, type TimparkSnapshot } from '@vlaiq/shared';
+import { TIMISOARA_CENTER, type Destination, type Parking, type TimparkSnapshot } from '@vlaiq/shared';
 import {
   addTimparkLayers,
   TIMPARK_CLICKABLE_LAYERS,
@@ -30,9 +30,27 @@ function parkingsToGeoJSON(parkings: Parking[]): GeoJSON.FeatureCollection<GeoJS
 interface Props {
   parkings: Parking[];
   timpark: TimparkSnapshot | null;
+  destination: Destination | null;
 }
 
-export function MapView({ parkings, timpark }: Props) {
+const FLY_ZOOM: Record<Destination['precision'], number> = { exact: 16.5, street: 16, neighbourhood: 14.5, none: 14 };
+
+function destinationMarkerElement(approximate: boolean): HTMLElement {
+  const el = document.createElement('div');
+  el.setAttribute('aria-hidden', 'true');
+  el.style.cssText = [
+    'width:22px',
+    'height:22px',
+    'border-radius:50% 50% 50% 0',
+    'transform:rotate(-45deg)',
+    `background:${approximate ? 'transparent' : '#EAF6ED'}`,
+    'border:3px solid #EAF6ED',
+    'box-shadow:0 0 0 2px #101916',
+  ].join(';');
+  return el;
+}
+
+export function MapView({ parkings, timpark, destination }: Props) {
   const containerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<maplibregl.Map | null>(null);
   const loadedRef = useRef(false);
@@ -138,6 +156,24 @@ export function MapView({ parkings, timpark }: Props) {
     if (!map || !loadedRef.current || !timpark || map.getSource(TIMPARK_SOURCE)) return;
     addTimparkLayers(map, timpark, PARKINGS_LAYER);
   }, [timpark]);
+
+  // Destination marker: filled pin for a known position, hollow pin for an approximate one.
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map || !destination?.location) return;
+    const { lng, lat } = destination.location;
+    const marker = new maplibregl.Marker({
+      element: destinationMarkerElement(destination.precision !== 'exact' && destination.precision !== 'street'),
+      anchor: 'bottom',
+    })
+      .setLngLat([lng, lat])
+      .addTo(map);
+    const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    map.flyTo({ center: [lng, lat], zoom: FLY_ZOOM[destination.precision], animate: !reduceMotion, essential: false });
+    return () => {
+      marker.remove();
+    };
+  }, [destination]);
 
   return <div ref={containerRef} className="absolute inset-0" role="region" aria-label="Harta Timișoarei" />;
 }

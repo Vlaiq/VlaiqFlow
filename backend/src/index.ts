@@ -6,6 +6,7 @@ import { config } from './config';
 import { healthRouter } from './routes/health';
 import { parkingsRouter } from './routes/parkings';
 import { cityRouter } from './routes/city';
+import { destinationsRouter } from './routes/destinations';
 
 const app = express();
 
@@ -18,6 +19,7 @@ app.use('/api', rateLimit({ windowMs: 60_000, limit: 60, standardHeaders: 'draft
 app.use('/api/health', healthRouter);
 app.use('/api/parkings', parkingsRouter);
 app.use('/api/city', cityRouter);
+app.use('/api/destinations', destinationsRouter);
 
 app.use('/api', (_req, res) => {
   const body: ApiError = { error: { code: 'NOT_FOUND', message: 'Unknown endpoint' } };

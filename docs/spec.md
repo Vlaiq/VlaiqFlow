@@ -147,7 +147,13 @@ Full-screen map centered on Timișoara with a floating search bar, locate-me but
 
 ### 6.3 Destination search
 - **Local search first**, with no external call: the City Hall street register (1,370 streets, with neighbourhood and house-number ranges), the 20 City Hall landmarks (`/api/mobile/pois`, RO + EN) and preset chips (Piața Victoriei, Piața Unirii, Iulius Town, Centru). Searched in the browser from a snapshot, accent-insensitive ("piata" finds "Piața").
-- A street is placed on the map using its OSM geometry, matched by the register name. Geocoders spell names differently ("Strada Doctor Ioan Mureșan" vs "Dr. Ioan Mureșan"), so never trust free-text geocoder matches.
+- **Implemented (13 Nov):** `GET /api/destinations` builds the list from the City Hall snapshots; the browser searches it locally. Every result shows how precisely we know its position:
+    - `exact`: the 20 City Hall landmarks;
+    - `street`: the street's Timpark geometry, or a landmark whose address names it (253 streets);
+    - `neighbourhood`: the approximate centre of its official neighbourhood (623 streets);
+    - `none`: listed but not placed on the map (489 streets), until OSM street geometry is added.
+- The register's neighbourhood field is free text (about 360 spellings, including typos such as "Cretate") and only partly matches the 40 official outlines. We show it as written in the source.
+- Later: place every street using its OSM geometry, matched by the register name, once Overpass is reachable. Geocoders spell names differently ("Strada Doctor Ioan Mureșan" vs "Dr. Ioan Mureșan"), so never trust free-text geocoder matches.
 - Optional fallback for addresses outside the snapshot: openrouteservice geocoding through the backend, bbox-limited, debounced to 300 ms, cached, and labelled as approximate.
 - **Do not use Nominatim for autocomplete** (its usage policy forbids it).
 
