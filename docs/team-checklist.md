@@ -9,10 +9,10 @@ Agentul AI nu poate face aceste lucruri. Bifați-le și notați rezultatul (link
 - [ ] **Programul exact:** ora de start, ora limită de submisie, ora jurizării → completați în spec §15
 - [x] **Sursa GTFS:** feed-ul oficial e publicat de SMTT (autoritatea metropolitană); STPT operează vehiculele. Detalii în spec §5.2 și în [ghidul Primăriei](https://ghid-pmt.vercel.app/unihack)
 - [x] **Date despre parcări:** zonele, parcările și străzile Timpark, cu tarife și coduri SMS, vin din endpoint-ul Primăriei `cont.primariatm.ro/api/mobile/parking`. Ocuparea nu există nicăieri
+- [x] **Formatul:** aplicația web e acceptată (confirmat de un organizator pe 13 noiembrie)
 - [ ] **Întrebări pe Discord-ul UniHack** (echipa digitală a Primăriei):
     - Se suprapune ideea noastră (comparație parcare + transport + mers pe jos) cu ceva din CityApp?
     - Tarifele din endpoint-ul de parcări sunt în euro (câmpul se numește `eur`)? Există și valoarea în lei?
-    - Trebuie să fie aplicație de PC (`.exe`) sau e acceptată o aplicație web instalabilă?
     → răspunsuri: ___
 - [ ] **Licența proiectului:** MIT sau Apache-2.0 (ghidul cere open source) → ___
 - [ ] **Cine ar prelua proiectul** după hackathon (Timpark, SMTT, echipa digitală a Primăriei)? → îl spunem în pitch

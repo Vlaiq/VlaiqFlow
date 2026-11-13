@@ -12,7 +12,7 @@
 | D1 | Hackathon rules on pre-existing code and AI tools **[VERIFY]** | No app code is written before the official start |
 | D2 | Transit data source | **Resolved:** the official GTFS is published by **SMTT** (metropolitan transport authority); STPT operates the vehicles. See §5.2 |
 | D3 | Routing quotas and handover **[VERIFY]** | openrouteservice free plan for directions + matrix. A key on one person's account is a handover risk (§17): document it, or move to a self-hostable router later |
-| D8 | Product format **[VERIFY with organizers]** | Web app (installable). If a desktop app is required, wrap the same React code in Electron |
+| D8 | Product format | **Resolved (13 Nov, confirmed by an organizer):** a web app is allowed. We ship the installable web app (PWA); no desktop packaging |
 | D9 | Overlap with the city's CityApp **[VERIFY on Discord]** | We position as an extension of CityApp (§2). Ask the City Hall digital team whether a parking + transit comparison is already planned |
 | D10 | Currency of Timpark tariffs **[VERIFY]** | The City Hall parking endpoint returns tariffs in a field named `eur`. Display exactly what the source gives, with its unit; never convert with an invented rate |
 | D4 | Emission factors **[VERIFY]** | `EMISSION_FACTOR_CAR_G_PER_KM` and `EMISSION_FACTOR_TRANSIT_G_PER_PKM` live in config with a cited source. No number is shipped without a source |
@@ -57,7 +57,7 @@ We are not rebuilding a full navigation app. We are building a parking-first, mu
 
 A **PWA** reachable on a public HTTPS URL and through a QR code. It is usable without installing or logging in.
 
-The format is not final (D8). If the organizers require a desktop application, the same React frontend is packaged with **Electron** (native window, installer, taskbar icon). Keep the frontend free of browser-only assumptions that would block this: no reliance on the address bar, and every external link opens in the system browser.
+An organizer confirmed that a web app is allowed (D8). On a PC it can also be installed from Chrome or Edge ("Install app"), which gives it its own window and a taskbar icon.
 
 Platform constraints to design around:
 - **iOS install** is manual ("Share → Add to Home Screen"), so show a hint.

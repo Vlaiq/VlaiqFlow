@@ -34,7 +34,7 @@ Parking-first, multimodal navigation PWA for Timișoara. Built by team **VLAIQ**
 | City data | Timpark zones/lots/streets + tariffs, SMTT GTFS, neighbourhoods, street register — City Hall endpoints, snapshotted |
 | Routing | openrouteservice (directions, matrix) via backend proxy |
 | Destination search | Local: street register + City Hall landmarks + presets; ORS geocoding only as a labelled fallback |
-| Format | Installable web app; Electron wrapper if a desktop app is required (spec D8) |
+| Format | Installable web app (PWA) — confirmed as allowed by the organizers (spec D8) |
 | Backend | Node 22 + Express + zod, deployed on a Vultr VM behind Caddy (HTTPS on a real domain) |
 | Database | Postgres on Tiger Cloud (TimescaleDB + PostGIS). Not required for P0 |
 | AI | Gemini API function calling (server-side) |
