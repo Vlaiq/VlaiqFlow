@@ -63,10 +63,10 @@ fs.mkdirSync(output, { recursive: true });
       await page.screenshot({ path: `${output}/home-${width}.png` });
     }
     await page.setViewportSize({ width: 390, height: 844 });
-    await page.getByRole('button', { name: 'Portofel', exact: true }).click();
+    await page.getByRole('button', { name: /Deschide portofelul/ }).click();
     await page.getByText('Primul tău drum te așteaptă.', { exact: true }).waitFor();
     await page.screenshot({ path: `${output}/wallet-empty.png` });
-    await page.getByRole('button', { name: 'Mișcare', exact: true }).click();
+    await page.getByRole('link', { name: 'Mișcare', exact: true }).click();
     await page.getByRole('button', { name: /Începe activitatea/ }).click();
     await page
       .getByRole('alert')
@@ -98,8 +98,11 @@ fs.mkdirSync(output, { recursive: true });
     });
     assert.equal(tampered.status(), 400);
     await page.getByRole('button', { name: 'Vezi portofelul' }).click();
-    assert.equal(await page.getByRole('button', { name: 'Portofel, 0 FLOW Coins' }).count(), 1);
-    await page.getByRole('button', { name: 'Mișcare', exact: true }).click();
+    assert.equal(
+      await page.getByRole('button', { name: 'Deschide portofelul, 0 FLOW Coins' }).count(),
+      1,
+    );
+    await page.getByRole('link', { name: 'Mișcare', exact: true }).click();
     await page.getByRole('button', { name: /Explorează experiența DEMO/ }).click();
     await page.waitForTimeout(6500);
     await page.getByRole('button', { name: 'Pauză', exact: true }).click();
@@ -115,16 +118,16 @@ fs.mkdirSync(output, { recursive: true });
     await page.getByRole('button', { name: 'Vezi portofelul' }).click();
     await page.getByText('DEMO separat', { exact: false }).waitFor();
     assert.equal(
-      await page.getByRole('button', { name: 'Portofel, 0 FLOW Coins' }).count(),
+      await page.getByRole('button', { name: 'Deschide portofelul, 0 FLOW Coins' }).count(),
       1,
       'demo never enters server wallet',
     );
     assert.equal((await (await page.request.get(`${base}/api/motion/wallet`)).json()).balance, 0);
-    await page.getByRole('button', { name: 'League', exact: true }).click();
+    await page.getByRole('link', { name: 'Comunitate', exact: true }).click();
     await page.getByRole('button', { name: /Participă la previzualizarea locală/ }).click();
     assert.match(await page.locator('.league-own-row>strong').innerText(), /^0/);
     await page.getByRole('button', { name: /Retrage participarea/ }).click();
-    await page.getByRole('button', { name: 'Mișcare', exact: true }).click();
+    await page.getByRole('link', { name: 'Mișcare', exact: true }).click();
     await page.emulateMedia({ reducedMotion: 'reduce' });
     assert.equal(
       await page.locator('.hero-coin svg').evaluate((el) => getComputedStyle(el).animationName),
@@ -152,7 +155,7 @@ fs.mkdirSync(output, { recursive: true });
       await page.getByRole('region', { name: 'Rezultatul activității' }).waitFor();
       assert.match(await page.locator('.motion-reward-number').innerText(), /^\+10/);
       await page.getByRole('button', { name: 'Vezi portofelul' }).click();
-      await page.getByRole('button', { name: 'Portofel, 10 FLOW Coins' }).waitFor();
+      await page.getByRole('button', { name: 'Deschide portofelul, 10 FLOW Coins' }).waitFor();
       const duplicate = await page.request.post(`${base}/api/motion/finish`, {
         data: { id: latestId, points: [] },
       });

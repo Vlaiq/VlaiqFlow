@@ -1,0 +1,31 @@
+<!doctype html>
+<html lang="ro">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <meta name="theme-color" content="#0B1510" />
+    <title>VLAIQ FLOW · Fără conexiune</title>
+    <style>
+      :root{color-scheme:dark;font-family:Inter,system-ui,sans-serif;background:#0b1510;color:#f2f8ef}
+      body{margin:0;min-height:100dvh;display:grid;place-items:center;padding:24px;box-sizing:border-box}
+      main{max-width:420px;padding:30px;border:1px solid #b5f1b62b;border-radius:24px;background:#12231a}
+      img{display:block;width:56px;height:56px;border-radius:14px;margin-bottom:28px}
+      small{font-size:11px;letter-spacing:1.8px;color:#a5b8aa}h1{font-size:31px;font-weight:550;line-height:1.2;letter-spacing:-1px;margin:13px 0 19px}
+      p{font-size:14px;line-height:1.8;color:#afc4b5}button,a{font:inherit;display:inline-flex;min-height:46px;align-items:center;justify-content:center;border-radius:12px;padding:0 17px;text-decoration:none;box-sizing:border-box}
+      button{border:1px solid #c8eab5;background:#b5f1b6;color:#112619;font-weight:650;cursor:pointer}a{border:1px solid #b5f1b63b;color:#e1efdd;margin-left:8px}button:focus-visible,a:focus-visible{outline:2px solid #b5f1b6;outline-offset:5px}
+      footer{margin-top:24px;padding-top:16px;border-top:1px solid #b5f1b61c;font-size:11px;line-height:1.8;color:#8ea797}
+      @media(max-width:380px){main{padding:23px}h1{font-size:27px}a{margin:8px 0 0}}
+    </style>
+  </head>
+  <body>
+    <main>
+      <img src="/icons/icon-192.png" alt="" />
+      <small>VLAIQ FLOW</small>
+      <h1>Un moment fără conexiune.</h1>
+      <p>Aplicația poate redeschide ecranele deja pregătite pe acest dispozitiv. Harta, rutele noi și evaluarea recompenselor au nevoie de internet.</p>
+      <button type="button" onclick="window.location.reload()">Încearcă din nou</button>
+      <a href="/">Pagina principală</a>
+      <footer>Nu salvăm răspunsuri API, portofele sau observații GPS în memoria offline. DEMO este separat de activitățile reale.</footer>
+    </main>
+  </body>
+</html>

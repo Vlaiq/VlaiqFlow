@@ -3,6 +3,13 @@ import maplibregl, { type GeoJSONSource } from 'maplibre-gl';
 import type { Coordinate, NavigationRoute } from '@vlaiq/shared';
 import type { Fix, Mode } from './useNavigation';
 import { sample } from './geometry';
+import {
+  addCountyScope,
+  CountyControl,
+  isInTimisCounty,
+  TIMIS_COUNTY_BOUNDS,
+} from '../map/countyScope';
+import { localFallbackStyle } from '../map/localStyle';
 
 interface Props {
   route?: NavigationRoute;
@@ -17,6 +24,7 @@ interface Props {
   onPick: (coordinate: Coordinate) => void;
   pickOrigin: boolean;
   recenter: number;
+  theme?: 'dark' | 'light';
 }
 const empty: GeoJSON.FeatureCollection = { type: 'FeatureCollection', features: [] };
 const line = (coordinates: Coordinate[]): GeoJSON.Feature<GeoJSON.LineString> => ({
@@ -35,19 +43,29 @@ export function NavigationMap(props: Props) {
   const [ready, setReady] = useState(false);
   const [mapError, setMapError] = useState(false);
   const [attempt, setAttempt] = useState(0);
+  const [styleRevision, setStyleRevision] = useState(0);
+  const [localFallback, setLocalFallback] = useState(false);
+  const fallbackRef = useRef(false);
   const lastCamera = useRef(0);
   const cameraControls = useRef('');
+  const previousTheme = useRef(props.theme ?? 'dark');
   const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
   useEffect(() => {
     if (!container.current) return;
     setReady(false);
     setMapError(false);
+    fallbackRef.current = false;
+    setLocalFallback(false);
     let m: maplibregl.Map;
     try {
       m = new maplibregl.Map({
         container: container.current,
-        style: 'https://tiles.openfreemap.org/styles/dark',
+        style:
+          latest.current.theme === 'light'
+            ? 'https://tiles.openfreemap.org/styles/liberty'
+            : 'https://tiles.openfreemap.org/styles/dark',
+        maxBounds: TIMIS_COUNTY_BOUNDS,
         center: [21.22, 45.755],
         zoom: 13.5,
         pitch: 0,
@@ -61,15 +79,34 @@ export function NavigationMap(props: Props) {
       return;
     }
     map.current = m;
+    m.once('idle', () => {
+      const attribution = m
+        .getContainer()
+        .querySelector<HTMLDetailsElement>('details.maplibregl-ctrl-attrib');
+      if (attribution) {
+        attribution.open = false;
+        attribution.classList.remove('maplibregl-compact-show');
+      }
+    });
+    const showLocalFallback = () => {
+      if (fallbackRef.current) return;
+      fallbackRef.current = true;
+      setLocalFallback(true);
+      setReady(false);
+      setMapError(false);
+      m.setStyle(localFallbackStyle(latest.current.theme ?? 'dark'));
+    };
     const timeout = window.setTimeout(() => {
-      if (!m.isStyleLoaded()) setMapError(true);
+      if (!m.isStyleLoaded()) showLocalFallback();
     }, 12000);
     m.on('error', () => {
-      if (!m.isStyleLoaded()) setMapError(true);
+      if (!m.isStyleLoaded()) showLocalFallback();
     });
-    m.on('load', () => {
+    m.on('style.load', () => {
+      if (map.current !== m) return;
       clearTimeout(timeout);
       setMapError(false);
+      addCountyScope(m, latest.current.theme ?? 'dark');
       // Keep the licensed provider's real streets, labels, parks and water.
       const layers = m.getStyle().layers ?? [];
       const label = layers.find((l) => l.type === 'symbol' && l.layout?.['text-field'])?.id;
@@ -100,7 +137,7 @@ export function NavigationMap(props: Props) {
         );
       }
       ['nav-alternatives', 'nav-upcoming', 'nav-traveled', 'nav-accuracy'].forEach((id) =>
-        m.addSource(id, { type: 'geojson', data: empty }),
+        m.addSource(id, { type: 'geojson', data: empty, attribution: id === 'nav-upcoming' ? '© OpenStreetMap contributors (ODbL)' : undefined }),
       );
       const pathLayers = [
         ['alternatives', 'nav-alternatives', '#69788d', 5, 0.65],
@@ -122,7 +159,7 @@ export function NavigationMap(props: Props) {
               'line-opacity': opacity,
             },
           },
-          label,
+          undefined,
         );
       }
       m.addLayer({
@@ -132,6 +169,7 @@ export function NavigationMap(props: Props) {
         paint: { 'fill-color': '#65caff', 'fill-opacity': 0.1 },
       });
       setReady(true);
+      setStyleRevision((v) => v + 1);
     });
     m.on('dragstart', () => latest.current.onDetach());
     m.on('rotatestart', (e) => {
@@ -140,7 +178,14 @@ export function NavigationMap(props: Props) {
     m.on('zoomstart', (e) => {
       if (e.originalEvent) latest.current.onDetach();
     });
-    m.on('click', (e) => latest.current.onPick([e.lngLat.lng, e.lngLat.lat]));
+    m.on('click', (e) => {
+      if (isInTimisCounty([e.lngLat.lng, e.lngLat.lat]))
+        latest.current.onPick([e.lngLat.lng, e.lngLat.lat]);
+    });
+    m.addControl(
+      new CountyControl(() => ({ top: 100, left: 60, bottom: 200, right: 60 }), 190),
+      'bottom-left',
+    );
     const observer = new ResizeObserver(() => {
       m.resize();
       const p = latest.current;
@@ -173,7 +218,7 @@ export function NavigationMap(props: Props) {
       features: alternatives.map((r) => line(r.geometry)),
     });
     destination.current?.remove();
-    if (props.route) {
+    if (props.route && isInTimisCounty(props.route.geometry.at(-1)!)) {
       const element = document.createElement('div');
       element.className = 'nav-destination-marker';
       element.textContent = 'P';
@@ -182,7 +227,7 @@ export function NavigationMap(props: Props) {
         .setLngLat(props.route.geometry.at(-1)!)
         .addTo(m);
     }
-  }, [ready, props.routes, props.route, props.mode]);
+  }, [ready, styleRevision, props.routes, props.route, props.mode]);
 
   useEffect(() => {
     const m = map.current;
@@ -198,7 +243,7 @@ export function NavigationMap(props: Props) {
     const traveled = [...route.geometry.slice(0, p.index), p.coordinate];
     (m.getSource('nav-upcoming') as GeoJSONSource).setData(line(upcoming));
     (m.getSource('nav-traveled') as GeoJSONSource).setData(progress > 0 ? line(traveled) : empty);
-  }, [ready, props.route, props.progress, props.lengths]);
+  }, [ready, styleRevision, props.route, props.progress, props.lengths]);
 
   useEffect(() => {
     const m = map.current;
@@ -242,7 +287,7 @@ export function NavigationMap(props: Props) {
         ? { type: 'Feature', properties: {}, geometry: { type: 'Polygon', coordinates: [ring] } }
         : empty,
     );
-  }, [ready, props.fix, props.mode]);
+  }, [ready, styleRevision, props.fix, props.mode]);
 
   useEffect(() => {
     const m = map.current;
@@ -300,6 +345,18 @@ export function NavigationMap(props: Props) {
     reduced,
   ]);
 
+  useEffect(() => {
+    const m = map.current;
+    if (!m || previousTheme.current === (props.theme ?? 'dark')) return;
+    previousTheme.current = props.theme ?? 'dark';
+    setReady(false);
+    m.setStyle(
+      fallbackRef.current
+        ? localFallbackStyle(props.theme ?? 'dark')
+        : `https://tiles.openfreemap.org/styles/${props.theme === 'light' ? 'liberty' : 'dark'}`,
+    );
+  }, [props.theme]);
+
   return (
     <div className={`navigation-map ${props.pickOrigin ? 'picking-origin' : ''}`}>
       <div
@@ -308,6 +365,14 @@ export function NavigationMap(props: Props) {
         role="region"
         aria-label="Hartă de navigație Timișoara"
       />
+      {localFallback && (
+        <p
+          role="status"
+          className="pointer-events-none absolute bottom-5 left-3 z-10 max-w-[210px] rounded-lg border border-border bg-surface px-3 py-2 text-[11px] leading-relaxed text-muted"
+        >
+          Hartă locală de rezervă · acoperire parțială Timpark
+        </p>
+      )}
       {mapError && (
         <div className="map-unavailable" role="status">
           <span className="status-dot warning" />

@@ -32,6 +32,7 @@ import { useNavigation } from './useNavigation';
 import { loadNavPlaces, type NavPlaces } from './places';
 import { formatDistance, instruction } from './geometry';
 import { NavigationMap } from './NavigationMap';
+import { useTheme } from '../../app/theme';
 import './navigation.css';
 
 function TurnIcon({ step }: { step?: NavigationRoute['steps'][number] }) {
@@ -57,7 +58,8 @@ export function NavigationScreen() {
     setFailed(null);
     loadNavPlaces(window.location.search).then(
       (p) => alive && setPlaces(p),
-      (e: unknown) => alive && setFailed(e instanceof Error ? e.message : 'Destinațiile nu sunt disponibile.'),
+      (e: unknown) =>
+        alive && setFailed(e instanceof Error ? e.message : 'Destinațiile nu sunt disponibile.'),
     );
     return () => {
       alive = false;
@@ -94,6 +96,7 @@ export function NavigationScreen() {
 }
 
 function NavigationView({ places }: { places: NavPlaces }) {
+  const { theme } = useTheme();
   const nav = useNavigation(places);
   const [expanded, setExpanded] = useState(false);
   const [recenter, setRecenter] = useState(0);
@@ -118,6 +121,7 @@ function NavigationView({ places }: { places: NavPlaces }) {
   return (
     <main className={`navigation-screen ${active ? 'is-navigating' : 'is-preview'}`}>
       <NavigationMap
+        theme={theme}
         route={nav.route}
         routes={nav.routes}
         fix={nav.fix}

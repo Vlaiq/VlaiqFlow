@@ -1,19 +1,138 @@
-/* Design tokens — spec §10. Stored as "R G B" so Tailwind can apply opacity (bg-primary/20). */
-:root {
-  --bg: 16 25 22;           /* #101916 */
-  --surface: 22 34 29;      /* #16221D */
-  --surface-2: 30 45 39;    /* #1E2D27 */
-  --border: 42 59 52;       /* #2A3B34 */
-  --text: 242 247 244;      /* #F2F7F4 */
-  --text-muted: 163 181 172;/* #A3B5AC */
-  --primary: 34 197 94;     /* #22C55E */
-  --primary-fg: 11 20 16;   /* #0B1410 — dark text on green; white fails WCAG */
-  --mint: 234 246 237;      /* #EAF6ED */
-  --warning: 245 158 11;    /* #F59E0B */
-  --danger: 239 68 68;      /* #EF4444 */
-  --q-confirmed: 34 197 94;
-  --q-estimated: 56 189 248;
-  --q-unknown: 138 154 146;
-  --q-simulated: 167 139 250;
+/* Shared semantic tokens. RGB channels remain compatible with Tailwind opacity utilities. */
+:root,
+:root[data-theme='dark'] {
+  --bg: 11 21 16;
+  --surface: 18 35 26;
+  --surface-2: 26 48 35;
+  --border: 54 79 63;
+  --text: 242 248 239;
+  --text-muted: 165 184 170;
+  --primary: 70 201 133;
+  --primary-fg: 11 32 21;
+  --mint: 181 241 182;
+  --warning: 243 189 108;
+  --danger: 248 132 132;
+  --q-confirmed: 112 217 153;
+  --q-estimated: 111 203 231;
+  --q-unknown: 171 186 176;
+  --q-simulated: 201 173 246;
+  --app-accent-text: #c7e8b8;
+  --app-accent-soft: #233f2a;
+  --app-accent-border: #7da36c;
+  --app-accent-strong: #b6e6a3;
+  --app-accent-strong-fg: #102016;
+  --app-accent-hover: #cdf5bb;
+  --app-hero-from: #192e20;
+  --app-inset: #0c1c13;
+  --app-overlay: #06110cc4;
+  --app-alert-bg: #332b1c;
+  --app-alert-border: #8b7047;
+  --app-alert-text: #f0d29e;
+  --app-route: #32bdff;
+  --app-route-ink: #082a40;
+  --app-coin-shadow: #030c08;
+  --app-shadow: 0 16px 48px #02090526;
   color-scheme: dark;
+}
+
+:root[data-theme='light'] {
+  --bg: 246 248 243;
+  --surface: 255 255 255;
+  --surface-2: 237 243 236;
+  --border: 207 222 208;
+  --text: 23 48 36;
+  --text-muted: 78 106 91;
+  --primary: 22 125 80;
+  --primary-fg: 255 255 255;
+  --mint: 35 108 66;
+  --warning: 139 87 13;
+  --danger: 168 42 48;
+  --q-confirmed: 20 116 72;
+  --q-estimated: 23 100 136;
+  --q-unknown: 83 106 91;
+  --q-simulated: 112 69 159;
+  --app-accent-text: #276944;
+  --app-accent-soft: #e1efdc;
+  --app-accent-border: #91b98b;
+  --app-accent-strong: #167d50;
+  --app-accent-strong-fg: #ffffff;
+  --app-accent-hover: #116740;
+  --app-hero-from: #e6f2e2;
+  --app-inset: #f0f5ed;
+  --app-overlay: #14291c70;
+  --app-alert-bg: #fff6e5;
+  --app-alert-border: #dab981;
+  --app-alert-text: #785012;
+  --app-route: #0075c9;
+  --app-route-ink: #eefaff;
+  --app-coin-shadow: #24412b;
+  --app-shadow: 0 16px 42px #1e46200d;
+  color-scheme: light;
+}
+
+:root {
+  --app-bg: rgb(var(--bg));
+  --app-panel: rgb(var(--surface));
+  --app-panel-raised: rgb(var(--surface-2));
+  --app-border: rgb(var(--border));
+  --app-text: rgb(var(--text));
+  --app-muted: rgb(var(--text-muted));
+  --app-primary: rgb(var(--primary));
+  --app-primary-fg: rgb(var(--primary-fg));
+  --app-radius-sm: 12px;
+  --app-radius: 20px;
+  --app-radius-lg: 26px;
+  --app-duration-fast: 150ms;
+  --app-duration-normal: 280ms;
+  --app-duration-slow: 480ms;
+  --app-ease: cubic-bezier(0.2, 0.7, 0.2, 1);
+  --app-font-display: 'Manrope', 'Inter', ui-sans-serif, system-ui, sans-serif;
+  --app-font-body: 'Inter', ui-sans-serif, system-ui, sans-serif;
+  font-variant-numeric: tabular-nums;
+}
+
+/* MapLibre keeps these popups in a separate DOM subtree; inherit the active theme. */
+.maplibregl-popup-content {
+  background: var(--app-panel) !important;
+  color: var(--app-text);
+  border: 1px solid var(--app-border);
+  border-radius: var(--app-radius-sm) !important;
+  box-shadow: var(--app-shadow) !important;
+}
+.maplibregl-popup-anchor-bottom .maplibregl-popup-tip {
+  border-top-color: var(--app-panel) !important;
+}
+.maplibregl-popup-anchor-top .maplibregl-popup-tip {
+  border-bottom-color: var(--app-panel) !important;
+}
+.maplibregl-popup-anchor-left .maplibregl-popup-tip {
+  border-right-color: var(--app-panel) !important;
+}
+.maplibregl-popup-anchor-right .maplibregl-popup-tip {
+  border-left-color: var(--app-panel) !important;
+}
+.maplibregl-popup-content .vlaiq-popup {
+  color: var(--app-text);
+}
+.maplibregl-popup-content .vlaiq-popup-muted {
+  color: var(--app-muted);
+}
+.maplibregl-popup-close-button {
+  min-width: 32px;
+  min-height: 32px;
+  color: var(--app-text);
+}
+:root[data-theme='light'] input[type='datetime-local'] {
+  color-scheme: light;
+}
+:root[data-theme='dark'] input[type='datetime-local'] {
+  color-scheme: dark;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --app-duration-fast: 0ms;
+    --app-duration-normal: 0ms;
+    --app-duration-slow: 0ms;
+  }
 }

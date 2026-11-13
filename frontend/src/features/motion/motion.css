@@ -1,19 +1,25 @@
 .motion-app {
-  --motion-bg: #0b1510;
-  --motion-surface: #12231a;
-  --motion-raised: #1a3023;
-  --motion-line: #b5f1b61c;
-  --motion-text: #f2f8ef;
-  --motion-muted: #a5b8aa;
-  --motion-green: #4acb83;
-  --motion-mint: #b5f1b6;
-  --duration-fast: 150ms;
-  --duration-normal: 280ms;
-  --ease-emphasized: cubic-bezier(0.2, 0.7, 0.2, 1);
+  --motion-bg: var(--app-bg);
+  --motion-surface: var(--app-panel);
+  --motion-raised: var(--app-panel-raised);
+  --motion-line: var(--app-border);
+  --motion-text: var(--app-text);
+  --motion-muted: var(--app-muted);
+  --motion-green: var(--app-primary);
+  --motion-mint: var(--app-accent-text);
+  --duration-fast: var(--app-duration-fast);
+  --duration-normal: var(--app-duration-normal);
+  --ease-emphasized: var(--app-ease);
   min-height: 100dvh;
-  background: radial-gradient(ellipse at 90% 0, #1c3d2926, transparent 45%), var(--motion-bg);
+  background:
+    radial-gradient(
+      ellipse at 90% 0,
+      color-mix(in srgb, var(--app-accent-soft) 25%, transparent),
+      transparent 45%
+    ),
+    var(--motion-bg);
   color: var(--motion-text);
-  font-family: Inter, ui-sans-serif, system-ui, sans-serif;
+  font-family: var(--app-font-body);
   font-variant-numeric: tabular-nums;
   padding: 0 32px 30px;
   overflow-x: clip;
@@ -63,11 +69,11 @@
 .motion-logo > span {
   width: 39px;
   height: 42px;
-  background: #4acb83;
+  background: var(--app-primary);
   border-radius: 13px 13px 13px 3px;
   display: grid;
   place-items: center;
-  color: #112519;
+  color: var(--app-primary-fg);
   transform: rotate(-4deg);
 }
 .motion-logo > div {
@@ -75,10 +81,10 @@
 }
 .motion-logo small {
   display: block;
-  font-size: 9px;
+  font-size: 11px;
   letter-spacing: 4.5px;
   font-weight: 500;
-  color: #a5b8aa;
+  color: var(--app-muted);
   margin-top: 5px;
 }
 .motion-header-right {
@@ -87,19 +93,19 @@
   gap: 18px;
 }
 .motion-prototype {
-  font-size: 9px;
+  font-size: 11px;
   letter-spacing: 1.5px;
-  color: #8ba292;
+  color: var(--app-muted);
 }
 .motion-wallet-pill {
   display: flex;
   align-items: center;
   gap: 10px;
   padding: 5px 15px 5px 8px;
-  border: 1px solid #658f504d;
+  border: 1px solid var(--app-accent-border);
   border-radius: 24px;
-  color: #e0f2c1;
-  background: #1b2e21;
+  color: var(--app-accent-text);
+  background: var(--app-panel-raised);
   min-height: 42px;
   min-width: 85px;
   justify-content: center;
@@ -119,15 +125,15 @@
 }
 .motion-intro p,
 .motion-eyebrow {
-  font-size: 9px;
+  font-size: 11px;
   line-height: 1.7;
   letter-spacing: 1.6px;
   font-weight: 600;
-  color: #a5b8aa;
+  color: var(--app-muted);
 }
 .motion-intro p {
   margin: 0 0 8px;
-  color: #809c89;
+  color: var(--app-muted);
 }
 .motion-intro h1 {
   font-size: 30px;
@@ -141,7 +147,7 @@
   align-items: center;
   gap: 9px;
   font-size: 11px;
-  color: #c0d6c6 !important;
+  color: var(--app-muted) !important;
   padding: 12px 0;
   white-space: nowrap;
 }
@@ -161,10 +167,10 @@
   align-items: center;
   justify-content: space-between;
   gap: 10px;
-  font-size: 9px;
+  font-size: 11px;
   letter-spacing: 1.4px;
   font-weight: 600;
-  color: #a5b8aa;
+  color: var(--app-muted);
 }
 .motion-section-label > span:first-child {
   display: flex;
@@ -175,13 +181,13 @@
   color: var(--motion-green);
 }
 .motion-section-label > span:last-child {
-  font-size: 8px;
+  font-size: 11px;
   font-weight: 400;
   letter-spacing: 1px;
 }
 .motion-hero {
   padding: 25px 28px 0;
-  background: linear-gradient(115deg, #192e20, #12231a 75%);
+  background: linear-gradient(115deg, var(--app-hero-from), var(--app-panel) 75%);
 }
 .motion-hero-content {
   display: flex;
@@ -195,9 +201,9 @@
   z-index: 1;
 }
 .motion-hero .motion-eyebrow {
-  font-size: 8px;
+  font-size: 11px;
   letter-spacing: 1.2px;
-  color: #9fbea7;
+  color: var(--app-muted);
 }
 .motion-hero h2 {
   font-size: 39px;
@@ -208,10 +214,10 @@
 }
 .motion-hero h2 em {
   font-style: normal;
-  color: #bcdfae;
+  color: var(--app-accent-text);
 }
 .motion-hero p {
-  color: #a8beae;
+  color: var(--app-muted);
   font-size: 12px;
   line-height: 1.8;
 }
@@ -225,8 +231,8 @@
 .hero-coin:before {
   content: '';
   position: absolute;
-  border: 1px solid #aad48a30;
-  border-top-color: #9eca746e;
+  border: 1px solid color-mix(in srgb, var(--app-accent-border) 35%, transparent);
+  border-top-color: var(--app-accent-border);
   width: 220px;
   height: 220px;
   border-radius: 50%;
@@ -236,13 +242,13 @@
   display: flex;
   align-items: center;
   gap: 8px;
-  color: #c9dfb1;
+  color: var(--app-accent-text);
   font-size: 11px;
   margin-top: 16px;
 }
 .mission-reward strong {
   font-size: 15px;
-  color: #eff6cd;
+  color: var(--app-accent-text);
   font-weight: 650;
 }
 .motion-mission-bottom {
@@ -251,9 +257,9 @@
   justify-content: space-between;
   margin: 8px -28px 0;
   padding: 14px 24px;
-  background: #09160e42;
+  background: color-mix(in srgb, var(--app-bg) 25%, transparent);
   border-top: 1px solid var(--motion-line);
-  color: #91ac99;
+  color: var(--app-muted);
   font-size: 10px;
 }
 .motion-mission-bottom > span {
@@ -264,12 +270,12 @@
 .motion-mission-bottom button {
   display: grid;
   place-items: center;
-  border: 1px solid #9dc49e2b;
+  border: 1px solid var(--app-border);
   border-radius: 50%;
   width: 31px;
   height: 31px;
   background: transparent;
-  color: #c7e9c0;
+  color: var(--app-accent-text);
 }
 .motion-start-card {
   padding: 25px 27px;
@@ -296,24 +302,24 @@
   gap: 12px;
   justify-content: center;
   min-height: 95px;
-  border: 1px solid #698b6b33;
-  background: #0c1c13;
-  color: #a5b8aa;
+  border: 1px solid var(--app-border);
+  background: var(--app-inset);
+  color: var(--app-muted);
   border-radius: 15px;
   font-size: 10px;
   transition: background var(--duration-fast);
 }
 .activity-mode-options > button.selected {
-  color: #d0edb9;
-  border-color: #8ba865;
-  background: #203725;
+  color: var(--app-accent-text);
+  border-color: var(--app-accent-border);
+  background: var(--app-accent-soft);
 }
 .mode-check {
   position: absolute;
   top: 7px;
   right: 7px;
-  background: #bde29f;
-  color: #23361e;
+  background: var(--app-accent-strong);
+  color: var(--app-accent-strong-fg);
   border-radius: 50%;
   padding: 1px;
 }
@@ -337,17 +343,17 @@
   transform: scale(0.985);
 }
 .motion-button.primary {
-  background: #b6e6a3;
-  color: #102016;
-  border-color: #c4edb4;
+  background: var(--app-accent-strong);
+  color: var(--app-accent-strong-fg);
+  border-color: var(--app-accent-strong);
 }
 .motion-button.primary:hover {
-  background: #cdf5bb;
+  background: var(--app-accent-hover);
 }
 .motion-button.secondary {
-  background: #1a3023;
-  color: #e6f1df;
-  border-color: #66856b4d;
+  background: var(--app-panel-raised);
+  color: var(--app-accent-text);
+  border-color: var(--app-border);
 }
 .motion-start-card > .motion-button {
   width: 100%;
@@ -360,13 +366,13 @@
   gap: 7px;
   align-items: center;
   justify-content: center;
-  font-size: 9px;
-  color: #88a793;
+  font-size: 11px;
+  color: var(--app-muted);
   line-height: 1.7;
   margin: 12px 0 18px;
 }
 .start-card-note svg {
-  color: #84bb8c;
+  color: var(--app-accent-text);
   flex-shrink: 0;
 }
 .motion-demo-link {
@@ -377,7 +383,7 @@
   margin: auto;
   border: 0;
   background: transparent;
-  color: #acbfb1;
+  color: var(--app-muted);
   font-size: 10px !important;
   min-height: 30px;
 }
@@ -398,7 +404,7 @@
   font-size: 22px;
   font-weight: 500;
   letter-spacing: -0.5px;
-  color: #d7efc6;
+  color: var(--app-accent-text);
 }
 .weekly-chart {
   display: flex;
@@ -418,30 +424,30 @@
   height: 100%;
 }
 .weekly-chart span {
-  font-size: 9px;
-  color: #8ea597;
+  font-size: 11px;
+  color: var(--app-muted);
   margin-bottom: 12px;
 }
 .weekly-bar {
   width: 24px;
   min-height: 4px;
   border-radius: 5px 5px 2px 2px;
-  background: #386247;
+  background: var(--app-accent-border);
   transition: height 0.35s var(--ease-emphasized);
 }
 .weekly-bar.today {
-  background: #b8dc93;
+  background: var(--app-primary);
 }
 .weekly-footer {
   display: flex;
   justify-content: space-between;
   gap: 12px;
   margin-top: 16px;
-  color: #8fa797;
-  font-size: 9px;
+  color: var(--app-muted);
+  font-size: 11px;
 }
 .weekly-footer strong {
-  color: #c3d8c3;
+  color: var(--app-accent-text);
   font-size: 12px;
   margin-right: 3px;
 }
@@ -451,7 +457,7 @@
   justify-content: space-between;
   gap: 14px;
   padding: 26px;
-  background: #13251c;
+  background: var(--app-panel);
 }
 .motion-league-teaser h2 {
   font-size: 21px;
@@ -460,7 +466,7 @@
 .motion-league-teaser p {
   font-size: 11px;
   line-height: 1.9;
-  color: #a5b8aa;
+  color: var(--app-muted);
   margin: 0;
 }
 .motion-text-button {
@@ -470,7 +476,7 @@
   font-size: 11px !important;
   border: 0;
   background: transparent;
-  color: #c2e2ae !important;
+  color: var(--app-accent-text) !important;
   min-height: 42px;
   padding: 0;
 }
@@ -484,25 +490,25 @@
   flex-direction: column;
   flex-shrink: 0;
   gap: 14px;
-  color: #c1d99d;
+  color: var(--app-accent-text);
   width: 105px;
   height: 129px;
-  border: 1px solid #627b4b55;
+  border: 1px solid var(--app-border);
   border-radius: 45% 45% 40% 40%;
-  background: linear-gradient(135deg, #aab75f0d, #476e3522);
-  box-shadow: inset 0 0 0 6px #091d143d;
+  background: linear-gradient(135deg, var(--app-panel-raised), var(--app-accent-soft));
+  box-shadow: inset 0 0 0 6px color-mix(in srgb, var(--app-bg) 25%, transparent);
   transform: rotate(5deg);
 }
 .league-emblem > span {
-  font-size: 6px;
+  font-size: 11px;
   letter-spacing: 2px;
 }
 .motion-footer {
   display: flex;
   justify-content: space-between;
   gap: 20px;
-  color: #789484;
-  font-size: 9px;
+  color: var(--app-muted);
+  font-size: 11px;
   line-height: 1.8;
   padding: 25px 2px 110px;
 }
@@ -522,12 +528,12 @@
   width: 470px;
   max-width: calc(100% - 32px);
   gap: 9px;
-  background: #12251bed;
-  border: 1px solid #a1c1a52b;
+  background: var(--app-panel);
+  border: 1px solid var(--app-border);
   border-radius: 20px;
   padding: 9px 13px;
   z-index: 20;
-  box-shadow: 0 14px 45px #0004;
+  box-shadow: 0 14px 45px color-mix(in srgb, var(--app-coin-shadow) 15%, transparent);
 }
 .motion-nav > a,
 .motion-nav > button {
@@ -541,20 +547,20 @@
   min-height: 47px;
   border: 0;
   background: transparent;
-  color: #8fa996;
-  font-size: 9px;
+  color: var(--app-muted);
+  font-size: 11px;
   border-radius: 11px;
 }
 .motion-nav .selected {
-  color: #c6edaf;
-  background: #243f2a;
+  color: var(--app-accent-text);
+  background: var(--app-accent-soft);
 }
 .motion-nav i {
   position: absolute;
   bottom: 2px;
   width: 3px;
   height: 3px;
-  background: #c3e5a8;
+  background: var(--app-accent-text);
   border-radius: 50%;
 }
 .motion-alert {
@@ -562,10 +568,10 @@
   align-items: center;
   gap: 12px;
   padding: 14px 17px;
-  background: #382b193d;
-  border: 1px solid #a17a4b5e;
+  background: var(--app-alert-bg);
+  border: 1px solid var(--app-alert-border);
   border-radius: 13px;
-  color: #e8c897;
+  color: var(--app-alert-text);
   font-size: 12px;
   line-height: 1.7;
   margin: 18px 0;
@@ -578,7 +584,7 @@
   min-height: 36px;
   border: 0;
   background: transparent;
-  color: #e9d4a4;
+  color: var(--app-alert-text);
   font-size: 11px;
 }
 .motion-wallet-grid {
@@ -599,7 +605,7 @@
   margin: 25px 0 8px;
 }
 .wallet-hero > .motion-eyebrow {
-  font-size: 8px;
+  font-size: 11px;
   text-align: center;
 }
 .wallet-hero h2 {
@@ -615,12 +621,12 @@
   font-size: 13px;
   font-weight: 400;
   letter-spacing: 0.3px;
-  color: #c0d7b3;
+  color: var(--app-accent-text);
   margin-top: 9px;
 }
 .wallet-hero > p {
   font-size: 10px;
-  color: #95b19e;
+  color: var(--app-muted);
   text-align: center;
   line-height: 1.9;
 }
@@ -630,12 +636,12 @@
   margin: 16px 0 14px;
 }
 .wallet-limit > span {
-  font-size: 9px;
-  color: #a5b8aa;
+  font-size: 11px;
+  color: var(--app-muted);
 }
 .wallet-limit > div {
   height: 4px;
-  background: #294532;
+  background: var(--app-border);
   border-radius: 10px;
   margin-top: 9px;
   overflow: hidden;
@@ -643,13 +649,13 @@
 .wallet-limit i {
   display: block;
   height: 100%;
-  background: #a9d98e;
+  background: var(--app-primary);
   border-radius: 10px;
 }
 .motion-disclaimer {
   font-size: 10px !important;
   line-height: 1.9;
-  color: #8ca695 !important;
+  color: var(--app-muted) !important;
   font-weight: 400;
 }
 .wallet-history {
@@ -673,7 +679,7 @@
   flex: 1;
 }
 .motion-empty > svg {
-  color: #98bb9c;
+  color: var(--app-accent-text);
   margin: 15px 0;
 }
 .motion-empty h3 {
@@ -684,14 +690,14 @@
 .motion-empty p {
   font-size: 12px;
   line-height: 1.9;
-  color: #95ae9e;
+  color: var(--app-muted);
   margin: 12px 0 22px;
 }
 .wallet-trust {
   display: flex;
   align-items: flex-start;
   gap: 11px;
-  color: #8ba894;
+  color: var(--app-muted);
   border-top: 1px solid var(--motion-line);
   padding-top: 15px;
   margin-top: 20px;
@@ -719,8 +725,8 @@
 .transaction-icon {
   display: grid;
   place-items: center;
-  background: #28402c;
-  color: #b2dba6;
+  background: var(--app-panel-raised);
+  color: var(--app-accent-text);
   width: 40px;
   height: 40px;
   border-radius: 13px;
@@ -732,19 +738,19 @@
 }
 .transaction-list p {
   font-size: 10px;
-  color: #93ac9e;
+  color: var(--app-muted);
   margin: 5px 0;
 }
 .transaction-list small {
-  font-size: 9px;
-  color: #7b9985;
+  font-size: 11px;
+  color: var(--app-muted);
 }
 .transaction-value {
   display: flex;
   align-items: center;
   gap: 5px;
   margin-left: auto;
-  color: #d6edb3;
+  color: var(--app-accent-text);
   font-size: 16px;
   font-weight: 600;
 }
@@ -755,10 +761,10 @@
   margin-top: 12px;
   padding: 9px 12px;
   border-radius: 9px;
-  background: #7a61301a;
-  border: 1px solid #9c855933;
+  background: var(--app-alert-bg);
+  border: 1px solid var(--app-alert-border);
   font-size: 10px;
-  color: #ccb784;
+  color: var(--app-alert-text);
 }
 .demo-wallet-balance strong {
   font-size: 11px;
@@ -783,7 +789,7 @@
 .motion-rules p {
   font-size: 12px;
   line-height: 1.9;
-  color: #a5b8aa;
+  color: var(--app-muted);
 }
 .mission-criteria {
   display: flex;
@@ -796,10 +802,10 @@
   align-items: center;
   gap: 10px;
   font-size: 11px;
-  color: #b8cfbe;
+  color: var(--app-accent-text);
 }
 .mission-criteria svg {
-  color: #9ec88e;
+  color: var(--app-accent-text);
   flex-shrink: 0;
 }
 .mission-earned {
@@ -815,8 +821,8 @@
   font-weight: 550;
 }
 .mission-earned p {
-  font-size: 9px;
-  color: #8ca996;
+  font-size: 11px;
+  color: var(--app-muted);
   margin: 6px 0;
 }
 .mission-large > .motion-button {
@@ -842,18 +848,18 @@
   display: inline-flex;
   align-items: center;
   padding: 7px 10px;
-  font-size: 8px;
+  font-size: 11px;
   letter-spacing: 1px;
   line-height: 1.5;
   border-radius: 20px;
-  border: 1px solid #a5864f55;
-  color: #e4c78e;
-  background: #6b53211f;
+  border: 1px solid var(--app-alert-border);
+  color: var(--app-alert-text);
+  background: var(--app-alert-bg);
 }
 .motion-live-tag {
-  border-color: #56866a66;
-  background: #1c482326;
-  color: #b0d8b7;
+  border-color: var(--app-accent-border);
+  background: var(--app-accent-soft);
+  color: var(--app-accent-text);
 }
 .league-preview > .league-emblem {
   margin-top: 35px;
@@ -870,7 +876,7 @@
 .league-preview > p {
   font-size: 13px;
   line-height: 1.9;
-  color: #a5b8aa;
+  color: var(--app-muted);
   margin: 10px 0 27px;
 }
 .league-preview > .motion-disclaimer {
@@ -882,8 +888,8 @@
   display: flex;
   align-items: center;
   gap: 15px;
-  border: 1px solid #8cab6577;
-  background: #25402a;
+  border: 1px solid var(--app-accent-border);
+  background: var(--app-accent-soft);
   padding: 18px 20px;
   border-radius: 14px;
   text-align: left;
@@ -891,7 +897,7 @@
 }
 .league-own-row > span:first-child {
   font-size: 22px;
-  color: #b1cf98;
+  color: var(--app-accent-text);
 }
 .league-avatar {
   display: grid;
@@ -899,8 +905,8 @@
   width: 39px;
   height: 39px;
   border-radius: 50%;
-  background: #13281c;
-  color: #a7cf94;
+  background: var(--app-inset);
+  color: var(--app-accent-text);
 }
 .league-own-row strong {
   font-size: 12px;
@@ -910,8 +916,8 @@
   font-weight: 500;
 }
 .league-own-row small {
-  font-size: 9px;
-  color: #a3b9aa;
+  font-size: 11px;
+  color: var(--app-muted);
   display: block;
   margin-top: 5px;
 }
@@ -937,7 +943,7 @@
 .motion-muted {
   font-size: 12px;
   line-height: 1.9;
-  color: #9cb7a5;
+  color: var(--app-muted);
 }
 .activity-ring {
   width: 245px;
@@ -954,11 +960,11 @@
 }
 .activity-ring circle {
   fill: none;
-  stroke: #284430;
+  stroke: var(--app-border);
   stroke-width: 5;
 }
 .activity-ring .activity-ring-progress {
-  stroke: #b5df96;
+  stroke: var(--app-primary);
   stroke-linecap: round;
   stroke-dasharray: 672;
   stroke-dashoffset: calc(672 * (1 - var(--progress)));
@@ -974,7 +980,7 @@
   gap: 10px;
 }
 .activity-ring > div > svg {
-  color: #9ccc91;
+  color: var(--app-accent-text);
 }
 .activity-ring strong {
   font-size: 41px;
@@ -983,11 +989,11 @@
 }
 .activity-ring span {
   font-size: 10px;
-  color: #91ae9b;
+  color: var(--app-muted);
 }
 .activity-ring small {
   font-size: 11px;
-  color: #c1d7c0;
+  color: var(--app-accent-text);
   margin-top: 6px;
 }
 .motion-gps-status {
@@ -996,13 +1002,13 @@
   justify-content: center;
   gap: 7px;
   font-size: 10px;
-  color: #a8c3ae;
+  color: var(--app-muted);
   line-height: 1.8;
 }
 .motion-gps-status > i {
   width: 5px;
   height: 5px;
-  background: #8bd89e;
+  background: var(--app-primary);
   border-radius: 50%;
 }
 .motion-trace-empty {
@@ -1010,16 +1016,16 @@
   align-items: center;
   justify-content: center;
   gap: 10px;
-  border: 1px dashed #5a815a55;
+  border: 1px dashed var(--app-border);
   border-radius: 12px;
   min-height: 95px;
-  color: #89a391;
+  color: var(--app-muted);
   font-size: 10px;
   margin: 20px 0;
 }
 .motion-trace {
   margin: 20px 0 15px;
-  background: #0b1b11;
+  background: var(--app-inset);
   border: 1px solid var(--motion-line);
   border-radius: 13px;
   overflow: hidden;
@@ -1031,8 +1037,8 @@
 }
 .motion-trace > span {
   display: block;
-  font-size: 8px;
-  color: #849f8d;
+  font-size: 11px;
+  color: var(--app-muted);
   margin: 0 0 9px;
 }
 .motion-sensor-row {
@@ -1041,18 +1047,18 @@
   justify-content: center;
   gap: 10px;
   flex-wrap: wrap;
-  font-size: 9px;
-  color: #8ca796;
+  font-size: 11px;
+  color: var(--app-muted);
   line-height: 1.7;
 }
 .motion-sensor-row button {
   border: 0;
   background: transparent;
   min-height: 33px;
-  color: #bfdaa9;
+  color: var(--app-accent-text);
   text-decoration: underline;
   text-underline-offset: 4px;
-  font-size: 9px;
+  font-size: 11px;
 }
 .provisional-reward {
   display: flex;
@@ -1064,19 +1070,19 @@
   margin-top: 15px;
 }
 .provisional-reward > span {
-  font-size: 9px;
-  color: #8ca694;
+  font-size: 11px;
+  color: var(--app-muted);
 }
 .provisional-reward strong {
   display: block;
-  color: #cce5b1;
+  color: var(--app-accent-text);
   font-size: 12px;
   margin-top: 4px;
   font-weight: 500;
 }
 .provisional-reward > small {
-  font-size: 8px;
-  color: #88a38e;
+  font-size: 11px;
+  color: var(--app-muted);
   line-height: 1.8;
   margin-left: auto;
 }
@@ -1099,7 +1105,7 @@
   font-size: 10px !important;
   min-height: 40px;
   margin: 10px auto 0;
-  color: #8ca694;
+  color: var(--app-muted);
   border: 0;
   background: transparent;
 }
@@ -1125,7 +1131,7 @@
   left: 8px;
   right: 8px;
   bottom: 26px;
-  border: 1px solid #88b77b40;
+  border: 1px solid var(--app-accent-border);
   border-radius: 50%;
   transform: rotateX(10deg);
 }
@@ -1133,7 +1139,7 @@
   font-size: 52px;
   letter-spacing: -2px;
   font-weight: 500;
-  color: #d9eeb1;
+  color: var(--app-accent-text);
   line-height: 1.1;
 }
 .motion-reward-number > span {
@@ -1141,11 +1147,11 @@
   display: block;
   letter-spacing: 0.2px;
   margin-top: 9px;
-  color: #b7cda4;
+  color: var(--app-accent-text);
 }
 .reward-reason {
   font-size: 10px;
-  color: #9fb698;
+  color: var(--app-muted);
   line-height: 1.8;
   margin: 19px 0;
 }
@@ -1157,8 +1163,8 @@
   padding: 20px 0;
 }
 .completion-stats > span {
-  font-size: 8px;
-  color: #8da895;
+  font-size: 11px;
+  color: var(--app-muted);
   display: flex;
   align-items: center;
   flex-direction: column;
@@ -1167,7 +1173,7 @@
 }
 .completion-stats strong {
   font-size: 15px;
-  color: #e0edd9;
+  color: var(--app-accent-text);
   font-weight: 500;
 }
 .motion-completion > .motion-button {
@@ -1179,7 +1185,7 @@
   justify-content: center;
   gap: 7px;
   font-size: 11px;
-  color: #94ad9b !important;
+  color: var(--app-muted) !important;
   margin: 22px 0;
   min-height: 40px;
 }
@@ -1286,7 +1292,7 @@
     box-shadow: 0 0 0 0 transparent;
   }
   95% {
-    box-shadow: 0 0 0 5px #b5df7a33;
+    box-shadow: 0 0 0 5px var(--app-accent-soft);
   }
   100% {
     box-shadow: 0 0 0 0 transparent;
@@ -1328,7 +1334,7 @@
     height: 182px;
   }
   .motion-hero .motion-eyebrow {
-    font-size: 7px;
+    font-size: 11px;
   }
   .motion-mission-bottom {
     margin-left: -23px;
@@ -1338,7 +1344,7 @@
     padding: 23px 21px;
   }
   .activity-mode-options > button {
-    font-size: 9px;
+    font-size: 11px;
   }
   .motion-league-teaser {
     padding: 24px 22px;
@@ -1431,13 +1437,13 @@
     padding: 25px 20px;
   }
   .wallet-hero .motion-eyebrow {
-    font-size: 7px;
+    font-size: 11px;
   }
   .wallet-history > h2 {
     font-size: 21px;
   }
   .wallet-hero > p {
-    font-size: 9px;
+    font-size: 11px;
   }
   .mission-large,
   .motion-rules {
@@ -1465,14 +1471,14 @@
     border-radius: 11px 11px 11px 3px;
   }
   .motion-logo small {
-    font-size: 8px;
+    font-size: 11px;
     letter-spacing: 3.9px;
   }
   .motion-header-right {
     gap: 11px;
   }
   .motion-prototype {
-    font-size: 7px;
+    font-size: 11px;
     letter-spacing: 1px;
   }
   .motion-wallet-pill {
@@ -1494,7 +1500,7 @@
     max-width: 315px;
   }
   .motion-intro p {
-    font-size: 7px;
+    font-size: 11px;
     letter-spacing: 1.35px;
     margin-bottom: 8px;
   }
@@ -1509,11 +1515,11 @@
     padding: 20px 20px 0;
   }
   .motion-section-label {
-    font-size: 8px;
+    font-size: 11px;
     letter-spacing: 1.1px;
   }
   .motion-section-label > span:last-child {
-    font-size: 7px;
+    font-size: 11px;
     letter-spacing: 0.8px;
   }
   .motion-hero-content {
@@ -1527,7 +1533,7 @@
     margin: 12px 0;
   }
   .motion-hero .motion-eyebrow {
-    font-size: 6px;
+    font-size: 11px;
     letter-spacing: 0.65px;
   }
   .motion-hero p {
@@ -1553,7 +1559,7 @@
     max-width: 200px;
   }
   .mission-reward {
-    font-size: 9px;
+    font-size: 11px;
     gap: 6px;
     margin-top: 12px;
   }
@@ -1564,7 +1570,7 @@
     margin-left: -20px;
     margin-right: -20px;
     padding: 12px 18px;
-    font-size: 8px;
+    font-size: 11px;
     line-height: 1.8;
     gap: 8px;
   }
@@ -1595,7 +1601,7 @@
     min-height: 48px;
   }
   .start-card-note {
-    font-size: 8px;
+    font-size: 11px;
   }
   .motion-demo-link {
     font-size: 10px !important;
@@ -1611,7 +1617,7 @@
     font-size: 21px;
   }
   .weekly-footer {
-    font-size: 8px;
+    font-size: 11px;
   }
   .weekly-footer strong {
     font-size: 11px;
@@ -1638,7 +1644,7 @@
   .motion-footer {
     flex-direction: column;
     align-items: center;
-    font-size: 8px;
+    font-size: 11px;
     gap: 8px;
     padding: 22px 0 100px;
     text-align: center;
@@ -1652,7 +1658,7 @@
   }
   .motion-nav > a,
   .motion-nav > button {
-    font-size: 8px;
+    font-size: 11px;
     gap: 6px;
     min-height: 47px;
   }
@@ -1672,7 +1678,7 @@
     margin-top: 17px;
   }
   .wallet-hero .motion-eyebrow {
-    font-size: 7px;
+    font-size: 11px;
   }
   .wallet-hero h2 {
     font-size: 60px;
@@ -1690,7 +1696,7 @@
     min-height: 245px;
   }
   .transaction-list p {
-    font-size: 9px;
+    font-size: 11px;
   }
   .motion-recording,
   .motion-completion {
@@ -1716,7 +1722,7 @@
     font-size: 37px;
   }
   .motion-gps-status {
-    font-size: 9px;
+    font-size: 11px;
   }
   .activity-actions {
     gap: 8px;
@@ -1727,16 +1733,16 @@
     gap: 6px;
   }
   .motion-sensor-row {
-    font-size: 8px;
+    font-size: 11px;
   }
   .motion-sensor-row button {
-    font-size: 8px;
+    font-size: 11px;
   }
   .motion-trace-empty {
-    font-size: 9px;
+    font-size: 11px;
   }
   .provisional-reward > small {
-    font-size: 7px;
+    font-size: 11px;
   }
   .provisional-reward strong {
     font-size: 11px;
@@ -1753,10 +1759,10 @@
     font-size: 48px;
   }
   .motion-completion > .motion-demo-tag {
-    font-size: 7px;
+    font-size: 11px;
   }
   .completion-stats > span {
-    font-size: 7px;
+    font-size: 11px;
   }
   .completion-stats strong {
     font-size: 14px;
@@ -1768,7 +1774,7 @@
     padding: 25px 20px;
   }
   .league-preview > .motion-demo-tag {
-    font-size: 6px;
+    font-size: 11px;
     letter-spacing: 0.6px;
   }
   .league-preview > .motion-button {
@@ -1787,7 +1793,7 @@
     font-size: 18px;
   }
   .league-own-row small {
-    font-size: 7px;
+    font-size: 11px;
   }
   .league-own-row strong {
     font-size: 10px;
@@ -1817,7 +1823,7 @@
     font-size: 13px;
   }
   .mission-earned p {
-    font-size: 8px;
+    font-size: 11px;
   }
   .motion-alert {
     font-size: 10px;
@@ -1850,12 +1856,12 @@
     font-size: 29px;
   }
   .motion-hero .motion-eyebrow {
-    font-size: 5.5px;
+    font-size: 11px;
   }
   .motion-mission-bottom {
     margin-left: -17px;
     margin-right: -17px;
-    font-size: 7px;
+    font-size: 11px;
   }
   .motion-start-card {
     padding: 20px 17px;
@@ -1873,7 +1879,7 @@
     width: 215px;
   }
   .motion-section-label {
-    font-size: 7px;
+    font-size: 11px;
   }
   .motion-header-right {
     gap: 8px;
@@ -1934,5 +1940,199 @@
   }
   .motion-hero h2 {
     font-size: 28px;
+  }
+}
+
+/* Embedded in the shared app shell: no second header or competing bottom bar. */
+.motion-app.motion-embedded {
+  min-height: auto;
+  padding: 0 0 12px;
+  background: transparent;
+}
+.motion-embedded .motion-shell {
+  max-width: none;
+}
+.motion-embedded .motion-intro {
+  margin-top: 8px;
+}
+.motion-embedded .motion-footer {
+  padding-bottom: 20px;
+}
+.motion-embedded .motion-recording,
+.motion-embedded .motion-completion {
+  margin-top: 6px;
+}
+.motion-app h1,
+.motion-app h2,
+.motion-app h3 {
+  font-family: var(--app-font-display);
+}
+.motion-app .motion-hero .motion-eyebrow {
+  font-size: 10px;
+  letter-spacing: 0.6px;
+  max-width: 230px;
+  display: block;
+}
+.motion-app .motion-intro p {
+  font-size: 11px;
+  letter-spacing: 1.1px;
+}
+.motion-app .motion-section-label {
+  font-size: 11px;
+  letter-spacing: 0.7px;
+}
+.motion-app .motion-section-label > span:last-child {
+  font-size: 10px;
+}
+.motion-app .motion-mode-options > button,
+.motion-app .activity-mode-options > button {
+  font-size: 12px;
+}
+.motion-app .start-card-note,
+.motion-app .gps-disclosure,
+.motion-app .motion-sensor-row,
+.motion-app .motion-sensor-row button {
+  font-size: 11px;
+}
+.motion-app .motion-demo-link,
+.motion-app .motion-cancel,
+.motion-app .motion-text-button {
+  font-size: 12px !important;
+}
+.motion-app .motion-trace > svg path {
+  stroke: var(--app-primary);
+}
+.motion-app .motion-disclaimer {
+  font-size: 11px !important;
+}
+.motion-app .completion-stats > span {
+  font-size: 11px;
+  line-height: 1.6;
+}
+.motion-app .motion-trace > span {
+  font-size: 10px;
+}
+.motion-app .motion-wallet-pill,
+.motion-app .transaction-value,
+.motion-app .motion-reward-number {
+  color: var(--app-accent-text);
+}
+.motion-app .flow-coin-shadow {
+  fill: var(--app-coin-shadow);
+  opacity: 0.22;
+}
+.motion-app .app-source-info {
+  margin-top: 18px;
+}
+.motion-app .motion-nav {
+  box-shadow: var(--app-shadow);
+}
+@media (max-width: 560px) {
+  .motion-app .motion-hero-content {
+    min-height: 246px;
+  }
+  .motion-app .motion-hero-content > div:first-child {
+    max-width: 175px;
+  }
+  .motion-app .motion-hero h2 {
+    font-size: 29px;
+  }
+  .motion-app .hero-coin {
+    top: 73px;
+    right: -13px;
+    width: 128px;
+  }
+  .motion-app .hero-coin > .flow-coin {
+    width: 128px !important;
+  }
+  .motion-app .hero-coin:before {
+    width: 136px;
+    height: 136px;
+  }
+  .motion-app .motion-hero p {
+    font-size: 12px;
+    max-width: 172px;
+  }
+  .motion-app .mission-reward {
+    font-size: 11px;
+    gap: 4px;
+  }
+  .motion-app .motion-mission-bottom {
+    font-size: 11px;
+    line-height: 1.6;
+  }
+  .motion-app .motion-mission-bottom > span {
+    max-width: calc(100% - 39px);
+  }
+  .motion-app .motion-hero .motion-eyebrow {
+    font-size: 10px;
+    line-height: 1.6;
+    max-width: 180px;
+  }
+  .motion-app .motion-section-label {
+    align-items: flex-start;
+  }
+  .motion-app .motion-section-label > span:last-child {
+    font-size: 10px;
+    line-height: 1.6;
+  }
+  .motion-app .activity-actions {
+    flex-wrap: wrap;
+  }
+  .motion-app .activity-actions > .motion-button {
+    min-width: 120px;
+    font-size: 12px !important;
+  }
+  .motion-app .league-own-row {
+    flex-wrap: wrap;
+  }
+  .motion-app .league-own-row small {
+    font-size: 10px;
+  }
+}
+
+.motion-session-return {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  padding: 13px 16px;
+  border: 1px solid var(--app-accent-border);
+  background: var(--app-accent-soft);
+  border-radius: var(--app-radius-sm);
+  margin: 0 0 18px;
+  font-size: 12px;
+  color: var(--app-accent-text);
+  line-height: 1.6;
+}
+.motion-session-return button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 44px;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font-size: 12px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+.motion-app .coin-interactive:hover > svg,
+.motion-app .coin-interactive:focus-visible > svg {
+  animation: none;
+}
+.motion-app .coin-interactive:focus-visible {
+  outline: 2px solid var(--app-primary);
+  outline-offset: 5px;
+}
+@media (max-width: 560px) {
+  .motion-session-return {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 3px;
+  }
+  .motion-session-return button {
+    align-self: flex-end;
   }
 }

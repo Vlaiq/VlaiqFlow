@@ -121,12 +121,12 @@ export function useNavigation(places: NavPlaces) {
     session.current++;
     stopWatcher();
     window.clearTimeout(acquireTimer.current);
+    request.current?.abort();
+    setLoading(false);
     if (routeFromGps.current) {
       routeFromGps.current = false;
       void loadRoutes(origin, destination.coordinate);
     }
-    request.current?.abort();
-    setLoading(false);
     setMode('preview');
     setFix(null);
     setProgress(0);
@@ -239,7 +239,10 @@ export function useNavigation(places: NavPlaces) {
         fail(
           `Poziția are o precizie de ±${Math.round(best.coords.accuracy)} m, prea mare pentru navigație (limita e ${START_ACCURACY_M} m). Locația vine probabil doar din adresa de internet: încearcă de pe telefon, alege plecarea pe hartă sau folosește DEMO.`,
         );
-      else fail('Nu am primit nicio poziție în 8 secunde. Verifică dacă locația este pornită sau folosește DEMO.');
+      else
+        fail(
+          'Nu am primit nicio poziție în 8 secunde. Verifică dacă locația este pornită sau folosește DEMO.',
+        );
     }, ACQUIRE_MS);
   }, [destination, loadRoutes, stopWatcher]);
 
@@ -251,7 +254,9 @@ export function useNavigation(places: NavPlaces) {
         if (ticket !== session.current) return;
         const c = position.coords;
         if (c.accuracy > TRACK_ACCURACY_M || Date.now() - position.timestamp > 15000) {
-          setNotice(`Semnal GPS slab (±${Math.round(c.accuracy)} m) · păstrăm ultima poziție validă`);
+          setNotice(
+            `Semnal GPS slab (±${Math.round(c.accuracy)} m) · păstrăm ultima poziție validă`,
+          );
           setFix((f) => (f ? { ...f, speed: null, speedSource: null } : f));
           return;
         }
@@ -299,7 +304,8 @@ export function useNavigation(places: NavPlaces) {
           lengths,
           previous ? progressRef.current : undefined,
         );
-        const onRoute = projection.distance < Math.max(25, c.accuracy) && c.accuracy <= SNAP_ACCURACY_M;
+        const onRoute =
+          projection.distance < Math.max(25, c.accuracy) && c.accuracy <= SNAP_ACCURACY_M;
         const along = onRoute
           ? Math.max(progressRef.current - 15, projection.progress)
           : progressRef.current;

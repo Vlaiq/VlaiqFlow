@@ -3,6 +3,7 @@ import { ChevronRight, Footprints, Info, ParkingSquare, RotateCcw } from 'lucide
 import {
   TARIFF_LABEL_RO,
   type Destination,
+  type Coordinate,
   type RecommendationMode,
   type RecommendationOption,
   type RecommendationResponse,
@@ -13,8 +14,8 @@ import { KIND_LABEL, pct, priceText, stayLabel } from './recommendationLabels';
 
 const MODES: { id: RecommendationMode; label: string; hint: string }[] = [
   { id: 'balanced', label: 'Echilibrat', hint: 'timp, șanse de loc și preț' },
-  { id: 'cheap', label: 'Ieftin', hint: 'prețul contează mai mult' },
-  { id: 'sure', label: 'Loc sigur', hint: 'evită parcările care se pot umple' },
+  { id: 'cheap', label: 'Mai ieftin', hint: 'prețul contează mai mult' },
+  { id: 'less_walk', label: 'Mai puțin mers', hint: 'mersul pe jos contează mai mult' },
 ];
 const STAYS = [30, 60, 120, 180, 300, 480];
 
@@ -31,6 +32,7 @@ type State =
 
 interface Props {
   destination: Destination;
+  origin?: Coordinate | null;
   selectedId: string | null;
   onSelect: (id: string | null) => void;
   /** The user picked an option in the list: select it and show it on the map. */
@@ -41,7 +43,15 @@ interface Props {
 }
 
 /** SmartMatch results for the chosen destination (spec §6.5–6.6). Every number comes from the backend engine. */
-export function ParkingRecommendations({ destination, selectedId, onSelect, onPick, onOpen, onResult }: Props) {
+export function ParkingRecommendations({
+  destination,
+  origin,
+  selectedId,
+  onSelect,
+  onPick,
+  onOpen,
+  onResult,
+}: Props) {
   const [mode, setMode] = useState<RecommendationMode>('balanced');
   const [stay, setStay] = useState(120);
   const [arrive, setArrive] = useState<string | null>(null); // null = now
@@ -63,6 +73,7 @@ export function ParkingRecommendations({ destination, selectedId, onSelect, onPi
       .recommend(
         {
           destination: [loc.lng, loc.lat],
+          ...(origin ? { origin } : {}),
           mode,
           stayMinutes: stay,
           maxWalkMinutes: maxWalk,
@@ -78,7 +89,14 @@ export function ParkingRecommendations({ destination, selectedId, onSelect, onPi
         },
         (e: unknown) => {
           if (ctrl.signal.aborted && !timedOut) return;
-          setResult({ state: 'error', message: timedOut ? 'Serverul nu a răspuns la timp.' : e instanceof Error ? e.message : String(e) });
+          setResult({
+            state: 'error',
+            message: timedOut
+              ? 'Serverul nu a răspuns la timp.'
+              : e instanceof Error
+                ? e.message
+                : String(e),
+          });
           onResult(null);
         },
       );
@@ -87,7 +105,7 @@ export function ParkingRecommendations({ destination, selectedId, onSelect, onPi
       ctrl.abort();
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [loc?.lng, loc?.lat, mode, stay, arrive, maxWalk, attempt]);
+  }, [loc?.lng, loc?.lat, origin?.[0], origin?.[1], mode, stay, arrive, maxWalk, attempt]);
 
   useEffect(() => () => onResult(null), [onResult]);
 
@@ -97,11 +115,17 @@ export function ParkingRecommendations({ destination, selectedId, onSelect, onPi
     <section aria-labelledby="reco-title" className="mb-3 border-b border-border pb-3">
       <div className="flex items-center gap-2">
         <ParkingSquare className="h-4 w-4 text-primary" aria-hidden />
-        <h2 id="reco-title" className="text-sm font-semibold">Unde parchezi</h2>
-        <span className="text-xs text-muted">· Where to park</span>
+        <h2 id="reco-title" className="text-sm font-semibold">
+          Unde parchezi
+        </h2>
       </div>
 
-      <div role="radiogroup" aria-label="Ce contează mai mult" className="mt-2 grid grid-cols-3 gap-1 rounded-xl bg-surface-2 p-1">
+      <p className="parking-preferences-label">PREFERINȚE PENTRU PARCARE</p>
+      <div
+        role="radiogroup"
+        aria-label="Preferințe pentru parcare"
+        className="mt-2 grid grid-cols-3 gap-1 rounded-xl bg-surface-2 p-1"
+      >
         {MODES.map((m) => (
           <button
             key={m.id}
@@ -128,7 +152,9 @@ export function ParkingRecommendations({ destination, selectedId, onSelect, onPi
             className="min-h-11 rounded-lg border border-border bg-surface-2 px-2 text-sm text-text"
           >
             {STAYS.map((s) => (
-              <option key={s} value={s}>{stayLabel(s)}</option>
+              <option key={s} value={s}>
+                {stayLabel(s)}
+              </option>
             ))}
           </select>
         </label>
@@ -140,7 +166,9 @@ export function ParkingRecommendations({ destination, selectedId, onSelect, onPi
             className="min-h-11 rounded-lg border border-border bg-surface-2 px-2 text-sm text-text"
           >
             {[5, 8, 12, 15, 20].map((m) => (
-              <option key={m} value={m}>{m} min</option>
+              <option key={m} value={m}>
+                {m} min
+              </option>
             ))}
           </select>
         </label>
@@ -166,13 +194,21 @@ export function ParkingRecommendations({ destination, selectedId, onSelect, onPi
       </div>
 
       <div className="mt-3" aria-live="polite">
-        {result.state === 'loading' && <p role="status" className="text-xs text-muted">Calculăm cea mai bună parcare…</p>}
+        {result.state === 'loading' && (
+          <p role="status" className="text-xs text-muted">
+            Calculăm cea mai bună parcare…
+          </p>
+        )}
 
         {result.state === 'error' && (
           <div role="alert" className="rounded-xl border border-border p-3 text-xs">
             <p className="text-warning">{result.message}</p>
             <p className="mt-1 text-muted">Parcările rămân vizibile pe hartă.</p>
-            <button type="button" onClick={() => setAttempt((a) => a + 1)} className="mt-2 inline-flex min-h-11 items-center gap-1 rounded-lg border border-border px-3 font-semibold">
+            <button
+              type="button"
+              onClick={() => setAttempt((a) => a + 1)}
+              className="mt-2 inline-flex min-h-11 items-center gap-1 rounded-lg border border-border px-3 font-semibold"
+            >
               <RotateCcw className="h-3 w-3" aria-hidden /> Încearcă din nou
             </button>
           </div>
@@ -182,7 +218,11 @@ export function ParkingRecommendations({ destination, selectedId, onSelect, onPi
           <div className="rounded-xl border border-border p-3 text-xs">
             <p>Nicio parcare cunoscută la cel mult {maxWalk} min de mers pe jos.</p>
             {maxWalk < 20 && (
-              <button type="button" onClick={() => setMaxWalk(20)} className="mt-2 min-h-11 rounded-lg border border-border px-3 font-semibold">
+              <button
+                type="button"
+                onClick={() => setMaxWalk(20)}
+                className="mt-2 min-h-11 rounded-lg border border-border px-3 font-semibold"
+              >
                 Caută până la 20 min
               </button>
             )}
@@ -191,7 +231,13 @@ export function ParkingRecommendations({ destination, selectedId, onSelect, onPi
 
         {result.state === 'ok' && result.data.options.length > 0 && (
           <>
-            {result.data.explanation && <p className="mb-2 text-xs leading-relaxed text-muted">{result.data.explanation}</p>}
+            {result.data.explanation && (
+              <details className="mb-3 text-xs leading-relaxed text-muted">
+                <summary>De ce această ordine?</summary>
+                <p>{result.data.explanation}</p>
+                <p>{result.data.model.note}</p>
+              </details>
+            )}
             <ol className="flex flex-col gap-2">
               {result.data.options.map((o, i) => (
                 <OptionCard
@@ -232,9 +278,14 @@ function OptionCard({
 
   return (
     <li
-      className={`rounded-xl border p-3 ${selected ? 'border-primary bg-primary/5' : 'border-border'} ${rank === 1 ? 'ring-1 ring-primary/40' : ''}`}
+      className={`parking-result-card rounded-xl border p-4 ${selected ? 'border-primary bg-primary/5' : 'border-border'} ${rank === 1 ? 'ring-1 ring-primary/40' : ''}`}
     >
-      <button type="button" onClick={onSelect} aria-pressed={selected} className="flex w-full items-start gap-2 text-left focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary">
+      <button
+        type="button"
+        onClick={onSelect}
+        aria-pressed={selected}
+        className="flex w-full items-start gap-2 text-left focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary"
+      >
         <span
           className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-xs font-bold ${rank === 1 ? 'bg-primary text-primary-fg' : 'bg-surface-2 text-text'}`}
           aria-hidden
@@ -253,30 +304,52 @@ function OptionCard({
         </span>
       </button>
 
-      <dl className="mt-2 grid grid-cols-3 gap-2 text-xs">
+      <dl className="parking-card-facts">
         <div>
-          <dt className="text-muted">Pe jos</dt>
-          <dd className="flex items-center gap-1 font-semibold tabular-nums">
-            <Footprints className="h-3 w-3" aria-hidden />
-            {Math.max(1, Math.round(o.walk.minutes))} min
+          <dt>Drum auto + pe jos</dt>
+          <dd>
+            {o.journeyMinutes != null
+              ? `~${Math.max(1, Math.round(o.journeyMinutes))} min`
+              : 'Necunoscut'}
           </dd>
-          <dd className="text-muted tabular-nums">{o.walk.meters} m</dd>
         </div>
         <div>
-          <dt className="text-muted">Șanse de loc</dt>
-          <dd className="font-semibold tabular-nums">~{pct(o.pFree.value)}</dd>
-          <dd><QualityBadge quality={o.pFree.quality} /></dd>
+          <dt>Ultima parte, pe jos</dt>
+          <dd>~{Math.max(1, Math.round(o.walk.minutes))} min</dd>
         </div>
         <div>
-          <dt className="text-muted">Cost {stayLabel(stayMinutes)}</dt>
-          <dd className="font-semibold tabular-nums">{priceText(o)}</dd>
-          <dd><QualityBadge quality={o.price.quality} /></dd>
+          <dt>Cost pentru {stayLabel(stayMinutes)}</dt>
+          <dd>{priceText(o)}</dd>
+        </div>
+        <div>
+          <dt>Distanță pe jos estimată</dt>
+          <dd>{o.walk.meters} m</dd>
         </div>
       </dl>
+      <p className="parking-availability">
+        <Info size={12} /> Date de ocupare indisponibile
+      </p>
+      <p className="parking-card-quality">
+        Estimare, nu loc confirmat. Durata nu include căutarea unui loc.
+      </p>
+      <details className="parking-card-source">
+        <summary>Vezi sursa și ipotezele</summary>
+        <p>{o.walk.source}</p>
+        <p>
+          {o.price.source} · {o.price.note}
+        </p>
+        <p>{o.drive?.source ?? 'Alege plecarea pentru a calcula drumul auto.'}</p>
+        <p>
+          Model de ocupare: ~{pct(o.pFree.value)} probabilitate estimată, fără validare prin
+          măsurători live. {o.pFree.source}
+        </p>
+      </details>
 
       {o.flags.length > 0 && (
         <ul className="mt-2 list-disc pl-4 text-xs text-warning">
-          {o.flags.map((f) => <li key={f}>{f}</li>)}
+          {o.flags.map((f) => (
+            <li key={f}>{f}</li>
+          ))}
         </ul>
       )}
 
@@ -287,7 +360,7 @@ function OptionCard({
           rank === 1 ? 'bg-primary text-primary-fg' : 'border border-border text-text'
         }`}
       >
-        Detalii și traseu <ChevronRight className="h-4 w-4" aria-hidden />
+        Vezi traseul <ChevronRight className="h-4 w-4" aria-hidden />
       </button>
     </li>
   );
@@ -302,13 +375,23 @@ function HowWeRank({ data }: { data: RecommendationResponse }) {
       </summary>
       <div className="mt-2 space-y-1 text-muted">
         <p>
-          Fiecare parcare primește un cost în minute: <strong className="text-text">minute pe jos + (1 − șanse de loc) × {params.fullPenaltyMinutes} min
-          + preț × {params.minutesPerCurrency} min</strong>. {params.fullPenaltyMinutes} min este timpul pierdut dacă parcarea e plină și cauți alta.
+          Fiecare parcare primește un cost în minute:{' '}
+          <strong className="text-text">
+            minute pe jos + (1 − șanse de loc) × {params.fullPenaltyMinutes} min + preț ×{' '}
+            {params.minutesPerCurrency} min
+          </strong>
+          . {params.fullPenaltyMinutes} min este timpul pierdut dacă parcarea e plină și cauți alta.
           Câștigă costul cel mai mic.
         </p>
         <p>{data.model.note}</p>
-        <p>Model: {data.model.name}. Am analizat {data.considered} parcări la cel mult {params.maxWalkMinutes} min de mers.</p>
-        <p>Prețurile Timpark vin de la Primărie și țin cont de programul plătit la ora aleasă. Un preț necunoscut nu este socotit gratuit.</p>
+        <p>
+          Model: {data.model.name}. Am analizat {data.considered} parcări la cel mult{' '}
+          {params.maxWalkMinutes} min de mers.
+        </p>
+        <p>
+          Prețurile Timpark vin de la Primărie și țin cont de programul plătit la ora aleasă. Un
+          preț necunoscut nu este socotit gratuit.
+        </p>
       </div>
     </details>
   );

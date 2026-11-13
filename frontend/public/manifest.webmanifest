@@ -1,12 +1,24 @@
 {
   "name": "VLAIQ FLOW",
   "short_name": "VLAIQ",
-  "description": "Park smarter. Move greener.",
+  "id": "/",
+  "description": "Parcare, trasee și mișcare activă în Timiș. Park smarter. Move greener.",
   "start_url": "/",
+  "scope": "/",
+  "lang": "ro",
   "display": "standalone",
-  "background_color": "#101916",
-  "theme_color": "#101916",
+  "background_color": "#0B1510",
+  "theme_color": "#0B1510",
+  "categories": ["navigation", "lifestyle"],
   "icons": [
+    { "src": "/icons/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "/icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "/icons/icon-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" },
     { "src": "/icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" }
+  ],
+  "shortcuts": [
+    { "name": "Explorează Timișul", "short_name": "Explorează", "url": "/" },
+    { "name": "Începe o activitate", "short_name": "Mișcare", "url": "/motion" },
+    { "name": "Portofel FLOW", "short_name": "Portofel", "url": "/wallet" }
   ]
 }

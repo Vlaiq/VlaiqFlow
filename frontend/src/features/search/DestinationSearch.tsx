@@ -53,11 +53,11 @@ export function DestinationSearch({ destinations, unavailable, onSelect }: Props
   const placeholder = unavailable
     ? 'Căutarea nu e disponibilă acum'
     : destinations
-      ? 'Unde mergi? Stradă, piață, obiectiv…'
+      ? 'Unde vrei să ajungi?'
       : 'Se încarcă străzile…';
 
   return (
-    <div className="relative flex-1">
+    <div className="relative min-w-0 flex-1">
       <label className="flex items-center gap-2 rounded-xl bg-surface-2 px-3 py-2 focus-within:ring-2 focus-within:ring-primary">
         <Search className="h-4 w-4 shrink-0 text-muted" aria-hidden />
         <span className="sr-only">Caută destinația</span>

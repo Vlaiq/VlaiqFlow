@@ -9,7 +9,7 @@ async function call(path: string, body?: unknown) {
     body: body ? JSON.stringify(body) : undefined,
     signal: AbortSignal.timeout(15000),
     cache: 'no-store',
-  });
+  }).catch(() => { throw new Error('Nu putem contacta Motion. Verifică conexiunea și reîncearcă.'); });
   const result = await response.json();
   if (!response.ok)
     throw new Error(result.error?.message ?? 'Serviciul Motion nu este disponibil.');

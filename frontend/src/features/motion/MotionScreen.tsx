@@ -33,10 +33,20 @@ import {
 import { FlowCoin } from './FlowCoin';
 import { motionApi } from './motionApi';
 import { useActivity } from './useActivity';
+import { ConfirmDialog, DataSourceInfo } from '../../components/ui';
 import './motion.css';
 
 const Icons = { walk: Footprints, run: Route, cycle: Bike };
-type Tab = 'home' | 'missions' | 'wallet' | 'league';
+export type MotionTab = 'home' | 'missions' | 'wallet' | 'league';
+type Tab = MotionTab;
+export interface MotionScreenProps {
+  embedded?: boolean;
+  tab?: MotionTab;
+  onTabChange?: (tab: MotionTab) => void;
+  onActivityChange?: (active: boolean) => void;
+  onWalletChange?: (balance: number) => void;
+  initialMode?: MotionMode;
+}
 const tabs = [
   { id: 'home', name: 'Mișcare', Icon: Leaf },
   { id: 'missions', name: 'Misiuni', Icon: Sparkles },
@@ -97,8 +107,29 @@ function Trace({ points, mode }: { points: MotionPoint[]; mode: MotionMode }) {
   );
 }
 
-export function MotionScreen() {
-  const [tab, setTab] = useState<Tab>('home');
+export function MotionScreen({
+  embedded = false,
+  tab: controlledTab,
+  onTabChange,
+  onActivityChange,
+  onWalletChange,
+  initialMode,
+}: MotionScreenProps = {}) {
+  const [localTab, setLocalTab] = useState<Tab>('home');
+  const tab = controlledTab ?? localTab;
+  const setTab = useCallback(
+    (next: Tab) => {
+      setLocalTab(next);
+      onTabChange?.(next);
+    },
+    [onTabChange],
+  );
+  const [leaveDialog, setLeaveDialog] = useState(false);
+  const activityChange = useRef(onActivityChange);
+  activityChange.current = onActivityChange;
+  const walletChange = useRef(onWalletChange);
+  walletChange.current = onWalletChange;
+  const appliedInitialMode = useRef<MotionMode>();
   const [wallet, setWallet] = useState<MotionWallet | null>(null);
   const [walletError, setWalletError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
@@ -129,6 +160,24 @@ export function MotionScreen() {
   const activity = useActivity(onReward);
   const recording = ['acquiring', 'recording', 'paused', 'submitting'].includes(activity.state);
   const completed = activity.state === 'completed';
+  const showActivity = recording && (!embedded || tab === 'home');
+  const showCompletion = completed && (!embedded || tab === 'home');
+  useEffect(() => {
+    activityChange.current?.(recording);
+  }, [recording]);
+  useEffect(() => {
+    if (initialMode && initialMode !== appliedInitialMode.current && activity.state === 'idle') {
+      activity.setMode(initialMode);
+      appliedInitialMode.current = initialMode;
+    }
+  }, [initialMode, activity.state, activity.setMode]);
+  useEffect(() => {
+    if (wallet == null) return;
+    walletChange.current?.(wallet.balance);
+    window.dispatchEvent(
+      new CustomEvent('vlaiq-wallet-updated', { detail: { balance: wallet.balance } }),
+    );
+  }, [wallet?.balance]);
   useEffect(() => {
     window.scrollTo(0, 0);
   }, [tab, recording, completed]);
@@ -148,7 +197,9 @@ export function MotionScreen() {
     if (!completed || !activity.result) return;
     setCelebrating(reward > 0);
     const stage = rewardStage.current?.getBoundingClientRect(),
-      pill = walletPill.current?.getBoundingClientRect();
+      pill = (
+        walletPill.current ?? document.querySelector<HTMLElement>('[data-flow-wallet-target]')
+      )?.getBoundingClientRect();
     if (stage && pill) {
       rewardStage.current!.style.setProperty(
         '--reward-x',
@@ -166,6 +217,11 @@ export function MotionScreen() {
     const timer = window.setTimeout(settleReward, 1800);
     return () => clearTimeout(timer);
   }, [completed, activity.result, reward, settleReward]);
+  useEffect(() => {
+    if (controlledTab != null && completed) settleReward();
+    // A shell tab change settles the reward but preserves the session and summary.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [controlledTab]);
   const ModeIcon = Icons[activity.mode];
   const todayComplete = (wallet?.todayActivities ?? 0) > 0;
   const distance = wallet?.transactions.reduce((s, t) => s + t.distance, 0) ?? 0;
@@ -188,33 +244,35 @@ export function MotionScreen() {
   };
 
   return (
-    <main className="motion-app">
+    <main className={`motion-app ${embedded ? 'motion-embedded' : ''}`}>
       <div className="motion-shell">
-        <header className="motion-header">
-          <a href="/" className="motion-logo" aria-label="VLAIQ FLOW — înapoi la hartă">
-            <span>
-              <Leaf size={20} />
-            </span>
-            <div>
-              {brand.team}
-              <small>MOTION</small>
+        {!embedded && (
+          <header className="motion-header">
+            <a href="/" className="motion-logo" aria-label="VLAIQ FLOW — înapoi la hartă">
+              <span>
+                <Leaf size={20} />
+              </span>
+              <div>
+                {brand.team}
+                <small>MOTION</small>
+              </div>
+            </a>
+            <div className="motion-header-right">
+              <span className="motion-prototype">PROTOTIP</span>
+              <button
+                ref={walletPill}
+                disabled={recording}
+                className={`motion-wallet-pill ${celebrating ? 'receiving' : ''}`}
+                aria-label={`Portofel, ${wallet?.balance ?? 0} FLOW Coins`}
+                onClick={openWallet}
+              >
+                <FlowCoin size={27} />
+                <strong>{wallet?.balance ?? '—'}</strong>
+              </button>
             </div>
-          </a>
-          <div className="motion-header-right">
-            <span className="motion-prototype">PROTOTIP</span>
-            <button
-              ref={walletPill}
-              disabled={recording}
-              className={`motion-wallet-pill ${celebrating ? 'receiving' : ''}`}
-              aria-label={`Portofel, ${wallet?.balance ?? 0} FLOW Coins`}
-              onClick={openWallet}
-            >
-              <FlowCoin size={27} />
-              <strong>{wallet?.balance ?? '—'}</strong>
-            </button>
-          </div>
-        </header>
-        {!recording && !completed && (
+          </header>
+        )}
+        {!showActivity && !showCompletion && (
           <div className="motion-intro">
             <div>
               <p>UN ORAȘ MAI VERDE ÎNCEPE CU TINE</p>
@@ -233,6 +291,19 @@ export function MotionScreen() {
             </a>
           </div>
         )}
+        {embedded && (recording || completed) && tab !== 'home' && (
+          <div className="motion-session-return" role="status">
+            <span>
+              {recording
+                ? `${motionNames[activity.mode]} · activitate ${activity.state === 'paused' ? 'în pauză' : 'în curs'}`
+                : 'Activitatea ta a fost încheiată.'}
+            </span>
+            <button type="button" onClick={() => setTab('home')}>
+              {recording ? 'Revino la activitate' : 'Vezi rezumatul'}
+              <ArrowRight size={16} />
+            </button>
+          </div>
+        )}
         {walletError && (
           <div className="motion-alert" role="alert">
             <CircleHelp size={18} />
@@ -247,7 +318,7 @@ export function MotionScreen() {
           </div>
         )}
 
-        {recording ? (
+        {showActivity ? (
           <section className="motion-recording motion-panel">
             <div className="motion-section-label">
               <span>
@@ -349,7 +420,7 @@ export function MotionScreen() {
               <X size={15} /> Anulează fără recompense
             </button>
           </section>
-        ) : completed ? (
+        ) : showCompletion ? (
           <section
             className={`motion-completion motion-panel ${celebrating ? 'is-celebrating' : ''}`}
             aria-label="Rezultatul activității"
@@ -642,13 +713,16 @@ export function MotionScreen() {
                       })}
                     </div>
                   )}
-                  <div className="wallet-trust">
-                    <ShieldCheck size={19} />
+                  <DataSourceInfo
+                    source="Jurnalul de recompense al acestui browser · observații GPS evaluate pe server"
+                    quality="estimated"
+                    updatedAt={wallet?.transactions[0]?.awardedAt}
+                  >
                     <p>
-                      Sold calculat din tranzacțiile serverului. Observațiile GPS sunt evaluate,
-                      apoi eliminate; traseele nu sunt păstrate în portofel.
+                      Soldul provine din tranzacțiile serverului. Coordonatele GPS sunt evaluate și
+                      apoi eliminate. DEMO are un sold separat.
                     </p>
-                  </div>
+                  </DataSourceInfo>
                 </section>
               </div>
             )}
@@ -760,7 +834,7 @@ export function MotionScreen() {
             )}
           </>
         )}
-        {!recording && !completed && (
+        {!showActivity && !showCompletion && (
           <footer className="motion-footer">
             <span>
               <Leaf size={13} /> Mai multă mișcare. Mai mult loc pentru oraș.
@@ -768,7 +842,7 @@ export function MotionScreen() {
             <span>GPS evaluat, nu atestat hardware.</span>
           </footer>
         )}
-        {!recording && !completed && (
+        {!embedded && !showActivity && !showCompletion && (
           <nav className="motion-nav" aria-label="Secțiuni Motion">
             <a href="/">
               <Map size={19} />
@@ -788,21 +862,34 @@ export function MotionScreen() {
             ))}
           </nav>
         )}
-        {(recording || completed) && (
+        {!embedded && (recording || completed) && (
           <a
             href="/"
             className="motion-leave"
-            onClick={(e) => {
-              if (
-                recording &&
-                !window.confirm('Oprești activitatea? Observațiile nesalvate se vor pierde.')
-              )
-                e.preventDefault();
+            onClick={(event) => {
+              if (recording) {
+                event.preventDefault();
+                setLeaveDialog(true);
+              }
             }}
           >
             <ArrowLeft size={15} /> Înapoi la hartă
           </a>
         )}
+        <ConfirmDialog
+          open={leaveDialog}
+          title="Oprești activitatea?"
+          description="Observațiile nesalvate se vor pierde. Nu se vor acorda recompense pentru anulare."
+          confirmLabel="Oprește și revino la hartă"
+          cancelLabel="Continuă activitatea"
+          danger
+          onCancel={() => setLeaveDialog(false)}
+          onConfirm={() => {
+            void activity.cancel().finally(() => {
+              window.location.href = '/';
+            });
+          }}
+        />
       </div>
     </main>
   );

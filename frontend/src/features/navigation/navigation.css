@@ -1262,3 +1262,105 @@
     transition: none;
   }
 }
+
+/* Driving controls follow the shared themes; the route remains cyan for contrast. */
+html[data-theme='light'] .navigation-screen {
+  --nav-panel: rgb(var(--surface));
+  --nav-border: rgb(var(--border));
+  --nav-muted: rgb(var(--text-muted));
+  color: rgb(var(--text));
+  background: rgb(var(--bg));
+}
+html[data-theme='light'] .navigation-screen .panel,
+html[data-theme='light'] .navigation-screen .nav-back,
+html[data-theme='light'] .navigation-screen .map-tool {
+  background: rgb(var(--surface)) !important;
+  color: rgb(var(--text));
+  border-color: rgb(var(--border)) !important;
+  box-shadow: 0 8px 30px #1c3b2412;
+}
+html[data-theme='light'] .navigation-screen .nav-wordmark {
+  color: rgb(var(--text));
+  text-shadow: none;
+}
+html[data-theme='light'] .navigation-screen .wordmark-light,
+html[data-theme='light'] .navigation-screen .nav-location-label {
+  color: rgb(var(--text-muted));
+}
+html[data-theme='light'] .navigation-screen .journey-inputs,
+html[data-theme='light'] .navigation-screen .journey-line select {
+  background: rgb(var(--surface-2));
+  color: rgb(var(--text));
+  border-color: rgb(var(--border));
+}
+html[data-theme='light'] .navigation-screen .origin-select {
+  color: rgb(var(--text));
+}
+html[data-theme='light'] .navigation-screen .route-option {
+  background: rgb(var(--surface));
+  border-color: rgb(var(--border));
+  color: rgb(var(--text));
+}
+html[data-theme='light'] .navigation-screen .route-option.selected {
+  background: #e2f3f8;
+  border-color: #72b6cf;
+}
+html[data-theme='light'] .navigation-screen .demo-start,
+html[data-theme='light'] .navigation-screen .preview-mode {
+  background: rgb(var(--surface-2));
+  color: rgb(var(--text));
+  border-color: rgb(var(--border));
+}
+html[data-theme='light'] .navigation-screen .maneuver-symbol,
+html[data-theme='light'] .navigation-screen .maneuver-road,
+html[data-theme='light'] .navigation-screen .maneuver-primary p {
+  color: rgb(var(--text));
+}
+html[data-theme='light'] .navigation-screen .next-maneuver {
+  background: rgb(var(--surface-2));
+  color: rgb(var(--text));
+}
+html[data-theme='light'] .navigation-screen .speedometer {
+  background: rgb(var(--surface));
+  color: rgb(var(--text));
+  border-color: #8fa699;
+  box-shadow: 0 4px 18px #153a2520;
+}
+html[data-theme='light'] .navigation-screen .speedometer > span,
+html[data-theme='light'] .navigation-screen .trip-metric small,
+html[data-theme='light'] .navigation-screen .trip-details,
+html[data-theme='light'] .navigation-screen .trip-details strong {
+  color: rgb(var(--text-muted));
+}
+html[data-theme='light'] .navigation-screen .arrival > strong {
+  color: rgb(var(--primary));
+}
+html[data-theme='light'] .navigation-screen .exit-navigation {
+  background: rgb(var(--surface-2));
+  color: rgb(var(--text));
+  border-color: rgb(var(--border));
+}
+html[data-theme='light'] .navigation-screen .map-unavailable {
+  background: rgb(var(--surface));
+  color: rgb(var(--text));
+  border-color: rgb(var(--border));
+}
+html[data-theme='light'] .navigation-screen .map-unavailable button {
+  color: rgb(var(--primary));
+}
+html[data-theme='light'] .navigation-screen .navigation-notice {
+  color: rgb(var(--text));
+}
+html[data-theme='light'] .navigation-screen .mode-chip {
+  background: #e5f1f6;
+  color: #24526a;
+  border-color: #9fc1d1;
+}
+html[data-theme='light'] .navigation-screen .mode-chip.is-demo {
+  background: #f5eddc;
+  color: #795316;
+  border-color: #d4b980;
+}
+html[data-theme='light'] .navigation-screen .mode-chip > span {
+  color: inherit;
+}

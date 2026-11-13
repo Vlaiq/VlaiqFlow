@@ -88,6 +88,20 @@ const base = process.env.NAV_TEST_URL || 'http://localhost:5173';
             window.__geo.watched++;
             window.__geo.fix = success;
             window.__geo.fail = error;
+            queueMicrotask(() => {
+              if (window.__geo.mode === 'denied') error({ code: 1 });
+              else
+                success({
+                  coords: {
+                    longitude: 21.2055,
+                    latitude: 45.7501,
+                    accuracy: 8,
+                    heading: null,
+                    speed: null,
+                  },
+                  timestamp: Date.now(),
+                });
+            });
             return 42;
           },
           clearWatch() {
@@ -114,7 +128,7 @@ const base = process.env.NAV_TEST_URL || 'http://localhost:5173';
     await page.getByRole('button', { name: 'Start navigație' }).click();
     await page
       .getByRole('alert')
-      .filter({ hasText: /refuzat/ })
+      .filter({ hasText: /refuzat|blocat/ })
       .waitFor();
     assert.equal(
       await page.locator('.nav-vehicle').count(),
@@ -175,7 +189,7 @@ const base = process.env.NAV_TEST_URL || 'http://localhost:5173';
     await page.locator('.speedometer').filter({ hasText: '18' }).waitFor();
     await page.evaluate(() =>
       window.__geo.fix({
-        coords: { longitude: 21.4, latitude: 45.8, accuracy: 150, heading: 0, speed: 40 },
+        coords: { longitude: 21.4, latitude: 45.8, accuracy: 200, heading: 0, speed: 40 },
         timestamp: Date.now() + 2000,
       }),
     );
