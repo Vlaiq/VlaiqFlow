@@ -12,6 +12,7 @@ export const HealthResponse = z.object({
     database: IntegrationStatus,
   }),
   parkingsLoaded: z.number().int().nonnegative(),
+  timparkFeatures: z.number().int().nonnegative(),
 });
 export type HealthResponse = z.infer<typeof HealthResponse>;
 

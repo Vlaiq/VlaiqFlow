@@ -1,4 +1,4 @@
-import { HealthResponse, ParkingsResponse } from '@vlaiq/shared';
+import { HealthResponse, ParkingsResponse, TimparkSnapshot } from '@vlaiq/shared';
 import type { z } from 'zod';
 
 // In dev the base is empty and Vite proxies /api to the backend.
@@ -20,4 +20,5 @@ async function get<S extends z.ZodTypeAny>(path: string, schema: S): Promise<z.i
 export const api = {
   health: () => get('/api/health', HealthResponse),
   parkings: () => get('/api/parkings', ParkingsResponse),
+  timpark: () => get('/api/city/parking-zones', TimparkSnapshot),
 };

@@ -8,4 +8,5 @@ Add a row before using any third-party code, data or service. A repository witho
 | [OpenStreetMap](https://www.openstreetmap.org/copyright) data | Parking locations, map data | ODbL 1.0 | Visible "© OpenStreetMap contributors" attribution; share-alike for derived databases |
 | [Overpass API](https://wiki.openstreetmap.org/wiki/Overpass_API) (overpass-api.de) | One-off export of parkings | Public instance usage policy | Low request volume, no automated polling |
 | [OpenFreeMap](https://openfreemap.org/) | Vector tiles and dark style | Free public instance; data OpenMapTiles + OSM | Keep attribution shown by the style |
+| [Primăria Timișoara](https://ghid-pmt.vercel.app/unihack) — Timpark endpoint `cont.primariatm.ro/api/mobile/parking` | Paid parking zones, lots, streets, tariffs, SMS codes | Public City Hall endpoint, GET only, no uptime guarantee | Snapshot via `pnpm data:city`, User-Agent naming the team, show source and date in the UI |
 | React, Vite, Tailwind CSS, Express, zod, lucide-react | App framework and libraries | MIT / ISC | Keep license notices (npm packages) |

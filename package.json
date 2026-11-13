@@ -11,6 +11,7 @@
     "build": "pnpm -F frontend build",
     "test": "pnpm -r test",
     "typecheck": "pnpm -r typecheck",
-    "data:parkings": "node scripts/fetch-osm-parkings.mjs"
+    "data:parkings": "node scripts/fetch-osm-parkings.mjs",
+    "data:city": "node scripts/fetch-city-data.mjs"
   }
 }

@@ -2,6 +2,7 @@ import { Router } from 'express';
 import type { HealthResponse } from '@vlaiq/shared';
 import { config } from '../config';
 import { parkingStore } from '../services/parkingStore';
+import { cityData } from '../services/cityData';
 
 export const healthRouter = Router();
 
@@ -18,6 +19,7 @@ healthRouter.get('/', (_req, res) => {
       database: status(config.databaseUrl),
     },
     parkingsLoaded: parkingStore.count(),
+    timparkFeatures: cityData.timparkCount(),
   };
   res.json(body);
 });

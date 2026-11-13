@@ -1,12 +1,22 @@
 import { useEffect, useRef } from 'react';
 import maplibregl, { type GeoJSONSource } from 'maplibre-gl';
-import { TIMISOARA_CENTER, type Parking } from '@vlaiq/shared';
+import { TIMISOARA_CENTER, type Parking, type TimparkSnapshot } from '@vlaiq/shared';
+import {
+  addTimparkLayers,
+  TIMPARK_CLICKABLE_LAYERS,
+  TIMPARK_DETAIL_LAYERS,
+  TIMPARK_SOURCE,
+  timparkPopupContent,
+} from './timparkLayers';
+
+const TAP_TOLERANCE_PX = 8;
 
 // OpenFreeMap: free vector tiles, no API key. Its style carries the OSM/OpenMapTiles attribution.
 const STYLE_URL = 'https://tiles.openfreemap.org/styles/dark';
-const SOURCE_ID = 'parkings';
+const PARKINGS_SOURCE = 'parkings';
+const PARKINGS_LAYER = 'parkings-circle';
 
-function toGeoJSON(parkings: Parking[]): GeoJSON.FeatureCollection<GeoJSON.Point> {
+function parkingsToGeoJSON(parkings: Parking[]): GeoJSON.FeatureCollection<GeoJSON.Point> {
   return {
     type: 'FeatureCollection',
     features: parkings.map((p) => ({
@@ -19,13 +29,17 @@ function toGeoJSON(parkings: Parking[]): GeoJSON.FeatureCollection<GeoJSON.Point
 
 interface Props {
   parkings: Parking[];
+  timpark: TimparkSnapshot | null;
 }
 
-export function MapView({ parkings }: Props) {
+export function MapView({ parkings, timpark }: Props) {
   const containerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<maplibregl.Map | null>(null);
+  const loadedRef = useRef(false);
   const parkingsRef = useRef(parkings);
   parkingsRef.current = parkings;
+  const timparkRef = useRef(timpark);
+  timparkRef.current = timpark;
 
   // Create the map once; tear it down on unmount.
   useEffect(() => {
@@ -34,57 +48,96 @@ export function MapView({ parkings }: Props) {
       container: containerRef.current,
       style: STYLE_URL,
       center: [TIMISOARA_CENTER.lng, TIMISOARA_CENTER.lat],
-      zoom: 13.5,
-      attributionControl: { compact: true },
+      zoom: 14,
+      attributionControl: false,
     });
     mapRef.current = map;
+    // Dev-only handle for debugging in the browser console (stripped from production builds).
+    if (import.meta.env.DEV) (window as unknown as { __vlaiqMap?: maplibregl.Map }).__vlaiqMap = map;
 
-    map.addControl(new maplibregl.NavigationControl({ showCompass: false }), 'bottom-right');
+    // Controls and the required OSM attribution sit top-right, below the header, so the info sheet never covers them.
+    map.addControl(new maplibregl.NavigationControl({ showCompass: false }), 'top-right');
     map.addControl(
       new maplibregl.GeolocateControl({ positionOptions: { enableHighAccuracy: true }, trackUserLocation: true }),
-      'bottom-right',
+      'top-right',
     );
+    map.addControl(new maplibregl.AttributionControl({ compact: true }), 'top-right');
+
+    const popup = new maplibregl.Popup({ closeButton: true, offset: 10, maxWidth: '300px' });
 
     map.on('load', () => {
-      map.addSource(SOURCE_ID, { type: 'geojson', data: toGeoJSON(parkingsRef.current) });
+      loadedRef.current = true;
+
+      map.addSource(PARKINGS_SOURCE, { type: 'geojson', data: parkingsToGeoJSON(parkingsRef.current) });
       map.addLayer({
-        id: 'parkings-circle',
+        id: PARKINGS_LAYER,
         type: 'circle',
-        source: SOURCE_ID,
+        source: PARKINGS_SOURCE,
         paint: {
           'circle-radius': ['interpolate', ['linear'], ['zoom'], 11, 3, 16, 8],
-          'circle-color': '#22C55E',
+          'circle-color': '#EAF6ED', // mint: kept distinct from the Timpark tariff colours
           'circle-stroke-color': '#101916',
           'circle-stroke-width': 1.5,
         },
       });
 
-      const popup = new maplibregl.Popup({ closeButton: false, offset: 10 });
-      map.on('click', 'parkings-circle', (e) => {
+      if (timparkRef.current) addTimparkLayers(map, timparkRef.current, PARKINGS_LAYER);
+
+      map.on('click', PARKINGS_LAYER, (e) => {
         const f = e.features?.[0];
         if (!f || f.geometry.type !== 'Point') return;
-        const name = String(f.properties?.name ?? '');
-        // textContent avoids injecting OSM-provided strings as HTML.
         const el = document.createElement('div');
-        el.style.color = '#101916';
-        el.textContent = `${name} · Disponibilitate: necunoscută`;
+        el.className = 'vlaiq-popup';
+        el.textContent = `${String(f.properties?.name ?? '')} · Disponibilitate: necunoscută · Sursa: OpenStreetMap`;
         popup.setLngLat(f.geometry.coordinates as [number, number]).setDOMContent(el).addTo(map);
       });
-      map.on('mouseenter', 'parkings-circle', () => (map.getCanvas().style.cursor = 'pointer'));
-      map.on('mouseleave', 'parkings-circle', () => (map.getCanvas().style.cursor = ''));
+
+      // One handler for all Timpark layers: the topmost feature under the cursor wins.
+      map.on('click', (e) => {
+        const snapshot = timparkRef.current;
+        if (!snapshot || !map.getSource(TIMPARK_SOURCE)) return;
+        if (map.queryRenderedFeatures(e.point, { layers: [PARKINGS_LAYER] }).length) return;
+        // Streets are thin lines: search a small box around the tap before falling back to the zone underneath.
+        const { x, y } = e.point;
+        const box: [maplibregl.PointLike, maplibregl.PointLike] = [
+          [x - TAP_TOLERANCE_PX, y - TAP_TOLERANCE_PX],
+          [x + TAP_TOLERANCE_PX, y + TAP_TOLERANCE_PX],
+        ];
+        const hit =
+          map.queryRenderedFeatures(box, { layers: TIMPARK_DETAIL_LAYERS })[0] ??
+          map.queryRenderedFeatures(e.point, { layers: TIMPARK_CLICKABLE_LAYERS })[0];
+        const id = hit?.properties?.id;
+        if (typeof id !== 'string') return;
+        const content = timparkPopupContent(snapshot, id);
+        if (content) popup.setLngLat(e.lngLat).setDOMContent(content).addTo(map);
+      });
+
+      for (const layer of [PARKINGS_LAYER, ...TIMPARK_CLICKABLE_LAYERS]) {
+        map.on('mouseenter', layer, () => (map.getCanvas().style.cursor = 'pointer'));
+        map.on('mouseleave', layer, () => (map.getCanvas().style.cursor = ''));
+      }
     });
 
     return () => {
+      popup.remove();
       map.remove();
       mapRef.current = null;
+      loadedRef.current = false;
     };
   }, []);
 
   // Push new data straight into MapLibre instead of re-rendering React.
   useEffect(() => {
-    const source = mapRef.current?.getSource(SOURCE_ID) as GeoJSONSource | undefined;
-    source?.setData(toGeoJSON(parkings));
+    const source = mapRef.current?.getSource(PARKINGS_SOURCE) as GeoJSONSource | undefined;
+    source?.setData(parkingsToGeoJSON(parkings));
   }, [parkings]);
+
+  // Timpark data may arrive after the map has loaded.
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map || !loadedRef.current || !timpark || map.getSource(TIMPARK_SOURCE)) return;
+    addTimparkLayers(map, timpark, PARKINGS_LAYER);
+  }, [timpark]);
 
   return <div ref={containerRef} className="absolute inset-0" role="region" aria-label="Harta Timișoarei" />;
 }

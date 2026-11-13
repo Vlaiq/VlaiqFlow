@@ -67,4 +67,5 @@ API request and response types are defined **once** in `shared/src/schemas` (zod
 - `pnpm dev` — frontend on http://localhost:5173 (proxies `/api`) + backend on http://localhost:8787
 - `pnpm test` / `pnpm typecheck` — all packages
 - `pnpm data:parkings` — regenerate `shared/src/data/parkings.osm.json` from OpenStreetMap
+- `pnpm data:city` — refresh the City Hall snapshots (`shared/src/data/timpark.json`); restart the backend afterwards
 - `pnpm -F backend start` — run the backend without watch (production on Vultr)
