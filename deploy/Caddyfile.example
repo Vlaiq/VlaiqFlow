@@ -1,0 +1,6 @@
+# Set FLOW_DOMAIN to your real DNS name and point that name to the deployment host.
+# Caddy obtains HTTPS certificates automatically for a reachable public domain.
+{$FLOW_DOMAIN} {
+    encode zstd gzip
+    reverse_proxy 127.0.0.1:8787
+}

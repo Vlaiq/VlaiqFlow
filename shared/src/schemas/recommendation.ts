@@ -9,11 +9,13 @@ import { TariffColor } from './timpark';
  */
 
 /** balanced = default; cheap = money weighs more; sure = a full parking costs more (risk-averse). */
-export const RecommendationMode = z.enum(['balanced', 'cheap', 'sure']);
+export const RecommendationMode = z.enum(['balanced', 'cheap', 'sure', 'less_walk']);
 export type RecommendationMode = z.infer<typeof RecommendationMode>;
 
 export const RecommendationRequest = z.object({
   destination: Coordinate,
+  /** Only an explicitly selected GPS/manual origin; never an implicit demo origin. */
+  origin: Coordinate.optional(),
   /** Arrival time; defaults to now on the server. */
   arriveAt: z.string().datetime({ offset: true }).optional(),
   stayMinutes: z.number().int().min(15).max(600).default(120),
@@ -40,6 +42,8 @@ export const RecommendationOption = z.object({
   smsCode: z.string().nullable(),
   capacity: z.object({ value: z.number().int().positive().nullable(), quality: DataQuality, source: z.string() }),
   walk: z.object({ minutes: z.number().nonnegative(), meters: z.number().nonnegative(), quality: DataQuality, source: z.string() }),
+  drive: z.object({ minutes: z.number().nonnegative().nullable(), meters: z.number().nonnegative().nullable(), quality: DataQuality, source: z.string() }).optional(),
+  journeyMinutes: z.number().nonnegative().nullable().optional(),
   pFree: z.object({
     value: z.number().min(0).max(1),
     quality: DataQuality, // 'estimated' for the rule model; never 'confirmed' without a live source

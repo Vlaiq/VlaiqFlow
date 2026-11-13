@@ -125,6 +125,10 @@ describe('SmartMatch ranking', () => {
     const floored = rank({ candidates: [unknown, cand('free')], walks: [walk(5), walk(5)], at: FRI_10, mode: 'cheap', maxWalkMinutes: 12, unknownPriceFloor: 1.78, pFreeOf: fixedP({ unknown: 0.5, free: 0.5 }) });
     expect(floored.options[0]!.id).toBe('free');
     expect(floored.options[1]!.cost.price).toBeCloseTo(1.78 * 25);
+    const withoutTariffFloor = rank({ candidates: [unknown, cand('free')], walks: [walk(5), walk(5)], at: FRI_10, mode: 'cheap', maxWalkMinutes: 12, pFreeOf: fixedP({ unknown: 0.5, free: 0.5 }) });
+    expect(withoutTariffFloor.options[0]!.id).toBe('free');
+    expect(withoutTariffFloor.options.find(o=>o.id==='unknown')!.price.total).toBeNull();
+    expect(withoutTariffFloor.options.find(o=>o.id==='unknown')!.cost.price).toBeGreaterThan(0);
   });
 
   it('cheap mode picks the free option that balanced mode does not', () => {

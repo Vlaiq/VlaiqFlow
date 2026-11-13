@@ -1,61 +1,112 @@
 # VLAIQ FLOW
 
-**Park smarter. Move greener.** A parking-first, multimodal navigation PWA for Timișoara, built by team **VLAIQ** at UniHack 2026 (Green Mobility track).
+**Park smarter. Move greener.** A Romanian-first mobility PWA for Timișoara, created by team **VLAIQ** for UniHack 2026, Green Mobility.
 
-> Status: project skeleton. Real parking locations come from OpenStreetMap. **Availability is not live data yet** and is shown as "Unknown".
+FLOW connects destination search, parking comparisons, available greener routes and active movement rewards. It extends municipal services: parking payment stays in Timpark/CityApp, public-space reports go to Sesizări. It does not claim live parking occupancy, traffic, public transport arrivals, measured emissions savings or an official partnership.
 
-## Requirements
+## What runs
 
-- Node.js 20.11+ (LTS recommended)
-- pnpm 9 (`npm install -g pnpm` or `corepack enable`)
-- git
+- **Explorează** — local street/place search, real Timpark/OSM parking data, real Timiș county boundary and map controls. Phone bottom sheet and laptop planning sidebar.
+- **Parking SmartMatch** — deterministic ranking, distinct parking preferences, known tariffs, estimated walking legs and honest unknowns. Driving time is added only from a configured routing matrix and an explicit GPS/manual origin.
+- **Green Switch / FLOW Opportunity** — actual available driving/walking/cycling routes and explained trade-offs. Active routes require ORS; missing providers produce unavailable states, not invented geometries. Selecting a route can open Motion but never awards coins.
+- **Motion / Wallet** — foreground GPS recording, deterministic plausibility checks, idempotent server rewards and a browser-bound prototype ledger. The original metallic SVG FLOW Coin has reduced-motion-aware reward animations. DEMO uses a separate balance.
+- **Provocări / Comunitate** — achievable activity goals and an explicitly local, opt-in League preview. No fabricated public participants.
+- **FLOW City / Data Trust** — public dataset coverage, provenance and deterministic simulated parking allocations, with non-personal exports.
+- **Forest Night / Mist Day** — persisted light/dark preference, common components, four primary navigation entries and one wallet control. Motion state stays mounted across internal navigation.
+- **Installable shell** — PWA icons, safe built-shell offline cache and an install prompt where supported. APIs, wallet responses, GPS and external map tiles are never put in the service-worker cache.
 
-## Quick start on Windows
+## Requirements and setup
 
-Double-click **`start.cmd`** in the project folder. It installs dependencies the first time, opens two windows (backend on port 8787, frontend on port 5173) and then the app at http://localhost:5173. Close the two windows to stop it.
-
-If PowerShell refuses `npm` or `pnpm` ("running scripts is disabled"), type `npm.cmd` / `pnpm.cmd` instead, or use `start.cmd`.
-
-## Setup
+Use Node.js 20.11+ (22/24 recommended) and **pnpm 12.18.0**, pinned in `package.json`.
 
 ```bash
-pnpm install
-cp backend/.env.example backend/.env      # fill in ORS_API_KEY when routing is added
+corepack enable
+pnpm install --frozen-lockfile
+# Only create these files if they do not already exist; preserve your own values.
+cp backend/.env.example backend/.env
 cp frontend/.env.example frontend/.env
-pnpm data:parkings                        # downloads OSM parkings for Timișoara
-pnpm dev                                  # frontend http://localhost:5173, backend http://localhost:8787
+pnpm dev
 ```
 
-On Windows PowerShell use `Copy-Item` instead of `cp`.
+Frontend: port **5173**. Backend: **8787**, proxied through `/api` during development. The committed data snapshots are sufficient to try search, parking and source views; regenerating data is optional. On Windows, use `start.cmd` or `pnpm.cmd` if PowerShell blocks scripts. In the managed cloud, Node 24 requests use inherited proxy trust with `NODE_USE_ENV_PROXY=1 pnpm dev`.
 
-## Scripts
+### Configuration
 
-**VLAIQ MOTION:** open the Motion link or `/motion` for activity recording, FLOW Coins,
-the prototype wallet and an explicitly separate demo. See [Motion documentation](docs/motion.md)
-for eligibility, privacy, device requirements and the complete demonstration flow.
+| Variable | Where | Purpose |
+|---|---|---|
+| `API_PORT` | backend | API port, default 8787 |
+| `CORS_ORIGINS` | backend | Allowed frontend origins; comma-separated |
+| `ORS_API_KEY` | backend secret | Preferred driving routes/matrix and genuine foot/cycle routes |
+| `VITE_API_URL` | frontend, public | Empty for same-origin `/api`; no secrets here |
+| `GEMINI_API_KEY`, `ELEVENLABS_API_KEY`, `DATABASE_URL` | backend, optional | Reserved optional integrations; core features do not require them |
 
-| Command | What it does |
+Without ORS, the existing OSRM public demo is a low-volume driving fallback. It is not used to fake cycling or walking. Motion itself requires no external provider key. GPS on a physical phone requires **HTTPS**. Browser sensors and Wake Lock are optional; keep activity recording in the foreground.
+
+## Map scope and data coverage
+
+The visible geographic scope is the **real Timiș county polygon**, selected by `RO-TM` metadata from Natural Earth Admin-1, public domain. It is a generalized cartographic boundary, not a cadastral survey. Camera bounds derive from that geometry; a polygon mask de-emphasizes outside territory. See [county provenance](docs/county.md).
+
+Official Timpark information and the routing/recommendation service area remain mainly **Timișoara**. Showing other county localities does not invent parking, pricing or transit coverage there. Markers and destination choices are polygon checked; complete provider routes are not clipped and presented as complete journeys.
+
+OpenFreeMap supplies the normal real vector basemap. If unavailable, a clearly labeled local fallback draws **only actual municipal Timpark street/zone geometries**. It has partial coverage and no invented roads, labels or buildings. Search, parking and the county outline can still be demonstrated under restricted networking.
+
+Data snapshots live in `shared/src/data` with source/date metadata. Municipal APIs are read by backend/scripts and snapshotted rather than polled by every user. A parking on a map is not a confirmed free space; unknown prices stay unknown. The occupancy model is an uncalibrated estimate.
+
+## Run the demonstration
+
+1. Search for a real place such as **Piața Victoriei**. Review nearby parking and sources.
+2. Choose your origin using GPS or **Alege pe hartă**. Open a parking's route or compare available Green Switch routes.
+3. Choose walking/cycling when a real provider route exists and open Motion. No coins are granted for that choice.
+4. Record and finish an eligible real activity, or explicitly use **DEMO** for a synthetic visual backup. DEMO coins stay separate.
+5. Inspect the wallet, challenges and local community preview. Open **Pentru Primărie** from the menu for public coverage and the labeled FLOW Balance simulation.
+
+The [jury runbook](docs/jury-demo.md) explains the complete scenario, offline limits and what has not been independently verified. Current official sites may be blocked by the cloud network policy; supplied municipal guidance is distinguished from independently checked competition rules. Physical user tests, legal license selection and real-phone validation are not fabricated.
+
+## Verification
+
+```bash
+pnpm typecheck
+pnpm test
+pnpm build
+```
+
+Browser scripts use an installed Playwright and Chromium. In the prepared cloud:
+
+```bash
+export PLAYWRIGHT_MODULE=/opt/codex/cua_node/lib/node_modules/playwright
+node scripts/test-premium-browser.cjs
+node scripts/test-motion-browser.cjs
+node scripts/test-navigation-browser.cjs
+node scripts/test-site-browser.cjs
+node scripts/test-pwa-browser.cjs
+```
+
+Some browser scenarios intercept routing with **explicit synthetic test fixtures**; they do not prove provider access or a physical walk. `MOTION_LIVE_TEST=1 node scripts/test-motion-browser.cjs` additionally runs about 100 seconds of controlled GPS inputs against the actual server clock, verifying award/idempotency. Real Android/iOS GPS, sensor permissions and usability with residents still require physical testing. There is no lint script in this repository.
+
+## Deployment
+
+Build the frontend, then run the API and compiled SPA on one origin:
+
+```bash
+pnpm build
+NODE_ENV=production pnpm -F backend start
+```
+
+In production, the backend serves `frontend/dist` if present, supports deep-link refresh and retains `/api` routing. Set a real domain pointing to your VM, run Caddy with [the example](deploy/Caddyfile.example), and set `FLOW_DOMAIN` plus the matching `CORS_ORIGINS`. No domain or deployment is claimed to be provisioned by these instructions.
+
+Keep `backend/.data` persistent, private and outside version control. It contains the single-process prototype wallet ledger, not raw GPS traces. Use a transactional database and proper authentication before multi-instance deployment or trusted public rewards. All API keys stay server-side. A static frontend on another host needs a separately configured HTTPS backend; same-origin proxying is recommended for wallet cookies.
+
+## Maintenance and handover
+
+| Command | Purpose |
 |---|---|
-| `pnpm dev` | Runs frontend (Vite) and backend (tsx watch) together |
-| `pnpm test` | Runs Vitest in every package |
-| `pnpm typecheck` | TypeScript check in every package |
-| `pnpm build` | Production build of the frontend |
-| `pnpm data:parkings` | Regenerates `shared/src/data/parkings.osm.json` from OpenStreetMap |
+| `pnpm data:city` | Refresh official Timpark/street/place snapshots; restart backend |
+| `pnpm data:parkings` | Refresh OSM parking snapshot |
+| `pnpm data:osm-places` | Refresh named streets/major places from OSM |
+| `pnpm build` | Type-check frontend, build lazy chunks and prepare versioned public PWA shell |
 
-## Structure
+Likely future owners: Timpark for parking operations; the municipal digital/mobility teams for integration and analysis. Adoption is a proposal, not a partnership. Backend/README setup needs no AI or personally paid map account to demonstrate local data and Motion, but real active routing needs a provisioned provider.
 
-```text
-frontend/   React + Vite + Tailwind + MapLibre (PWA)
-backend/    Express API; proxies every keyed provider, so no secrets reach the browser
-shared/     zod schemas (API contracts), branding, static data
-scripts/    data preparation (OSM export)
-docs/       spec, team checklist, third-party licenses
-```
+Project code license selection remains a **team decision**, tracked in `docs/team-checklist.md`; this README does not claim an absent MIT/Apache license. Third-party assets/data retain their own terms: OSM ODbL, Natural Earth public domain, provider policies and npm package notices. See [third-party attribution](docs/third-party.md).
 
-## Data honesty
-
-Every value carries a quality label: confirmed, estimated, unknown or simulated. We never present simulated or estimated data as real-time city data. See `docs/spec.md` §5.
-
-## Attribution
-
-Map data © OpenStreetMap contributors (ODbL). Tiles by OpenFreeMap / OpenMapTiles. See `docs/third-party.md`.
+Detailed guides: [themes](docs/themes.md), [navigation](docs/navigation.md), [Motion/privacy](docs/motion.md), [Green Switch](docs/green-switch.md), [city handover](docs/city-handover.md), [specification](docs/spec.md).

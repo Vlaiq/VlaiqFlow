@@ -1,4 +1,7 @@
 export * from './brand';
+export * from './schemas/journey';
+export * from './balance';
+export * from './county';
 export * from './motion';
 export * from './schemas/quality';
 export * from './schemas/parking';

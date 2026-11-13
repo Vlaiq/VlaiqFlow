@@ -37,7 +37,8 @@ export function rank({ candidates, walks, at, mode, maxWalkMinutes, pFreeOf, unk
   const options = reachable.map(({ c, walk }): RecommendationOption => {
     const p = pFreeOf ? pFreeOf(c, at) : pFree(c.profile, at, c.capacity.value);
     const flags = [...c.flags];
-    const priceForCost = c.price.total ?? worstPrice;
+    // A scoring penalty, never a quoted price: unknown must not tie a known free tariff.
+    const priceForCost = c.price.total ?? Math.max(1, worstPrice);
     if (c.price.total == null) flags.push('Preț necunoscut: în clasament contează ca cel mai scump preț posibil');
     const cost = {
       walk: r1(walk.minutes),

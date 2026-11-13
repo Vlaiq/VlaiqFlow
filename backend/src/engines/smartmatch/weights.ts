@@ -13,6 +13,7 @@ export const MODE_PARAMS: Record<RecommendationMode, { fullPenaltyMinutes: numbe
   balanced: { fullPenaltyMinutes: 12, minutesPerCurrency: 8 },
   cheap: { fullPenaltyMinutes: 10, minutesPerCurrency: 25 },
   sure: { fullPenaltyMinutes: 20, minutesPerCurrency: 4 },
+  less_walk: { fullPenaltyMinutes: 4, minutesPerCurrency: 2 },
 };
 
 /** Straight-line pre-filter before asking the walking router (≈ 12–13 min on foot). */
