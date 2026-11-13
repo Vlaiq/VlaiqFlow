@@ -24,6 +24,18 @@ export interface Fix {
   timestamp: number;
 }
 
+/** GPS thresholds (spec §6.2): fixes worse than 100 m are not used; jumps > 150 m within 2 s are ignored. */
+const ACQUIRE_ACCURACY_M = 100;
+const GOOD_ACCURACY_M = 30;
+const ACQUIRE_MS = 15000;
+const SNAP_ACCURACY_M = 50;
+const MAX_JUMP_M = 150;
+const REROUTE_INTERVAL_MS = 20000;
+const GPS_DENIED =
+  'Accesul la locație este blocat. Apasă iconița de lângă adresa site-ului, permite Locația și încearcă din nou, sau folosește DEMO.';
+const GPS_UNAVAILABLE =
+  'Dispozitivul nu oferă o poziție. Verifică dacă locația este pornită (pe Windows: Setări → Confidențialitate → Locație) sau folosește DEMO.';
+
 export function useNavigation(places: NavPlaces) {
   const DEMO_ORIGIN = places.origin.coordinate;
   const [mode, setMode] = useState<Mode>('preview');
@@ -55,6 +67,9 @@ export function useNavigation(places: NavPlaces) {
   const deviationCount = useRef(0);
   const rerouting = useRef(false);
   const spoken = useRef('');
+  const acquireTimer = useRef<number>();
+  const gpsError = useRef(false); // last error came from GPS, so "Reîncearcă" restarts GPS
+  const routeFromGps = useRef(false); // current routes start at the GPS position, not at `origin`
 
   const stopWatcher = useCallback(() => {
     if (watcher.current != null) navigator.geolocation?.clearWatch(watcher.current);
@@ -79,8 +94,10 @@ export function useNavigation(places: NavPlaces) {
       progressRef.current = 0;
       return true;
     } catch (e) {
-      if (!controller.signal.aborted)
+      if (!controller.signal.aborted) {
+        gpsError.current = false;
         setError(e instanceof Error ? e.message : 'Rutarea nu este disponibilă.');
+      }
       return false;
     } finally {
       if (request.current === controller) setLoading(false);
@@ -98,6 +115,11 @@ export function useNavigation(places: NavPlaces) {
   const stop = useCallback(() => {
     session.current++;
     stopWatcher();
+    window.clearTimeout(acquireTimer.current);
+    if (routeFromGps.current) {
+      routeFromGps.current = false;
+      void loadRoutes(origin, destination.coordinate);
+    }
     request.current?.abort();
     setLoading(false);
     setMode('preview');
@@ -113,11 +135,12 @@ export function useNavigation(places: NavPlaces) {
     rerouting.current = false;
     spoken.current = '';
     window.speechSynthesis?.cancel();
-  }, [stopWatcher]);
+  }, [stopWatcher, loadRoutes, origin, destination]);
   useEffect(
     () => () => {
       session.current++;
       stopWatcher();
+      window.clearTimeout(acquireTimer.current);
       request.current?.abort();
       window.speechSynthesis?.cancel();
     },
@@ -136,56 +159,83 @@ export function useNavigation(places: NavPlaces) {
     setLoading(false);
     setMode('acquiring');
     setError(null);
-    setNotice('Căutăm o poziție GPS precisă…');
-    navigator.geolocation.getCurrentPosition(
-      async (position) => {
-        if (ticket !== session.current) return;
-        if (position.coords.accuracy > 65) {
+    gpsError.current = false;
+    setNotice('Căutăm poziția ta…');
+
+    // The first fix is often coarse (Wi-Fi / cell). Watch for up to ACQUIRE_MS and keep the best one:
+    // start at once on a good fix, otherwise use the best fix within the spec's 100 m limit (§6.2).
+    let best: GeolocationPosition | null = null;
+    let done = false;
+    const fail = (message: string) => {
+      if (ticket !== session.current) return;
+      stopWatcher();
+      window.clearTimeout(acquireTimer.current);
+      gpsError.current = true;
+      setMode('preview');
+      setNotice(null);
+      setError(message);
+    };
+    const finish = async (position: GeolocationPosition) => {
+      if (done || ticket !== session.current) return;
+      done = true;
+      stopWatcher();
+      window.clearTimeout(acquireTimer.current);
+      const coordinate: Coordinate = [position.coords.longitude, position.coords.latitude];
+      setNotice('Calculăm ruta din poziția ta…');
+      if (!(await loadRoutes(coordinate, destination.coordinate)) || ticket !== session.current) {
+        if (ticket === session.current) {
           setMode('preview');
           setNotice(null);
-          setError(
-            'Poziția GPS este prea imprecisă. Încearcă dintr-un spațiu deschis sau folosește DEMO.',
-          );
-          return;
         }
-        const coordinate: Coordinate = [position.coords.longitude, position.coords.latitude];
-        setNotice('Calculăm ruta din poziția ta…');
-        if (!(await loadRoutes(coordinate, destination.coordinate)) || ticket !== session.current) {
-          if (ticket === session.current) {
-            setMode('preview');
-            setNotice(null);
-          }
-          return;
-        }
-        setFix({
-          coordinate,
-          heading: null,
-          speed: null,
-          speedSource: null,
-          accuracy: position.coords.accuracy,
-          timestamp: position.timestamp,
-        });
-        lastFix.current = null;
-        progressRef.current = 0;
-        deviationCount.current = 0;
-        setMode('live');
-        setNotice(null);
-        setFollow(true);
-        setPerspective(true);
-        setArrived(false);
+        return;
+      }
+      setFix({
+        coordinate,
+        heading: null,
+        speed: null,
+        speedSource: null,
+        accuracy: position.coords.accuracy,
+        timestamp: position.timestamp,
+      });
+      lastFix.current = null;
+      progressRef.current = 0;
+      deviationCount.current = 0;
+      routeFromGps.current = true;
+      setMode('live');
+      setNotice(
+        position.coords.accuracy > GOOD_ACCURACY_M
+          ? `Pornim cu o poziție aproximativă (±${Math.round(position.coords.accuracy)} m) · se va corecta`
+          : null,
+      );
+      setFollow(true);
+      setPerspective(true);
+      setArrived(false);
+    };
+
+    watcher.current = navigator.geolocation.watchPosition(
+      (position) => {
+        if (ticket !== session.current || done) return;
+        if (!best || position.coords.accuracy < best.coords.accuracy) best = position;
+        const acc = Math.round(best.coords.accuracy);
+        setNotice(`Căutăm o poziție precisă… acum ±${acc} m`);
+        if (best.coords.accuracy <= GOOD_ACCURACY_M) void finish(best);
       },
       (e) => {
-        if (ticket !== session.current) return;
-        setMode('preview');
-        setNotice(null);
-        setError(
-          e.code === 1
-            ? 'Accesul la locație a fost refuzat. Alege un punct de plecare pe hartă sau încearcă DEMO.'
-            : 'Nu am putut obține poziția GPS. Încearcă din nou sau folosește DEMO.',
-        );
+        if (e.code === 1) fail(GPS_DENIED);
+        else if (e.code === 2) fail(GPS_UNAVAILABLE);
+        // code 3 (timeout) is handled by our own timer below.
       },
-      { enableHighAccuracy: true, timeout: 12000, maximumAge: 0 },
+      { enableHighAccuracy: true, maximumAge: 0 },
     );
+    acquireTimer.current = window.setTimeout(() => {
+      if (done || ticket !== session.current) return;
+      if (best && best.coords.accuracy <= ACQUIRE_ACCURACY_M) void finish(best);
+      else if (best)
+        fail(
+          `Poziția are o precizie de ±${Math.round(best.coords.accuracy)} m, prea mare pentru navigație (limita e ${ACQUIRE_ACCURACY_M} m). Pe laptop locația vine din Wi-Fi: încearcă de pe telefon, alege plecarea pe hartă sau folosește DEMO.`,
+        );
+      else fail('Nu am primit nicio poziție în 15 secunde. Verifică dacă locația este pornită sau folosește DEMO.');
+    }, ACQUIRE_MS);
   }, [destination, loadRoutes, stopWatcher]);
 
   useEffect(() => {
@@ -195,8 +245,8 @@ export function useNavigation(places: NavPlaces) {
       (position) => {
         if (ticket !== session.current) return;
         const c = position.coords;
-        if (c.accuracy > 65 || Date.now() - position.timestamp > 15000) {
-          setNotice('Semnal GPS slab · păstrăm ultima poziție validă');
+        if (c.accuracy > ACQUIRE_ACCURACY_M || Date.now() - position.timestamp > 15000) {
+          setNotice(`Semnal GPS slab (±${Math.round(c.accuracy)} m) · păstrăm ultima poziție validă`);
           setFix((f) => (f ? { ...f, speed: null, speedSource: null } : f));
           return;
         }
@@ -205,6 +255,7 @@ export function useNavigation(places: NavPlaces) {
         if (previous && position.timestamp <= previous.timestamp) return;
         const movement = previous ? distance(previous.coordinate, coordinate) : 0;
         const seconds = previous ? (position.timestamp - previous.timestamp) / 1000 : 0;
+        if (previous && seconds < 2 && movement > MAX_JUMP_M) return; // spurious jump (spec §6.2)
         const estimated =
           seconds >= 1 &&
           seconds <= 10 &&
@@ -243,7 +294,7 @@ export function useNavigation(places: NavPlaces) {
           lengths,
           previous ? progressRef.current : undefined,
         );
-        const onRoute = projection.distance < Math.max(25, c.accuracy) && c.accuracy <= 30;
+        const onRoute = projection.distance < Math.max(25, c.accuracy) && c.accuracy <= SNAP_ACCURACY_M;
         const along = onRoute
           ? Math.max(progressRef.current - 15, projection.progress)
           : progressRef.current;
@@ -253,14 +304,14 @@ export function useNavigation(places: NavPlaces) {
         }
         setFix({ ...next, coordinate: onRoute ? projection.coordinate : coordinate });
         setNotice(
-          c.accuracy > 30 ? `Precizie GPS ±${Math.round(c.accuracy)} m · poziție nealiniată` : null,
+          c.accuracy > GOOD_ACCURACY_M ? `Precizie GPS ±${Math.round(c.accuracy)} m` : null,
         );
         const offRoute = projection.distance > Math.max(50, c.accuracy * 1.5);
         deviationCount.current = offRoute ? deviationCount.current + 1 : 0;
         if (
           deviationCount.current >= 3 &&
           !rerouting.current &&
-          Date.now() - lastReroute.current > 30000
+          Date.now() - lastReroute.current > REROUTE_INTERVAL_MS
         ) {
           lastReroute.current = Date.now();
           rerouting.current = true;
@@ -275,9 +326,9 @@ export function useNavigation(places: NavPlaces) {
           });
         }
         if (
-          c.accuracy <= 25 &&
-          distance(coordinate, route.geometry.at(-1)!) < 25 &&
-          lengths.at(-1)! - along < 40
+          c.accuracy <= SNAP_ACCURACY_M &&
+          distance(coordinate, route.geometry.at(-1)!) < Math.max(30, c.accuracy) &&
+          lengths.at(-1)! - along < 50
         ) {
           setArrived(true);
           setProgress(lengths.at(-1)!);
@@ -285,13 +336,20 @@ export function useNavigation(places: NavPlaces) {
           stopWatcher();
         }
       },
-      () => {
-        if (ticket === session.current) {
-          setNotice('Urmărirea GPS este întreruptă · verifică permisiunile');
-          setFix((f) => (f ? { ...f, speed: null, speedSource: null } : f));
-        }
+      (e) => {
+        if (ticket !== session.current) return;
+        setFix((f) => (f ? { ...f, speed: null, speedSource: null } : f));
+        if (e.code === 1) {
+          // Permission withdrawn mid-trip: stop live tracking instead of showing a frozen position.
+          stopWatcher();
+          gpsError.current = true;
+          setMode('preview');
+          setNotice(null);
+          setError(GPS_DENIED);
+        } else setNotice('Semnal GPS pierdut · așteptăm o poziție nouă');
       },
-      { enableHighAccuracy: true, maximumAge: 1000, timeout: 10000 },
+      // No timeout: a parked device may report nothing for a while, which is not an error.
+      { enableHighAccuracy: true, maximumAge: 1000 },
     );
     return stopWatcher;
   }, [mode, route, lengths, destination, arrived, loadRoutes, stopWatcher]);
@@ -461,6 +519,6 @@ export function useNavigation(places: NavPlaces) {
     startLive,
     startDemo,
     stop,
-    retry: () => loadRoutes(origin, destination.coordinate),
+    retry: () => (gpsError.current ? startLive() : loadRoutes(origin, destination.coordinate)),
   };
 }
