@@ -109,7 +109,7 @@ Source of truth for what exists: the City Hall guide (§1). Checked on 13 Nov 20
 |---|---|---|
 | **Paid parking: zones, lots, streets, tariffs, SMS codes, schedule** | City Hall `GET https://cont.primariatm.ro/api/mobile/parking` (Timpark data as used by CityApp, checked against the 2026 tariff annex). Response: `features[]` with `kind` = `zone` (35), `lot` (49), `street` (711), polygon `coordinates` as [lng, lat], `tariff` colour, `progressive`, `checked`; plus `tariffs` (hourly price per colour, progressive steps, day ticket, SMS number, schedule) | **Real, official** → tariffs are `confirmed`. A feature with `checked: false` gets `estimated` for its geometry |
 | Other parkings (free, private-public, malls) | OpenStreetMap via Overpass (`amenity=parking`), ODbL | Real locations; capacity `estimated`; price `unknown` unless it lies in a Timpark zone |
-| Live occupancy | **No source exists** | `simulated` (demo) or `estimated` (community reports). Never presented as real |
+| Live occupancy | **No source exists** | Rule model `p_free` (§7.3), always `estimated` and labelled "not a measurement"; `simulated` in the demo. Real sources to obtain: Timpark SMS/CityApp payment counts per zone per hour (ask the City Hall, team checklist), Living Labs manual counts, user reports (§6.13) |
 | Transit network, stops, schedules | Official **SMTT GTFS**: `smtt.ro/transit/gtfs/maps/smtt-timisoara-ro.zip` (58 lines, 889 stops; v4.31 valid 5 Nov – 31 Dec 2026). Also City Hall endpoints `/api/mobile/transit/network`, `/lines/{routeId}`, `/stops/{stopId}/timetable` | Real **scheduled** times. Never shown as live arrivals. Re-download before the demo and show `feed_info.txt` version |
 | Ticket prices | City Hall `/api/mobile/wallet/types?category=transport` | Real, `confirmed` |
 | Neighbourhoods | City Hall `/api/zones` (40 polygons, GeoJSON) | Real |
@@ -173,7 +173,7 @@ Paying: the details panel shows "Pay by SMS: send `<code>` to `<number>`" from t
 Each parking shows: name, type, address?, capacity?, price (`Sourced`), availability (`Sourced`), walking distance and time, source, last update and quality badge.
 
 ### 6.5 Recommendation modes
-**Fastest / Cheapest / Greenest** tabs, computed by SmartMatch (§7). The user can switch between them and compare the top option of each side by side.
+**Implemented (13 Nov):** **Echilibrat / Ieftin / Loc sigur** (balanced / cheap / sure), plus stay length (30 min–8 h), arrival time (default now) and a maximum walk (5–20 min). Fastest / Greenest need the driving origin and come with the navigation integration (§7.1).
 
 ### 6.6 Recommendation cards & details
 **Card:**
@@ -311,12 +311,32 @@ Apply first, from the user's preferences:
     - Progressive lots use the `progressive` steps. A day ticket replaces hourly pricing when it is cheaper and the colour allows it.
     - Park & ride: parking cost + transit fare for the trip there and back.
 - **Emissions:** `co2_g = drive_km × EF_car (+ transit_km × EF_transit)`, quality `estimated` (D4).
-- **Availability probability `p_free`:**
-  - confirmed → `free / capacity` mapped to 0.05–0.98;
+- **Availability probability `p_free`** (`engines/smartmatch/occupancy.ts`):
+  - confirmed → `free / capacity` mapped to 0.05–0.98 (needs a live source; none yet);
   - simulated → same formula on demo data;
-  - unknown → 0.5, plus `confidence='low'`.
+  - **otherwise the rule model, `estimated`:** each candidate gets an area profile (`centre` = Timpark green/red; `commercial` = customers-only or ≤ 250 m from a mall; `campus`, `hospital`, `station` by distance to OSM places; else `residential`). Each profile has a 24-hour expected-occupancy curve for weekdays, Saturday and Sunday, written down from generic urban patterns (assumptions, not data). With capacity C (OSM tag, Timpark lot area ÷ 25 m², or 20 if unknown) and σ = 0.10 (0.14 if C unknown): `p_free = Φ((1 − 1/C − occupancy) / σ)`, clamped to 0.05–0.95.
+  - **Calibration path:** replace a curve with observed hourly shares (≥ 20–30 observations per zone) once reports or counts exist; with real history, a gradient-boosted model must beat the "same hour last week" baseline before it replaces the rules.
 
 ### 7.4 Scoring
+**Implemented (13 Nov), destination-only version:** a cost in minutes, lowest wins:
+
+```text
+cost = walk_min + (1 − p_free) × full_penalty + price × minutes_per_currency
+```
+
+| Mode | full_penalty (min lost if full) | minutes_per_currency |
+|---|---|---|
+| Echilibrat | 12 | 8 |
+| Ieftin | 10 | 25 |
+| Loc sigur | 20 | 4 |
+
+- Candidates: Timpark lots, the 8 nearest paid streets (one per name) and OSM parkings within 1 km straight line; customers-only parkings only when the destination is ≤ 300 m away; OSM duplicates of a Timpark lot are dropped. Max 30 go to the walking matrix.
+- Walking: openrouteservice foot-walking matrix with `ORS_API_KEY`; otherwise straight line × 1.3 at 4.8 km/h, labelled as an estimate.
+- Price: Timpark tariff × started paid hours inside the schedule (progressive steps, day ticket when cheaper); OSM `fee=no` = 0 (`estimated`); unknown = at least the dearest Timpark tariff for the stay, flagged, never free.
+- Returns the top 5 with a template explanation (winner vs backup) and the per-option breakdown.
+
+The weighted min–max version below applies once the driving leg (origin → parking) is added:
+
 1. Normalize each criterion with min–max over the remaining candidates to `n ∈ [0,1]` (0 = best).
 2. If all candidates are equal, `n = 0`.
 3. **Unknown values** get `n = 1` (worst) and add a flag that appears in the explanation ("price unknown"). They are never silently neutral.
@@ -409,7 +429,7 @@ The original `route_requests` / `route_options` tables were dropped because they
 
 ## 9. API
 
-All bodies are validated with zod schemas from `shared/src/schemas`. Errors use the shape `{ error: { code, message } }`, with codes `INVALID_INPUT | PROVIDER_TIMEOUT | RATE_LIMITED | UNAVAILABLE | NOT_CONFIGURED`.
+All bodies are validated with zod schemas from `shared/src/schemas`. Errors use the shape `{ error: { code, message } }`, with codes `INVALID_INPUT | PROVIDER_TIMEOUT | RATE_LIMITED | UNAVAILABLE | NOT_CONFIGURED | NOT_FOUND | OUTSIDE_AREA`.
 
 | Method & path | Purpose |
 |---|---|
@@ -420,7 +440,7 @@ All bodies are validated with zod schemas from `shared/src/schemas`. Errors use 
 | `GET /api/city/parking-zones` | Timpark zones and tariffs snapshot (for the map layer and SmartMatch) |
 | `GET /api/transit/stops?near=lat,lng` | SMTT stops and lines from the GTFS digest |
 | `GET /api/parkings/:id` | Details |
-| `POST /api/recommendations` | `{origin, destination, preferences, demoOverrides?}` → ranked options for all 3 modes + explanations |
+| `POST /api/recommendations` | **Implemented:** `{destination, arriveAt?, stayMinutes, mode, maxWalkMinutes}` → top 5 options with walk, `p_free`, price, cost breakdown, flags and explanation. Later: `origin`, `demoOverrides` |
 | `POST /api/routes` | `{from, to, profile: 'driving-car'\|'foot-walking'}` → geometry + maneuvers (cached) |
 | `POST /api/assistant/command` | `{text, appState}` → validated function call + reply text |
 | `POST /api/assistant/speech` | `{text}` → audio (ElevenLabs) or 503 → client uses browser TTS |

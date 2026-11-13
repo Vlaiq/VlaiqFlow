@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import maplibregl, { type GeoJSONSource } from 'maplibre-gl';
-import { TIMISOARA_CENTER, type Destination, type Parking, type TimparkSnapshot } from '@vlaiq/shared';
+import { TIMISOARA_CENTER, type Destination, type Parking, type RecommendationOption, type TimparkSnapshot } from '@vlaiq/shared';
 import {
   addTimparkLayers,
   TIMPARK_CLICKABLE_LAYERS,
@@ -33,6 +33,11 @@ interface Props {
   parkings: Parking[];
   timpark: TimparkSnapshot | null;
   destination: Destination | null;
+  recommendations?: RecommendationOption[];
+  selectedRecommendationId?: string | null;
+  /** Bumped by the panel when the user picks an option: the map flies to it. */
+  focusRecommendation?: { id: string; n: number } | null;
+  onSelectRecommendation?: (id: string) => void;
 }
 
 const FLY_ZOOM: Record<Destination['precision'], number> = { exact: 16.5, street: 16, neighbourhood: 14.5, none: 14 };
@@ -44,6 +49,29 @@ const FLY_ZOOM: Record<Destination['precision'], number> = { exact: 16.5, street
 function visibleMapPadding(): maplibregl.PaddingOptions {
   if (window.matchMedia('(min-width: 1024px)').matches) return { left: 460, top: 20, right: 60, bottom: 20 };
   return { left: 0, top: 90, right: 0, bottom: Math.round(window.innerHeight * 0.42) };
+}
+
+function recommendationMarkerElement(rank: number, name: string, selected: boolean): HTMLButtonElement {
+  const el = document.createElement('button');
+  el.type = 'button';
+  el.textContent = String(rank);
+  el.setAttribute('aria-label', `Parcarea recomandată ${rank}: ${name}`);
+  const size = selected ? 32 : 26;
+  el.style.cssText = [
+    `width:${size}px`,
+    `height:${size}px`,
+    'border-radius:9999px',
+    'display:flex',
+    'align-items:center',
+    'justify-content:center',
+    'font:700 13px/1 system-ui,sans-serif',
+    'cursor:pointer',
+    // Rank 1 = green with dark text (white on green fails contrast); others = dark with mint text.
+    rank === 1 ? 'background:#22C55E;color:#0B1410' : 'background:#16221D;color:#EAF6ED',
+    `border:${selected ? 3 : 2}px solid #EAF6ED`,
+    'box-shadow:0 0 0 2px #101916',
+  ].join(';');
+  return el;
 }
 
 function destinationMarkerElement(approximate: boolean): HTMLElement {
@@ -61,7 +89,7 @@ function destinationMarkerElement(approximate: boolean): HTMLElement {
   return el;
 }
 
-export function MapView({ parkings, timpark, destination }: Props) {
+export function MapView({ parkings, timpark, destination, recommendations = [], selectedRecommendationId = null, focusRecommendation = null, onSelectRecommendation }: Props) {
   const [mapError, setMapError] = useState<string | null>(null);
   const [attempt, setAttempt] = useState(0);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -219,6 +247,43 @@ export function MapView({ parkings, timpark, destination }: Props) {
       marker.remove();
     };
   }, [destination, attempt]);
+
+  // Numbered markers for the SmartMatch options; HTML buttons so they are keyboard-reachable.
+  const onSelectRef = useRef(onSelectRecommendation);
+  onSelectRef.current = onSelectRecommendation;
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map || recommendations.length === 0) return;
+    const markers = recommendations.map((o, i) => {
+      const el = recommendationMarkerElement(i + 1, o.name, o.id === selectedRecommendationId);
+      el.addEventListener('click', (e) => {
+        e.stopPropagation();
+        onSelectRef.current?.(o.id);
+      });
+      return new maplibregl.Marker({ element: el }).setLngLat(o.coordinate).addTo(map);
+    });
+    return () => markers.forEach((m) => m.remove());
+  }, [recommendations, selectedRecommendationId, attempt]);
+
+  // Show the destination and every option together when a new list arrives.
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map || !destination?.location || recommendations.length === 0) return;
+    const bounds = new maplibregl.LngLatBounds([destination.location.lng, destination.location.lat], [destination.location.lng, destination.location.lat]);
+    for (const o of recommendations) bounds.extend(o.coordinate);
+    const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    map.fitBounds(bounds, { padding: visibleMapPadding(), maxZoom: 17, animate: !reduceMotion });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [recommendations]);
+
+  useEffect(() => {
+    const map = mapRef.current;
+    const o = focusRecommendation && recommendations.find((r) => r.id === focusRecommendation.id);
+    if (!map || !o) return;
+    const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    map.flyTo({ center: o.coordinate, zoom: Math.max(map.getZoom(), 16.5), padding: visibleMapPadding(), animate: !reduceMotion, essential: false });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [focusRecommendation]);
 
   return <div className="absolute inset-0">
     <div ref={containerRef} className="absolute inset-0" role="region" aria-label="Harta Timișoarei" />

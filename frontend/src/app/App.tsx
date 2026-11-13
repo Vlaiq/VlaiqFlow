@@ -1,14 +1,16 @@
-import { lazy, Suspense, useEffect, useState } from 'react';
+import { lazy, Suspense, useCallback, useEffect, useState } from 'react';
 import {
   brand,
   type Destination,
   type DestinationsResponse,
   type HealthResponse,
   type ParkingsResponse,
+  type RecommendationOption,
   type TimparkSnapshot,
 } from '@vlaiq/shared';
 import { MapView } from '../features/map/MapView';
 import { TariffLegend } from '../features/parking/TariffLegend';
+import { ParkingRecommendations } from '../features/parking/ParkingRecommendations';
 import { DestinationSearch } from '../features/search/DestinationSearch';
 import { DestinationCard } from '../features/search/DestinationCard';
 import { api } from '../services/api';
@@ -43,13 +45,28 @@ function Explore() {
   const timpark = useLoad<TimparkSnapshot>(api.timpark);
   const destinations = useLoad<DestinationsResponse>(api.destinations);
   const [destination, setDestination] = useState<Destination | null>(null);
+  const [options, setOptions] = useState<RecommendationOption[]>([]);
+  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [focus, setFocus] = useState<{ id: string; n: number } | null>(null);
+  const pickOption = useCallback((id: string | null) => {
+    setSelectedId(id);
+    if (id) setFocus((f) => ({ id, n: (f?.n ?? 0) + 1 }));
+  }, []);
 
   const parkingList = parkings.state === 'ok' ? parkings.data.parkings : [];
   const timparkData = timpark.state === 'ok' ? timpark.data : null;
 
   return (
     <main className="relative h-full w-full overflow-hidden">
-      <MapView parkings={parkingList} timpark={timparkData} destination={destination} />
+      <MapView
+        parkings={parkingList}
+        timpark={timparkData}
+        destination={destination}
+        recommendations={options}
+        selectedRecommendationId={selectedId}
+        focusRecommendation={focus}
+        onSelectRecommendation={setSelectedId}
+      />
 
       {/*
         Layout: on phones a floating search bar on top and an info sheet at the bottom;
@@ -80,6 +97,17 @@ function Explore() {
             <div className="mb-3 border-b border-border pb-3">
               <DestinationCard destination={destination} onClear={() => setDestination(null)} />
             </div>
+          )}
+          {destination?.location && (
+            <ParkingRecommendations
+              key={destination.id}
+              destination={destination}
+              smsNumber={timparkData?.data.tariffs.smsNumber ?? null}
+              selectedId={selectedId}
+              onSelect={setSelectedId}
+              onPick={pickOption}
+              onOptions={setOptions}
+            />
           )}
 
           {timpark.state === 'loading' && <p className="text-muted">Se încarcă zonele de parcare…</p>}

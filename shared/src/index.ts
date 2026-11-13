@@ -12,3 +12,4 @@ export * from './parkingNames';
 
 /** Default demo/map center: Timișoara city center (Piața Victoriei area). */
 export const TIMISOARA_CENTER = { lat: 45.7537, lng: 21.2257 } as const;
+export * from './schemas/recommendation';

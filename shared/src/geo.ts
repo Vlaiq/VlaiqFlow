@@ -12,7 +12,7 @@ export function distanceM(a: LngLat, b: LngLat): number {
 }
 
 /** Ray casting on one ring of [lng, lat] points. */
-function inRing([x, y]: LngLat, ring: LngLat[]): boolean {
+export function inRing([x, y]: LngLat, ring: LngLat[]): boolean {
   let inside = false;
   for (let i = 0, j = ring.length - 1; i < ring.length; j = i++) {
     const [xi, yi] = ring[i]!;
@@ -81,4 +81,24 @@ export class StreetIndex {
     }
     return best;
   }
+}
+
+/** Mean of a ring's vertices (closing vertex excluded): a centre point for small polygons such as parking lots. */
+export function ringCentre(ring: LngLat[]): LngLat {
+  const pts = ring.length > 1 && ring[0]![0] === ring.at(-1)![0] && ring[0]![1] === ring.at(-1)![1] ? ring.slice(0, -1) : ring;
+  return [pts.reduce((s, p) => s + p[0], 0) / pts.length, pts.reduce((s, p) => s + p[1], 0) / pts.length];
+}
+
+/** Area of a small ring in square metres (shoelace on a local equirectangular projection). */
+export function ringAreaM2(ring: LngLat[]): number {
+  if (ring.length < 3) return 0;
+  const lat0 = (ring.reduce((s, p) => s + p[1], 0) / ring.length) * (Math.PI / 180);
+  const k = 6371000 * (Math.PI / 180);
+  let sum = 0;
+  for (let i = 0, j = ring.length - 1; i < ring.length; j = i++) {
+    const xi = ring[i]![0] * k * Math.cos(lat0), yi = ring[i]![1] * k;
+    const xj = ring[j]![0] * k * Math.cos(lat0), yj = ring[j]![1] * k;
+    sum += xj * yi - xi * yj;
+  }
+  return Math.abs(sum) / 2;
 }

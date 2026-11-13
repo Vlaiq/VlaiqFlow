@@ -1,4 +1,4 @@
-import { DestinationsResponse, HealthResponse, ParkingsResponse, TimparkSnapshot, RoutesResponse, type Coordinate } from '@vlaiq/shared';
+import { DestinationsResponse, HealthResponse, ParkingsResponse, TimparkSnapshot, RoutesResponse, RecommendationResponse, type Coordinate, type RecommendationRequest } from '@vlaiq/shared';
 import type { z } from 'zod';
 
 // In dev the base is empty and Vite proxies /api to the backend.
@@ -29,6 +29,17 @@ export const api = {
       throw new Error(body?.error?.message ?? 'Nu am putut calcula ruta.');
     }
     return RoutesResponse.parse(await res.json()).routes;
+  },
+  recommend: async (req: Partial<RecommendationRequest> & Pick<RecommendationRequest, 'destination'>, signal?: AbortSignal) => {
+    const res = await fetch(`${BASE}/api/recommendations`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(req), signal: signal ?? AbortSignal.timeout(20000),
+    });
+    if (!res.ok) {
+      const body = await res.json().catch(() => null);
+      throw new Error(body?.error?.message ?? 'Nu am putut calcula recomandarea.');
+    }
+    return RecommendationResponse.parse(await res.json());
   },
   health: () => get('/api/health', HealthResponse),
   parkings: () => get('/api/parkings', ParkingsResponse),

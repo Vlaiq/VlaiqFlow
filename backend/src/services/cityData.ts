@@ -69,4 +69,5 @@ export const cityData = {
   destinations: () => destinations,
   neighbourhoodFeatures: () => neighbourhoods?.data.features ?? [],
   osmStreetList: () => osmStreets?.data.streets ?? [],
+  osmPlaceList: () => osmPlaces?.data.places ?? [],
 };

@@ -19,7 +19,7 @@ export type HealthResponse = z.infer<typeof HealthResponse>;
 /** spec §9 — one error shape for every endpoint. */
 export const ApiError = z.object({
   error: z.object({
-    code: z.enum(['INVALID_INPUT', 'PROVIDER_TIMEOUT', 'RATE_LIMITED', 'UNAVAILABLE', 'NOT_CONFIGURED', 'NOT_FOUND']),
+    code: z.enum(['INVALID_INPUT', 'PROVIDER_TIMEOUT', 'RATE_LIMITED', 'UNAVAILABLE', 'NOT_CONFIGURED', 'NOT_FOUND', 'OUTSIDE_AREA']),
     message: z.string(),
   }),
 });
