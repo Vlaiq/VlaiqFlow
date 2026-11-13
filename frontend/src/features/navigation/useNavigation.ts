@@ -24,10 +24,15 @@ export interface Fix {
   timestamp: number;
 }
 
-/** GPS thresholds (spec §6.2): fixes worse than 100 m are not used; jumps > 150 m within 2 s are ignored. */
-const ACQUIRE_ACCURACY_M = 100;
+/**
+ * GPS thresholds (spec §6.2). Laptops locate by Wi-Fi at ±100–300 m, so a trip may START from such an
+ * approximate fix (clearly labelled); the marker only snaps to the route once accuracy is ≤ 50 m.
+ * Jumps > 150 m within 2 s are ignored.
+ */
+const START_ACCURACY_M = 300;
+const TRACK_ACCURACY_M = 150;
 const GOOD_ACCURACY_M = 30;
-const ACQUIRE_MS = 15000;
+const ACQUIRE_MS = 8000;
 const SNAP_ACCURACY_M = 50;
 const MAX_JUMP_M = 150;
 const REROUTE_INTERVAL_MS = 20000;
@@ -204,7 +209,7 @@ export function useNavigation(places: NavPlaces) {
       setMode('live');
       setNotice(
         position.coords.accuracy > GOOD_ACCURACY_M
-          ? `Pornim cu o poziție aproximativă (±${Math.round(position.coords.accuracy)} m) · se va corecta`
+          ? `Poziție aproximativă (±${Math.round(position.coords.accuracy)} m, probabil din Wi-Fi) · ruta pornește de aici; pe telefon, afară, e mult mai precisă`
           : null,
       );
       setFollow(true);
@@ -229,12 +234,12 @@ export function useNavigation(places: NavPlaces) {
     );
     acquireTimer.current = window.setTimeout(() => {
       if (done || ticket !== session.current) return;
-      if (best && best.coords.accuracy <= ACQUIRE_ACCURACY_M) void finish(best);
+      if (best && best.coords.accuracy <= START_ACCURACY_M) void finish(best);
       else if (best)
         fail(
-          `Poziția are o precizie de ±${Math.round(best.coords.accuracy)} m, prea mare pentru navigație (limita e ${ACQUIRE_ACCURACY_M} m). Pe laptop locația vine din Wi-Fi: încearcă de pe telefon, alege plecarea pe hartă sau folosește DEMO.`,
+          `Poziția are o precizie de ±${Math.round(best.coords.accuracy)} m, prea mare pentru navigație (limita e ${START_ACCURACY_M} m). Locația vine probabil doar din adresa de internet: încearcă de pe telefon, alege plecarea pe hartă sau folosește DEMO.`,
         );
-      else fail('Nu am primit nicio poziție în 15 secunde. Verifică dacă locația este pornită sau folosește DEMO.');
+      else fail('Nu am primit nicio poziție în 8 secunde. Verifică dacă locația este pornită sau folosește DEMO.');
     }, ACQUIRE_MS);
   }, [destination, loadRoutes, stopWatcher]);
 
@@ -245,7 +250,7 @@ export function useNavigation(places: NavPlaces) {
       (position) => {
         if (ticket !== session.current) return;
         const c = position.coords;
-        if (c.accuracy > ACQUIRE_ACCURACY_M || Date.now() - position.timestamp > 15000) {
+        if (c.accuracy > TRACK_ACCURACY_M || Date.now() - position.timestamp > 15000) {
           setNotice(`Semnal GPS slab (±${Math.round(c.accuracy)} m) · păstrăm ultima poziție validă`);
           setFix((f) => (f ? { ...f, speed: null, speedSource: null } : f));
           return;

@@ -143,7 +143,7 @@ Full-screen map centered on Timișoara with a floating search bar, locate-me but
 - Ask for location only on user action (locate button or Live GPS mode).
 - **If granted:** show a marker with an accuracy circle, a follow-mode toggle and a recenter button.
 - **If denied:** pick the origin manually or use the demo origin.
-- **Bad readings:** ignore fixes with `accuracy > 100 m` for navigation, and ignore jumps > 150 m within 2 s.
+- **Bad readings:** a trip may start from a fix up to ±300 m (laptop Wi-Fi location), labelled as approximate; during the trip fixes worse than 150 m are ignored, the marker snaps to the route only at ≤ 50 m, and jumps > 150 m within 2 s are ignored.
 
 ### 6.3 Destination search
 - **Local search first**, with no external call: the City Hall street register (1,370 streets, with neighbourhood and house-number ranges), the 20 City Hall landmarks (`/api/mobile/pois`, RO + EN) and preset chips (Piața Victoriei, Piața Unirii, Iulius Town, Centru). Searched in the browser from a snapshot, accent-insensitive ("piata" finds "Piața").
