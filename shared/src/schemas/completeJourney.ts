@@ -176,6 +176,7 @@ export const CompleteJourneyRequest = z
     stayMinutes: z.number().int().min(15).max(600).default(120),
     maxWalkMinutes: z.number().int().min(2).max(20).default(12),
     parkingPreference: z.enum(['balanced', 'cheap', 'less_walk']).default('balanced'),
+    schoolZone: z.enum(['auto', 'off']).default('auto'),
     preference: JourneyPreference.default('balanced'),
     modes: z
       .array(JourneyCategory)

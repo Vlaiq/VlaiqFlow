@@ -17,6 +17,8 @@ import {
 import {
   CompleteJourneyRequest,
   TARIFF_LABEL_RO,
+  metresInside,
+  type AvoidCircle,
   type Coordinate,
   type NavigationRoute,
   type RecommendationOption,
@@ -45,8 +47,16 @@ const MAX_ORIGIN_ACCURACY_M = 300;
 type RouteState =
   | { state: 'no-origin' }
   | { state: 'loading' }
-  | { state: 'ok'; route: NavigationRoute }
+  | {
+      state: 'ok';
+      route: NavigationRoute;
+      /** School zone (§6.16): what the router did with it and how many metres still run inside. */
+      avoidance?: 'applied' | 'not_supported' | 'failed';
+      insideM: number;
+    }
   | { state: 'error'; message: string };
+
+const NO_ZONES: AvoidCircle[] = [];
 
 type OriginChoice =
   | { kind: 'pending' }
@@ -74,6 +84,8 @@ interface Props {
   onWalkRoute?: (geometry: Coordinate[] | null) => void;
   /** The next SmartMatch option, offered by the DEMO "parking full" scenario during navigation. */
   backup?: RecommendationOption | null;
+  /** Active school drop-off zone circles the driving route should keep out of (§6.16). */
+  avoidZones?: AvoidCircle[];
 }
 
 function StepIcon({ step }: { step: NavigationRoute['steps'][number] }) {
@@ -129,11 +141,13 @@ export function ParkingDetail({
   onRoute,
   onWalkRoute,
   backup = null,
+  avoidZones = NO_ZONES,
 }: Props) {
   const [choice, setChoice] = useState<OriginChoice>({ kind: 'pending' });
   const [locating, setLocating] = useState(false);
   const [gpsMessage, setGpsMessage] = useState<string | null>(null);
   const [routeState, setRouteState] = useState<RouteState>({ state: 'loading' });
+  const zonesKey = JSON.stringify(avoidZones);
   const [attempt, setAttempt] = useState(0);
 
   const origin: Origin | null =
@@ -198,15 +212,21 @@ export function ParkingDetail({
     const ctrl = new AbortController();
     setRouteState({ state: 'loading' });
     api
-      .routes(
+      .routeSet(
         origin.coordinate,
         o.coordinate,
         AbortSignal.any([ctrl.signal, AbortSignal.timeout(20000)]),
+        avoidZones,
       )
       .then(
-        (routes) => {
+        ({ routes, avoidance }) => {
           const route = routes[0]!;
-          setRouteState({ state: 'ok', route });
+          setRouteState({
+            state: 'ok',
+            route,
+            avoidance,
+            insideM: metresInside(route.geometry, avoidZones),
+          });
           onRoute(route.geometry);
         },
         (e: unknown) => {
@@ -220,7 +240,7 @@ export function ParkingDetail({
       );
     return () => ctrl.abort();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [origin?.coordinate[0], origin?.coordinate[1], o.coordinate[0], o.coordinate[1], attempt]);
+  }, [origin?.coordinate[0], origin?.coordinate[1], o.coordinate[0], o.coordinate[1], zonesKey, attempt]);
 
   useEffect(() => () => onRoute(null), [onRoute]);
 
@@ -272,6 +292,9 @@ export function ParkingDetail({
           from: `${origin.coordinate[0].toFixed(6)},${origin.coordinate[1].toFixed(6)}`,
           fromName: origin.name,
         }
+      : {}),
+    ...(avoidZones.length
+      ? { avoid: avoidZones.map((z) => `${z.center[0].toFixed(6)},${z.center[1].toFixed(6)},${Math.round(z.radiusM)}`).join(';') }
       : {}),
     ...handoffParams({
       chance: o.pFree.value,
@@ -463,6 +486,7 @@ export function ParkingDetail({
               <p className="text-xs text-muted">
                 Sursa traseului: {routeState.route.source}. Traseul este desenat pe hartă.
               </p>
+              {avoidZones.length > 0 && <ZoneRouteNote insideM={routeState.insideM} avoidance={routeState.avoidance} />}
               <ol className="mt-2 divide-y divide-border rounded-xl border border-border text-xs">
                 {turns.map((t, i) => (
                   <li key={`${t.step.index}-${i}`} className="flex items-center gap-2 px-3 py-2">
@@ -548,5 +572,24 @@ export function ParkingDetail({
         </button>
       </div>
     </article>
+  );
+}
+
+/** What the driving route does with the school zone, measured on the provider geometry (§6.16). */
+function ZoneRouteNote({ insideM, avoidance }: { insideM: number; avoidance?: 'applied' | 'not_supported' | 'failed' }) {
+  const why =
+    avoidance === 'not_supported'
+      ? ' Serviciul de rutare folosit acum nu poate ocoli zone.'
+      : avoidance === 'failed'
+        ? ' Nu am găsit un drum care să o ocolească.'
+        : '';
+  return (
+    <p className={`mt-1 text-xs ${insideM > 0 ? 'text-warning' : 'text-muted'}`}>
+      {insideM > 0
+        ? `Traseul trece ~${insideM} m prin zona protejată a școlii.${why} Mergi încet: copiii ajung pe jos.`
+        : avoidance === 'applied'
+          ? 'Traseul ocolește zona protejată a școlii.'
+          : 'Traseul nu intră în zona protejată a școlii.'}
+    </p>
   );
 }

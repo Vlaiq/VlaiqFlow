@@ -34,3 +34,12 @@ describe('Explore → navigation hand-over', () => {
     expect(placeFromUrl('')).toBeNull();
   });
 });
+
+describe('school zones in the navigation link (§6.16)', () => {
+  it('keeps only valid circles, at most four', async () => {
+    const { avoidFromUrl } = await import('./places');
+    expect(avoidFromUrl(null)).toEqual([]);
+    expect(avoidFromUrl('21.23,45.75,250;bad;21.24,45.76,9999')).toEqual([{ center: [21.23, 45.75], radiusM: 250 }]);
+    expect(avoidFromUrl(Array(6).fill('21.23,45.75,250').join(';'))).toHaveLength(4);
+  });
+});

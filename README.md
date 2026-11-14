@@ -114,6 +114,7 @@ The browser scripts in `scripts/test-*-browser.cjs` need Playwright and Chromium
 | `pnpm data:city` | Refresh the official Timpark, street register, landmark and neighbourhood snapshots, then restart the backend |
 | `pnpm data:parkings` | Refresh the OSM parking snapshot |
 | `pnpm data:osm-places` | Refresh named streets and major places from OSM |
+| `pnpm data:schools` | Refresh schools and kindergartens from OSM (school drop-off zones) |
 
 ## Deployment
 

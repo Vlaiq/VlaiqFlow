@@ -4,6 +4,7 @@ import {
   buildDestinations,
   NeighbourhoodsSnapshot,
   OsmPlacesSnapshot,
+  OsmSchoolsSnapshot,
   OsmStreetsSnapshot,
   PoisSnapshot,
   StreetsSnapshot,
@@ -34,6 +35,7 @@ const pois = load('pois.json', PoisSnapshot);
 const neighbourhoods = load('neighbourhoods.json', NeighbourhoodsSnapshot);
 const osmStreets = load('osm-streets.json', OsmStreetsSnapshot);
 const osmPlaces = load('osm-places.json', OsmPlacesSnapshot);
+const schools = load('schools.osm.json', OsmSchoolsSnapshot);
 
 if (timpark) {
   console.log(`[city] Timpark: ${timpark.data.features.length} features, version ${timpark.data.version}, fetched ${timpark.fetchedAt}`);
@@ -47,7 +49,13 @@ function buildDestinationsResponse(): DestinationsResponse | null {
     neighbourhoods: neighbourhoods?.data.features ?? [],
     timparkStreets: timpark?.data.features.filter((f) => f.kind === 'street') ?? [],
     osmStreets: osmStreets?.data.streets ?? [],
-    osmPlaces: osmPlaces?.data.places ?? [],
+    osmPlaces: [
+      ...(osmPlaces?.data.places ?? []),
+      // Named schools and kindergartens are searchable destinations too (§6.16).
+      ...(schools?.data.schools ?? []).flatMap((s) =>
+        s.name ? [{ id: s.id, name: s.name, category: s.kind, lat: s.lat, lng: s.lng }] : [],
+      ),
+    ],
   });
   const sources = [
     streets && { name: 'Registrul oficial de străzi', source: streets.source, fetchedAt: streets.fetchedAt },
@@ -56,6 +64,7 @@ function buildDestinationsResponse(): DestinationsResponse | null {
     timpark && { name: 'Geometria străzilor Timpark', source: timpark.source, fetchedAt: timpark.fetchedAt },
     osmStreets && { name: 'Geometria străzilor (OpenStreetMap)', source: osmStreets.source, fetchedAt: osmStreets.fetchedAt },
     osmPlaces && { name: 'Locuri importante (OpenStreetMap)', source: osmPlaces.source, fetchedAt: osmPlaces.fetchedAt },
+    schools && { name: 'Școli și grădinițe (OpenStreetMap)', source: schools.source, fetchedAt: schools.fetchedAt },
   ].filter((s): s is DestinationsResponse['sources'][number] => Boolean(s));
   console.log(`[city] destinations: ${destinations.length}`);
   return { destinations, sources };
@@ -70,4 +79,6 @@ export const cityData = {
   neighbourhoodFeatures: () => neighbourhoods?.data.features ?? [],
   osmStreetList: () => osmStreets?.data.streets ?? [],
   osmPlaceList: () => osmPlaces?.data.places ?? [],
+  schoolList: () => schools?.data.schools ?? [],
+  schoolsSnapshot: () => schools,
 };

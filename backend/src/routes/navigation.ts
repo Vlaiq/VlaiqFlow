@@ -9,7 +9,7 @@ navigationRouter.post('/routes', async (req, res) => {
     return res
       .status(400)
       .json({ error: { code: 'INVALID_INPUT', message: 'Coordonate invalide.' } });
-  const { origin, destination } = input.data;
+  const { origin, destination, avoid } = input.data;
   // City prototype: avoid unlimited long-distance requests to public providers.
   if (
     [origin, destination].some(([lng, lat]) => lng < 21 || lng > 21.5 || lat < 45.6 || lat > 45.9)
@@ -21,7 +21,7 @@ navigationRouter.post('/routes', async (req, res) => {
       });
   }
   try {
-    res.json(await getRoutes(origin, destination));
+    res.json(await getRoutes(origin, destination, avoid));
   } catch {
     res
       .status(503)

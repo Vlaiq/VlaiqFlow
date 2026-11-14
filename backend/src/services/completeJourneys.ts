@@ -204,6 +204,7 @@ async function carJourneys(
       stayMinutes: req.stayMinutes,
       maxWalkMinutes: req.maxWalkMinutes,
       mode: req.parkingPreference,
+      schoolZone: req.schoolZone,
     }),
   );
   // Customers-only is not public access. Unknown access is disclosed, never asserted public.

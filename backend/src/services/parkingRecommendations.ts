@@ -11,6 +11,8 @@ import {
   MODEL_SOURCE,
   pFree,
   rank,
+  schoolZone,
+  applySchoolZone,
   type Candidate,
 } from '../engines/smartmatch';
 import { cityData } from './cityData';
@@ -27,7 +29,7 @@ export async function recommendParkings(
   const { destination, origin, stayMinutes, mode, maxWalkMinutes } = input;
   const at = input.arriveAt ? new Date(input.arriveAt) : new Date();
 
-  const candidates = buildCandidates({
+  const all = buildCandidates({
     destination,
     at,
     stayMinutes,
@@ -35,7 +37,13 @@ export async function recommendParkings(
     timpark: cityData.timpark(),
     places: cityData.osmPlaceList(),
     streets: streets(),
-  }).slice(0, MAX_MATRIX_CANDIDATES);
+  });
+  // School drop-off zone (§6.16): applied before the matrix so the walking times go to the parkings we keep.
+  const zoned = applySchoolZone(
+    all,
+    schoolZone({ destination, at, mode: input.schoolZone, schools: cityData.schoolList(), streets: streets() }),
+  );
+  const candidates = zoned.kept.slice(0, MAX_MATRIX_CANDIDATES);
 
   const [walks, drives] = await Promise.all([
     walkTimes(
@@ -93,6 +101,7 @@ export async function recommendParkings(
       quality: 'estimated',
       note: 'Nu există date de ocupare în timp real pentru Timișoara. Șansa de loc liber este o estimare după reguli, nu o măsurătoare.',
     },
+    protectedZone: zoned.zone,
   };
   return body;
 }

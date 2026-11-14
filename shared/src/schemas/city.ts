@@ -54,12 +54,24 @@ export type OsmStreet = z.infer<typeof OsmStreet>;
 export const OsmStreetsSnapshot = osmSnapshot(z.object({ streets: z.array(OsmStreet) }));
 export type OsmStreetsSnapshot = z.infer<typeof OsmStreetsSnapshot>;
 
-export const PlaceCategory = z.enum(['mall', 'station', 'bus_station', 'hospital', 'university', 'stadium', 'park']);
+export const PlaceCategory = z.enum(['mall', 'station', 'bus_station', 'hospital', 'university', 'stadium', 'park', 'school', 'kindergarten']);
 export type PlaceCategory = z.infer<typeof PlaceCategory>;
 export const OsmPlace = z.object({ id: z.string(), name: z.string(), category: PlaceCategory, lat: z.number(), lng: z.number() });
 export type OsmPlace = z.infer<typeof OsmPlace>;
 export const OsmPlacesSnapshot = osmSnapshot(z.object({ places: z.array(OsmPlace) }));
 export type OsmPlacesSnapshot = z.infer<typeof OsmPlacesSnapshot>;
+
+/** Schools and kindergartens (scripts/fetch-osm-schools.mjs). The name can be missing in OSM. */
+export const OsmSchool = z.object({
+  id: z.string(),
+  name: z.string().nullable(),
+  kind: z.enum(['school', 'kindergarten']),
+  lat: z.number(),
+  lng: z.number(),
+});
+export type OsmSchool = z.infer<typeof OsmSchool>;
+export const OsmSchoolsSnapshot = osmSnapshot(z.object({ schools: z.array(OsmSchool) }));
+export type OsmSchoolsSnapshot = z.infer<typeof OsmSchoolsSnapshot>;
 
 // ---- Destinations served to the app -------------------------------------------------------------
 

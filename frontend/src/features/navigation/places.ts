@@ -1,4 +1,4 @@
-import type { Coordinate, Destination, Parking } from '@vlaiq/shared';
+import { AvoidCircle, type Coordinate, type Destination, type Parking } from '@vlaiq/shared';
 import { api } from '../../services/api';
 
 /** A place the navigation screen can route to, always taken from our data snapshots (never typed in by hand). */
@@ -72,6 +72,18 @@ export function navigationHref(d: Destination): string | null {
 export interface NavPlaces {
   destinations: NavPlace[]; // first one is selected initially
   origin: NavPlace;
+  /** School zones the driving route keeps out of (§6.16), from the parking preview. */
+  avoid?: AvoidCircle[];
+}
+
+/** "lng,lat,radius;…" from the parking preview link; anything malformed is ignored. */
+export function avoidFromUrl(value: string | null): AvoidCircle[] {
+  if (!value) return [];
+  const circles = value.split(';').slice(0, 4).map((part) => {
+    const [lng, lat, radiusM] = part.split(',').map(Number);
+    return AvoidCircle.safeParse({ center: [lng, lat], radiusM });
+  });
+  return circles.flatMap((c) => (c.success ? [c.data] : []));
 }
 
 /** Loads presets from the backend snapshots; a destination from the URL goes first. */
@@ -107,5 +119,6 @@ export async function loadNavPlaces(search: string): Promise<NavPlaces> {
   return {
     destinations: destinations.filter((p) => p.id !== origin.id || destinations.length === 1),
     origin,
+    avoid: avoidFromUrl(params.get('avoid')),
   };
 }

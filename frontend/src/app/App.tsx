@@ -1,4 +1,4 @@
-import { lazy, Suspense, useCallback, useEffect, useRef, useState } from 'react';
+import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   ArrowLeft,
   ArrowRight,
@@ -21,6 +21,7 @@ import {
   type ParkingsResponse,
   type Coordinate,
   type RecommendationResponse,
+  zoneCircles,
   type TimparkSnapshot,
 } from '@vlaiq/shared';
 import { isInTimisCounty } from '../../../shared/src/county';
@@ -290,6 +291,8 @@ function Explore({
     [],
   );
   const options = reco?.options ?? [];
+  const zone = reco?.protectedZone ?? null;
+  const avoidZones = useMemo(() => (zone?.applied ? zoneCircles(zone) : []), [zone]);
   const parkingList = parkings.state === 'ok' ? parkings.data.parkings : [];
   const timparkData = timpark.state === 'ok' ? timpark.data : null;
   const knownPlaces =
@@ -434,6 +437,7 @@ function Explore({
         origin={origin?.coordinate ?? null}
         pickingOrigin={pickingOrigin}
         onPickOrigin={pickOrigin}
+        protectedZone={zone}
       />
       <div className="explore-sidebar">
         <header className="explore-search">
@@ -599,6 +603,7 @@ function Explore({
                     backup={
                       options.find((o) => o.id !== detail.id && o.access !== 'customers') ?? null
                     }
+                    avoidZones={avoidZones}
                   />
                 )}
                 {destination.location && (

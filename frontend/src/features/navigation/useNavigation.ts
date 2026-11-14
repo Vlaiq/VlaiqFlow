@@ -43,6 +43,7 @@ const GPS_UNAVAILABLE =
 
 export function useNavigation(places: NavPlaces) {
   const DEMO_ORIGIN = places.origin.coordinate;
+  const avoidZones = places.avoid;
   const [mode, setMode] = useState<Mode>('preview');
   const [destination, setDestination] = useState<NavPlace>(places.destinations[0]!);
   const [routes, setRoutes] = useState<NavigationRoute[]>([]);
@@ -96,6 +97,7 @@ export function useNavigation(places: NavPlaces) {
         from,
         to,
         AbortSignal.any([controller.signal, AbortSignal.timeout(20000)]),
+        avoidZones,
       );
       if (controller.signal.aborted) return false;
       setRoutes(result);
@@ -112,7 +114,7 @@ export function useNavigation(places: NavPlaces) {
     } finally {
       if (request.current === controller) setLoading(false);
     }
-  }, []);
+  }, [avoidZones]);
 
   useEffect(() => {
     setRoutes([]);

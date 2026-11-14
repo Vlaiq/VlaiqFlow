@@ -103,6 +103,7 @@ export function GreenSwitch({
           stayMinutes: parkingSettings.stayMinutes,
           maxWalkMinutes: parkingSettings.maxWalkMinutes,
           parkingPreference: parkingSettings.mode,
+          schoolZone: parkingSettings.schoolZone ? 'auto' : 'off',
           ...(arriveAt ? { arriveAt } : {}),
         })
       : null,

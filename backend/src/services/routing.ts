@@ -1,5 +1,12 @@
 import { z } from 'zod';
-import { RoutesResponse, type Coordinate, type NavigationRoute } from '@vlaiq/shared';
+import {
+  circleRing,
+  distanceM,
+  RoutesResponse,
+  type AvoidCircle,
+  type Coordinate,
+  type NavigationRoute,
+} from '@vlaiq/shared';
 import { config } from '../config';
 
 // No arbitrary upstream URL is accepted from clients. Keys never leave the server.
@@ -67,14 +74,41 @@ const orsTypes: Record<number, [string, string?]> = {
 const cache = new Map<string, { expires: number; result: RoutesResponse }>();
 const pending = new Map<string, Promise<RoutesResponse>>();
 
-async function requestRoutes(origin: Coordinate, destination: Coordinate): Promise<RoutesResponse> {
+/** Circles that contain the start or the end cannot be avoided (the provider would refuse the route). */
+export function usableAvoid(origin: Coordinate, destination: Coordinate, avoid: AvoidCircle[] = []) {
+  return avoid.filter((c) => distanceM(c.center, origin) >= c.radiusM && distanceM(c.center, destination) >= c.radiusM);
+}
+
+async function requestRoutes(
+  origin: Coordinate,
+  destination: Coordinate,
+  avoid: AvoidCircle[],
+): Promise<RoutesResponse> {
   if (config.orsApiKey) {
     const res = await fetch('https://api.openrouteservice.org/v2/directions/driving-car/geojson', {
       method: 'POST',
       signal: AbortSignal.timeout(15000),
       headers: { Authorization: config.orsApiKey, 'Content-Type': 'application/json' },
-      body: JSON.stringify({ coordinates: [origin, destination], instructions: true }),
+      body: JSON.stringify({
+        coordinates: [origin, destination],
+        instructions: true,
+        ...(avoid.length
+          ? {
+              options: {
+                avoid_polygons: {
+                  type: 'MultiPolygon',
+                  coordinates: avoid.map((c) => [circleRing(c.center, c.radiusM, 24)]),
+                },
+              },
+            }
+          : {}),
+      }),
     });
+    if (!res.ok && avoid.length) {
+      // No route that keeps out of the zone (or the provider refused the polygons): route normally and say so.
+      const plain = await requestRoutes(origin, destination, []);
+      return { ...plain, avoidance: 'failed' };
+    }
     if (!res.ok) throw new Error('Routing provider unavailable');
     const body = orsResponse.parse(await res.json());
     return RoutesResponse.parse({
@@ -96,6 +130,7 @@ async function requestRoutes(origin: Coordinate, destination: Coordinate): Promi
         source: 'openrouteservice · OpenStreetMap',
         quality: 'estimated',
       })),
+      ...(avoid.length ? { avoidance: 'applied' } : {}),
     });
   }
   // Low-volume prototype fallback; no live traffic or speed-limit claims.
@@ -107,7 +142,8 @@ async function requestRoutes(origin: Coordinate, destination: Coordinate): Promi
     'osrm',
     'OSRM · OpenStreetMap (serviciu demonstrativ)',
   );
-  return RoutesResponse.parse({ routes });
+  // The OSRM demo server has no avoid option: say so instead of pretending.
+  return RoutesResponse.parse({ routes, ...(avoid.length ? { avoidance: 'not_supported' } : {}) });
 }
 
 /** Turns an OSRM `route` response into our routes, keeping the provider geometry untouched. */
@@ -140,13 +176,18 @@ export function parseOsrmRoutes(json: unknown, idPrefix: string, source: string)
 export async function getRoutes(
   origin: Coordinate,
   destination: Coordinate,
+  avoidRequested: AvoidCircle[] = [],
 ): Promise<RoutesResponse> {
-  const key = JSON.stringify([origin, destination].map((c) => c.map((n) => +n.toFixed(5))));
+  const avoid = usableAvoid(origin, destination, avoidRequested);
+  const key = JSON.stringify([
+    [origin, destination].map((c) => c.map((n) => +n.toFixed(5))),
+    avoid.map((c) => [c.center.map((n) => +n.toFixed(5)), Math.round(c.radiusM)]),
+  ]);
   const hit = cache.get(key);
   if (hit && hit.expires > Date.now()) return hit.result;
   const running = pending.get(key);
   if (running) return running;
-  const job = requestRoutes(origin, destination)
+  const job = requestRoutes(origin, destination, avoid)
     .then((result) => {
       if (cache.size >= 100) cache.delete(cache.keys().next().value!);
       cache.set(key, { result, expires: Date.now() + 300000 });

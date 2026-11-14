@@ -290,6 +290,16 @@ Demoted from P2: the city guide warns against a second complaints inbox.
 - **Accessibility filter** = parkings with OSM `capacity:disabled` > 0 or verified data; otherwise "Unknown".
 - Never claim the product safely guides blind users. Never invent accessible routes. (openrouteservice's `wheelchair` profile is P3 and labeled `estimated`.)
 
+### 6.16 School drop-off zones ("Zone protejate la școli")
+Added 14 Nov 2026 (team idea "Scutul Școlilor"). The opposite of "fastest to the door": at drop-off and pick-up times, cars stop a short walk away from schools.
+- **Data:** schools and kindergartens from OpenStreetMap (`amenity=school|kindergarten`, ODbL), snapshot `shared/src/data/schools.osm.json` by `pnpm data:schools`. The City Hall publishes no school location list (guide checked 14 Nov). Hospitals are deliberately **not** zoned: patients and people with reduced mobility need to get close.
+- **Rule (deterministic, `shared/src/protectedZones.ts`, `backend/src/engines/smartmatch/schoolZone.ts`):** a school within 150 m of the destination opens a zone = a 250 m circle around each such school (max 4). It is **active** Monday–Friday, not on public holidays, at 07:30–08:30, 12:00–14:00 and 16:00–17:30 local time (end exclusive). School holidays are not included yet: the user can switch the zone off.
+- **Effect:** while active, SmartMatch leaves the parkings inside the zone out before the walking matrix, and the response carries `protectedZone` (schools, window, how many parkings were left out). The parking walk is the existing real walking route.
+- **Driving route:** the preview and the navigation send the circles as `avoid`; openrouteservice gets them as `avoid_polygons`. The keyless OSRM fallback cannot avoid zones; the UI then measures the metres of provider geometry inside the zone and says so. A circle containing the start or the end is dropped.
+- **Opt-out:** "Am nevoie să ajung cu mașina până la intrare" (disability, sick child, heavy bags) turns it off for the trip. It is never a ban.
+- **Stradă școlară:** a text built only from the zone's data, copied by the user into decidem.primariatm.ro. Decidem has no API: the app sends nothing, and it claims nothing about other parents (no aggregated user data exists yet).
+- **Labels:** the zone is `estimated`, "a rule of the app, not an official City Hall zone".
+
 ## 7. SmartMatch algorithm
 
 ### 7.1 Candidates

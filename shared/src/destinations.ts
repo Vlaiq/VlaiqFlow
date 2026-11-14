@@ -106,6 +106,8 @@ export const PLACE_CATEGORY_RO: Record<OsmPlace['category'], string> = {
   university: 'Universitate',
   stadium: 'Stadion',
   park: 'Parc',
+  school: 'Școală / liceu',
+  kindergarten: 'Grădiniță',
 };
 
 /** Same name and category within 400 m → one destination (OSM often maps a building and its campus). */

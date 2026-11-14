@@ -8,6 +8,9 @@ import {
   type Parking,
   type RecommendationOption,
   type TimparkSnapshot,
+  circleRing,
+  schoolLabel,
+  type ProtectedZone,
 } from '@vlaiq/shared';
 import {
   addTimparkLayers,
@@ -33,6 +36,8 @@ const ROUTE_SOURCE = 'drive-route';
 const ROUTE_LAYER = 'drive-route-line';
 const WALK_SOURCE = 'parking-walk-route';
 const WALK_LAYER = 'parking-walk-route-line';
+const ZONE_SOURCE = 'school-zone';
+const ZONE_LAYER = 'school-zone-fill';
 
 function parkingsToGeoJSON(parkings: Parking[]): GeoJSON.FeatureCollection<GeoJSON.Point> {
   return {
@@ -65,6 +70,8 @@ interface Props {
   onPickOrigin?: (coordinate: Coordinate) => void;
   origin?: Coordinate | null;
   journey?: JourneyMapSelection | null;
+  /** School drop-off zone next to the destination (§6.16), drawn while it is active. */
+  protectedZone?: ProtectedZone | null;
 }
 
 const FLY_ZOOM: Record<Destination['precision'], number> = {
@@ -154,6 +161,7 @@ export function MapView({
   onPickOrigin,
   origin = null,
   journey = null,
+  protectedZone = null,
 }: Props) {
   const [mapError, setMapError] = useState<string | null>(null);
   const [attempt, setAttempt] = useState(0);
@@ -547,6 +555,61 @@ export function MapView({
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [walkRoute, attempt, styleRevision]);
+
+  // School drop-off zone: a dashed circle per school, drawn only while the zone is active (§6.16).
+  const zoneKey = protectedZone?.active
+    ? JSON.stringify([protectedZone.applied, protectedZone.radiusM, protectedZone.schools.map((s) => s.coordinate)])
+    : '';
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map) return;
+    const apply = () => {
+      if (!map.getStyle()?.sources?.[PARKINGS_SOURCE]) return;
+      const zone = protectedZone?.active ? protectedZone : null;
+      const data: GeoJSON.FeatureCollection<GeoJSON.Polygon> = {
+        type: 'FeatureCollection',
+        features: (zone?.schools ?? []).map((s) => ({
+          type: 'Feature',
+          geometry: { type: 'Polygon', coordinates: [circleRing(s.coordinate, zone!.radiusM, 48)] },
+          properties: { label: schoolLabel(s), applied: zone!.applied },
+        })),
+      };
+      const source = map.getSource(ZONE_SOURCE) as GeoJSONSource | undefined;
+      if (source) source.setData(data);
+      else {
+        map.addSource(ZONE_SOURCE, { type: 'geojson', data, attribution: '© OpenStreetMap contributors' });
+        const before = map.getLayer(PARKINGS_LAYER) ? PARKINGS_LAYER : undefined;
+        map.addLayer(
+          {
+            id: ZONE_LAYER,
+            type: 'fill',
+            source: ZONE_SOURCE,
+            paint: { 'fill-color': '#f3bd6c', 'fill-opacity': ['case', ['get', 'applied'], 0.16, 0.07] },
+          },
+          before,
+        );
+        map.addLayer(
+          {
+            id: `${ZONE_LAYER}-outline`,
+            type: 'line',
+            source: ZONE_SOURCE,
+            paint: {
+              'line-color': theme === 'light' ? '#9a6412' : '#f3bd6c',
+              'line-width': 2,
+              'line-dasharray': [2, 1.5],
+            },
+          },
+          before,
+        );
+      }
+    };
+    if (map.getStyle()?.sources?.[PARKINGS_SOURCE]) apply();
+    else map.once('style.load', apply);
+    return () => {
+      map.off('style.load', apply);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [zoneKey, attempt, styleRevision]);
 
   // Numbered markers for the SmartMatch options; HTML buttons so they are keyboard-reachable.
   const onSelectRef = useRef(onSelectRecommendation);

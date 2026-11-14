@@ -2,6 +2,7 @@ import { z } from 'zod';
 import { Coordinate } from './navigation';
 import { DataQuality } from './quality';
 import { TariffColor } from './timpark';
+import { ProtectedZone, SchoolZoneMode } from './protectedZone';
 
 /**
  * SmartMatch parking recommendation (spec §7). Every number here is computed by deterministic code in
@@ -21,6 +22,8 @@ export const RecommendationRequest = z.object({
   stayMinutes: z.number().int().min(15).max(600).default(120),
   mode: RecommendationMode.default('balanced'),
   maxWalkMinutes: z.number().int().min(2).max(20).default(12),
+  /** School drop-off zones (§6.16): 'auto' applies them at school times, 'off' for this trip. */
+  schoolZone: SchoolZoneMode.default('auto'),
 });
 export type RecommendationRequest = z.infer<typeof RecommendationRequest>;
 
@@ -77,6 +80,8 @@ export const RecommendationResponse = z.object({
   considered: z.number().int().nonnegative(),
   explanation: z.string().nullable(),
   model: z.object({ name: z.string(), quality: DataQuality, note: z.string() }),
+  /** Present when a school or kindergarten is next to the destination (§6.16). */
+  protectedZone: ProtectedZone.nullable().optional(),
 });
 export type RecommendationResponse = z.infer<typeof RecommendationResponse>;
 

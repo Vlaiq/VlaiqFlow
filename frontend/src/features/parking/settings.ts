@@ -8,6 +8,8 @@ export interface ParkingSettings {
   maxWalkMinutes: number;
   /** Value of a datetime-local input in device time, or null for "now". */
   arrive: string | null;
+  /** School drop-off zones (§6.16). false = the user needs to reach the entrance by car on this trip. */
+  schoolZone: boolean;
 }
 
 export const DEFAULT_PARKING_SETTINGS: ParkingSettings = {
@@ -15,6 +17,7 @@ export const DEFAULT_PARKING_SETTINGS: ParkingSettings = {
   stayMinutes: 120,
   maxWalkMinutes: 12,
   arrive: null,
+  schoolZone: true,
 };
 
 export const PARKING_MODE_LABEL: Record<ParkingSettings['mode'], string> = {

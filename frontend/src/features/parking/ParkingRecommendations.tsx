@@ -12,6 +12,7 @@ import { api } from '../../services/api';
 import { KIND_LABEL, pct, priceText, stayLabel } from './recommendationLabels';
 import { FreeChance, ScoreBreakdown } from './ParkingFacts';
 import { PARKING_MODE_LABEL, arriveIso, localInputValue, type ParkingSettings } from './settings';
+import { SchoolZoneCard } from './SchoolZoneCard';
 
 const MODES: { id: ParkingSettings['mode']; hint: string }[] = [
   { id: 'balanced', hint: 'mersul, șansele de loc și prețul, la fel de important' },
@@ -75,6 +76,7 @@ export function ParkingRecommendations({
           mode,
           stayMinutes: stay,
           maxWalkMinutes: maxWalk,
+          schoolZone: settings.schoolZone ? 'auto' : 'off',
           ...(arriveAt ? { arriveAt } : {}),
         },
         ctrl.signal,
@@ -103,7 +105,7 @@ export function ParkingRecommendations({
       ctrl.abort();
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [loc?.lng, loc?.lat, origin?.[0], origin?.[1], mode, stay, arriveAt, maxWalk, attempt]);
+  }, [loc?.lng, loc?.lat, origin?.[0], origin?.[1], mode, stay, arriveAt, maxWalk, settings.schoolZone, attempt]);
 
   useEffect(() => () => onResult(null), [onResult]);
 
@@ -186,6 +188,12 @@ export function ParkingRecommendations({
       </div>
 
       <div className="mt-3" aria-live="polite">
+        {result.state === 'ok' && result.data.protectedZone && (
+          <SchoolZoneCard
+            zone={result.data.protectedZone}
+            onToggle={(on) => set({ schoolZone: on })}
+          />
+        )}
         {result.state === 'loading' && (
           <div className="parking-loading" role="status">
             <span className="parking-loading-track" />
