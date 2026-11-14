@@ -11,6 +11,7 @@ const fixture = {
       distance: 150,
       duration: 25,
       geometry: {
+        type: 'LineString',
         coordinates: [
           [21.21, 45.75],
           [21.211, 45.75],

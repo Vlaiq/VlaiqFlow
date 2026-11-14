@@ -36,7 +36,8 @@ it('maps actual ORS metrics, sends the explicit origin, caches results and prese
       [21.22, 45.75],
       [21.23, 45.76],
     ];
-  const result = await driveTimes(from, to);
+  const [result, concurrent] = await Promise.all([driveTimes(from, to), driveTimes(from, to)]);
+  expect(concurrent).toEqual(result);
   expect(result[0]).toMatchObject({ minutes: 2, meters: 900, quality: 'estimated' });
   expect(result[1]?.minutes).toBeNull();
   expect(JSON.parse(fetcher.mock.calls[0]?.[1].body).locations).toEqual([from, ...to]);

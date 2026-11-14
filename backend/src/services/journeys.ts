@@ -16,7 +16,14 @@ const orsResponse = z.object({
       z.object({
         geometry: z.object({
           type: z.literal('LineString'),
-          coordinates: z.array(z.tuple([z.number(), z.number()])).min(2),
+          coordinates: z
+            .array(
+              z.tuple([
+                z.number().finite().min(-180).max(180),
+                z.number().finite().min(-90).max(90),
+              ]),
+            )
+            .min(2),
         }),
         properties: z.object({
           summary: z.object({
@@ -63,7 +70,11 @@ const notes: Record<JourneyMode, string> = {
     'Rută de bicicletă calculată. Nu confirmă existența unei piste separate sau siguranța întregului traseu.',
 };
 
-async function activeRoute(mode: 'walk' | 'cycle', origin: Coordinate, destination: Coordinate) {
+export async function requestActiveRoute(
+  mode: 'walk' | 'cycle',
+  origin: Coordinate,
+  destination: Coordinate,
+) {
   if (!config.orsApiKey) throw new Error('ACTIVE_PROVIDER_NOT_CONFIGURED');
   const response = await fetch(
     `https://api.openrouteservice.org/v2/directions/${profile[mode]}/geojson`,
@@ -120,8 +131,8 @@ async function calculate(
         note: notes.drive,
       }),
     ),
-    activeRoute('walk', origin, destination),
-    activeRoute('cycle', origin, destination),
+    requestActiveRoute('walk', origin, destination),
+    requestActiveRoute('cycle', origin, destination),
   ];
   const results = await Promise.allSettled(jobs);
   const modes: JourneyMode[] = ['drive', 'walk', 'cycle'];

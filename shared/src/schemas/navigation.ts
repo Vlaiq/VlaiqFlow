@@ -1,7 +1,10 @@
 import { z } from 'zod';
 
 /** GeoJSON order throughout the navigation stack: longitude, latitude. */
-export const Coordinate = z.tuple([z.number().min(-180).max(180), z.number().min(-90).max(90)]);
+export const Coordinate = z.tuple([
+  z.number().finite().min(-180).max(180),
+  z.number().finite().min(-90).max(90),
+]);
 export type Coordinate = z.infer<typeof Coordinate>;
 export const RouteRequest = z.object({ origin: Coordinate, destination: Coordinate });
 export const RouteStep = z.object({
@@ -13,8 +16,8 @@ export const RouteStep = z.object({
 export const NavigationRoute = z
   .object({
     id: z.string(),
-    distance: z.number().positive(),
-    duration: z.number().positive(),
+    distance: z.number().finite().positive(),
+    duration: z.number().finite().positive(),
     geometry: z.array(Coordinate).min(2),
     steps: z.array(RouteStep).min(1),
     source: z.string(),

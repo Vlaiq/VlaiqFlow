@@ -45,7 +45,6 @@ export interface CandidateInput {
 
 /** Timpark lots: about 25 m² of surface per car including the aisles (common planning figure). */
 const M2_PER_SPACE = 25;
-const DUPLICATE_M = 35;
 
 const PROFILE_RADIUS_M: Partial<Record<OsmPlace['category'], [AreaProfile, number]>> = {
   mall: ['commercial', 250],
@@ -58,11 +57,19 @@ const PROFILE_RADIUS_M: Partial<Record<OsmPlace['category'], [AreaProfile, numbe
 /** Area profile of a point, from the Timpark zone it lies in and the major places around it. */
 export function areaProfile(
   point: Coordinate,
-  ctx: { zones: { tariff: TariffColor; ring: Coordinate[] }[]; places: OsmPlace[]; customersOnly?: boolean; tariff?: TariffColor | null },
+  ctx: {
+    zones: { tariff: TariffColor; ring: Coordinate[] }[];
+    places: OsmPlace[];
+    customersOnly?: boolean;
+    tariff?: TariffColor | null;
+  },
 ): AreaProfile {
   const near = (category: OsmPlace['category']) => {
     const rule = PROFILE_RADIUS_M[category];
-    return !!rule && ctx.places.some((p) => p.category === category && distanceM(point, [p.lng, p.lat]) <= rule[1]);
+    return (
+      !!rule &&
+      ctx.places.some((p) => p.category === category && distanceM(point, [p.lng, p.lat]) <= rule[1])
+    );
   };
   if (ctx.customersOnly || near('mall')) return 'commercial';
   const zone = ctx.zones.find((z) => inRing(point, z.ring));
@@ -85,8 +92,12 @@ export function buildCandidates(input: CandidateInput): Candidate[] {
   const out: Candidate[] = [];
   const features = timpark?.data.features ?? [];
   const tariffs = timpark?.data.tariffs;
-  const timparkSource = timpark ? `Primăria Timișoara, date Timpark (${timpark.fetchedAt.slice(0, 10)})` : '';
-  const zones = features.filter((f) => f.kind === 'zone').map((f) => ({ tariff: f.tariff, ring: f.coordinates as Coordinate[] }));
+  const timparkSource = timpark
+    ? `Primăria Timișoara, date Timpark (${timpark.fetchedAt.slice(0, 10)})`
+    : '';
+  const zones = features
+    .filter((f) => f.kind === 'zone')
+    .map((f) => ({ tariff: f.tariff, ring: f.coordinates as Coordinate[] }));
 
   // 1. Timpark lots: polygons with a real tariff.
   const lots = features.filter((f) => f.kind === 'lot');
@@ -101,7 +112,9 @@ export function buildCandidates(input: CandidateInput): Candidate[] {
     out.push({
       id: `timpark-${f.id}`,
       kind: 'timpark_lot',
-      name: named ? `Parcare Timpark ${f.name.trim()}` : derivedName('Parcare Timpark', centre, streets),
+      name: named
+        ? `Parcare Timpark ${f.name.trim()}`
+        : derivedName('Parcare Timpark', centre, streets),
       nameIsDerived: !named,
       coordinate: centre,
       straightM: d,
@@ -109,7 +122,11 @@ export function buildCandidates(input: CandidateInput): Candidate[] {
       tariff: f.tariff,
       smsCode: f.progressive ? null : tariffs.hourly[f.tariff].code,
       capacity: cap
-        ? { value: cap, quality: 'estimated', source: `suprafața conturului Timpark ÷ ${M2_PER_SPACE} m² pe loc` }
+        ? {
+            value: cap,
+            quality: 'estimated',
+            source: `suprafața conturului Timpark ÷ ${M2_PER_SPACE} m² pe loc`,
+          }
         : { value: null, quality: 'unknown', source: 'none' },
       profile: areaProfile(centre, { zones, places, tariff: f.tariff }),
       price: timparkPrice(f.tariff, f.progressive, at, stayMinutes, tariffs, timparkSource),
@@ -119,7 +136,10 @@ export function buildCandidates(input: CandidateInput): Candidate[] {
 
   // 2. Paid street parking: the nearest point of each street, nearest streets first, one entry per name.
   if (tariffs) {
-    const byName = new Map<string, { f: (typeof features)[number]; point: Coordinate; d: number }>();
+    const byName = new Map<
+      string,
+      { f: (typeof features)[number]; point: Coordinate; d: number }
+    >();
     for (const f of features) {
       if (f.kind !== 'street') continue;
       let best: { point: Coordinate; d: number } | null = null;
@@ -138,7 +158,9 @@ export function buildCandidates(input: CandidateInput): Candidate[] {
       out.push({
         id: `timpark-${f.id}`,
         kind: 'timpark_street',
-        name: named ? `Stradă cu plată: ${f.name.trim()}` : derivedName('Stradă cu plată', point, streets),
+        name: named
+          ? `Stradă cu plată: ${f.name.trim()}`
+          : derivedName('Stradă cu plată', point, streets),
         nameIsDerived: !named,
         coordinate: point,
         straightM: d,
@@ -154,13 +176,16 @@ export function buildCandidates(input: CandidateInput): Candidate[] {
   }
 
   // 3. OpenStreetMap parkings that are not already a Timpark lot.
-  const lotRings = lots.map((f) => ({ ring: f.coordinates as Coordinate[], centre: ringCentre(f.coordinates as Coordinate[]) }));
+  const lotRings = lots.map((f) => ({
+    ring: f.coordinates as Coordinate[],
+    centre: ringCentre(f.coordinates as Coordinate[]),
+  }));
   for (const p of input.parkings) {
     const point: Coordinate = [p.lng, p.lat];
     const d = distanceM(destination, point);
     if (d > CANDIDATE_RADIUS_M) continue;
     if (p.access === 'customers' && d > CUSTOMERS_ONLY_MAX_M) continue;
-    if (lotRings.some((l) => inRing(point, l.ring) || distanceM(point, l.centre) <= DUPLICATE_M)) continue;
+    if (lotRings.some((l) => inRing(point, l.ring))) continue;
     const flags: string[] = [];
     if (p.access === 'customers') flags.push('Doar pentru clienți');
     if (p.access === 'unknown') flags.push('Acces nespecificat în OpenStreetMap');

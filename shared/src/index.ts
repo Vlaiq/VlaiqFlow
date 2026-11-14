@@ -1,5 +1,6 @@
 export * from './brand';
 export * from './schemas/journey';
+export * from './schemas/completeJourney';
 export * from './balance';
 export * from './county';
 export * from './motion';

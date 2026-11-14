@@ -10,7 +10,7 @@ const osrmResponse = z.object({
     z.object({
       distance: z.number(),
       duration: z.number(),
-      geometry: z.object({ coordinates: z.array(coord) }),
+      geometry: z.object({ type: z.literal('LineString'), coordinates: z.array(coord) }),
       legs: z.array(
         z.object({
           steps: z.array(
@@ -31,7 +31,7 @@ const osrmResponse = z.object({
 const orsResponse = z.object({
   features: z.array(
     z.object({
-      geometry: z.object({ coordinates: z.array(coord) }),
+      geometry: z.object({ type: z.literal('LineString'), coordinates: z.array(coord) }),
       properties: z.object({
         summary: z.object({ distance: z.number(), duration: z.number() }),
         segments: z.array(
