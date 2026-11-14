@@ -284,6 +284,7 @@ function Explore({
   const [carWalk, setCarWalk] = useState<Coordinate[] | null>(null);
   const car = useParkedCar();
   const [expanded, setExpanded] = useState(false);
+  const [plannerView, setPlannerView] = useState<'parking' | 'journey'>('parking');
   const [layers, setLayers] = useState(false);
   const [origin, setOrigin] = useState<Origin | null>(null);
   const [pickingOrigin, setPickingOrigin] = useState(false);
@@ -344,6 +345,7 @@ function Explore({
     setDetailId(null);
     setDriveRoute(null);
     setJourneySelection(null);
+    setPlannerView('parking');
     setExpanded(true);
     panelRef.current?.scrollTo({ top: 0 });
   }, []);
@@ -634,7 +636,15 @@ function Explore({
                 )}
                 {destination.location && (
                   <div hidden={!!detail}>
-                    <ParkingRecommendations
+                    <div className="flow-planner-switch" role="group" aria-label="Compară parcări sau trasee">
+                      <button type="button" aria-pressed={plannerView === 'parking'} className={plannerView === 'parking' ? 'active' : ''} onClick={() => { setPlannerView('parking'); setJourneySelection(null); }}>
+                        <ParkingSquare size={17} aria-hidden="true" /> Parcări
+                      </button>
+                      <button type="button" aria-pressed={plannerView === 'journey'} className={plannerView === 'journey' ? 'active' : ''} onClick={() => { setPlannerView('journey'); setSelectedId(null); }}>
+                        <Navigation2 size={17} aria-hidden="true" /> Trasee
+                      </button>
+                    </div>
+                    {plannerView === 'parking' && <ParkingRecommendations
                       key={destination.id}
                       destination={destination}
                       origin={origin?.coordinate ?? null}
@@ -654,7 +664,7 @@ function Explore({
                           onChange={setStops}
                         />
                       }
-                    />
+                    />}
                     <div className="explore-origin">
                       <div className="explore-origin-label">
                         <LocateFixed size={13} /> PUNCTUL DE PLECARE
@@ -691,7 +701,7 @@ function Explore({
                         </p>
                       )}
                     </div>
-                    <GreenSwitch
+                    {plannerView === 'journey' && <GreenSwitch
                       origin={origin?.coordinate ?? null}
                       destination={destination}
                       parkingSettings={parkingSettings}
@@ -699,7 +709,7 @@ function Explore({
                       onInspectRoute={() => setExpanded(false)}
                       onOpenParking={openParkingFromJourney}
                       onStartActivity={onStartActivity}
-                    />
+                    />}
                   </div>
                 )}
                 <a href="/data" className="explore-data-link">
