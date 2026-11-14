@@ -87,7 +87,7 @@ to Timpark/CityApp. Live occupancy and full elapsed parking time remain unknown.
 Gate status: core orchestration, contracts, truthful results, UI/map/handoff, reward isolation,
 automated checks and repeatable runbook are WORKING under validated fixtures/local data. Actual
 live-route acceptance and physical phone/resident validation are PARTIAL/BLOCKED as described.
-The repository's code-license choice remains the team's uncompleted decision in its checklist.
+The code license was later set to MIT (`LICENSE`, 14 Nov 2026).
 
 ## NOT IMPLEMENTED
 

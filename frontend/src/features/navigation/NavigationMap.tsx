@@ -90,7 +90,8 @@ export function NavigationMap(props: Props) {
       return;
     }
     map.current = m;
-    m.once('idle', () => {
+    // Close the compact attribution as soon as the map shows, not only once every tile has loaded.
+    const collapseAttribution = () => {
       const attribution = m
         .getContainer()
         .querySelector<HTMLDetailsElement>('details.maplibregl-ctrl-attrib');
@@ -98,7 +99,9 @@ export function NavigationMap(props: Props) {
         attribution.open = false;
         attribution.classList.remove('maplibregl-compact-show');
       }
-    });
+    };
+    m.once('load', collapseAttribution);
+    m.once('idle', collapseAttribution);
     const showLocalFallback = () => {
       if (fallbackRef.current) return;
       fallbackRef.current = true;

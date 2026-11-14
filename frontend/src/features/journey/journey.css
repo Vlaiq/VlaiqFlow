@@ -404,6 +404,14 @@
   font-size: 27px;
   letter-spacing: -1px;
 }
+.journey-missing-note {
+  font-size: 11px;
+  line-height: 1.6;
+  color: rgb(var(--text-muted));
+  margin: 10px 1px 0;
+  padding-left: 10px;
+  border-left: 2px solid rgb(var(--q-unknown));
+}
 .journey-live-status {
   font-size: 10px;
   color: rgb(var(--text-muted));

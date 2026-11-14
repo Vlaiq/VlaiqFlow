@@ -105,7 +105,7 @@ unknown-vs-empty semantics and coordinate-free aggregate exports.
 
 Physical-device checks, field counts and interviews remain human tasks. Record actual
 findings in `docs/user-testing/`; do not infer that code tests replace residents using the app.
-The project-level open-source license must be selected and added by the project owners
-before institutional reuse; dependency/data licenses do not automatically license this repo.
+The project code is MIT-licensed (`LICENSE`, decided 14 Nov 2026). Data and dependencies keep
+their own licenses (`docs/third-party.md`).
 Choose one pilot outcome with a measured baseline (for example, total journey time to a
 selected destination), rather than deriving citywide impact from a simulation.

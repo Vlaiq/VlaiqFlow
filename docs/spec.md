@@ -1,6 +1,6 @@
 # VLAIQ FLOW — Product & Technical Specification
 
-> Cleaned-up version of the original master prompt (`readme.txt`). Agent rules live in `/CLAUDE.md`, and human-only tasks in `docs/team-checklist.md`.
+> Cleaned-up version of the original master prompt (kept by the team outside the repository since 14 Nov 2026). Agent rules live in `/CLAUDE.md`, and human-only tasks in `docs/team-checklist.md`.
 > Items marked **[VERIFY]** are assumptions a team member must confirm. Items marked **[DECIDE]** need a team decision.
 
 ---
@@ -205,6 +205,7 @@ The best option is visually highlighted.
 - Marker interpolated along the geometry with `requestAnimationFrame`; bearing follows the road; ETA and distance update live.
 - A permanent "SIMULATION" label.
 - **Offline fallback:** the demo route geometry and its matrix results are bundled as JSON. The demo runs even if openrouteservice is down.
+- **Implemented (14 Nov):** an **Încearcă DEMO** button on Explore sets the origin to Timișoara Nord station and the destination to Piața Victoriei (both from the snapshots), and the arrival to the next weekday at 10:00 so Timpark tariffs apply even on a weekend; a DEMO note explains this, and picking a real origin leaves the DEMO. Navigation DEMO has 1× / 2× / 4× playback. Not done: the bundled offline route JSON.
 
 ### 6.9 Smart rerouting (polished showcase)
 1. A scenario event marks the selected parking as full (simulated).
@@ -215,10 +216,13 @@ The best option is visually highlighted.
 
 All numbers in the banner come from SmartMatch output.
 
+**Implemented (14 Nov), DEMO only:** the navigation link carries the next SmartMatch option (chance, walk) in the URL. **Simulează: parcarea s-a umplut** shows the banner with a 15 s countdown and a voice prompt when sound is on; **Schimbă** reroutes from the simulated position; **Ieșire** restores the original preview.
+
 ### 6.10 Driving → walking transition
 - On arrival (within 30 m of the parking): show an "Arrived at Parking B" sheet.
 - Then switch to a foot-walking route to the original destination, showing walking time and distance, with the destination still visible.
 - For a transit option: walk to the stop, then the line, then walk to the destination (scheduled times only).
+- **Implemented (14 Nov), partial:** on arrival the navigation shows "Ai parcat. Continuă pe jos până la …" with the walk time and a link back to the planner, which draws the real walking route. There is no turn-by-turn walking navigation yet.
 
 ### 6.11 AI assistant (P2)
 **Flow:**
@@ -336,7 +340,7 @@ cost = walk_min + (1 − p_free) × full_penalty + price × minutes_per_currency
 
 - Candidates: Timpark lots, the 8 nearest paid streets (one per name) and OSM parkings within 1 km straight line; customers-only parkings only when the destination is ≤ 300 m away; OSM duplicates of a Timpark lot are dropped. Max 30 go to the walking matrix.
 - Walking: openrouteservice foot-walking matrix with `ORS_API_KEY`; otherwise straight line × 1.3 at 4.8 km/h, labelled as an estimate.
-- Price: Timpark tariff × started paid hours inside the schedule (progressive steps, day ticket when cheaper); OSM `fee=no` = 0 (`estimated`); unknown = at least the dearest Timpark tariff for the stay, flagged, never free.
+- Price: Timpark tariff × started paid hours inside the schedule (progressive steps, day ticket when cheaper); OSM `fee=no` = 0 (`estimated`), except that a public OSM lot inside a paid Timpark zone gets the zone tariff as an `estimated` price with a flag, because `fee=no` there conflicts with the zone (14 Nov); unknown = at least the dearest Timpark tariff for the stay, flagged, never free.
 - Returns the top 5 with a template explanation (winner vs backup) and the per-option breakdown.
 
 The weighted min–max version below applies once the driving leg (origin → parking) is added:
@@ -672,7 +676,7 @@ The judges and the city look for a project someone else can run after Monday.
 - **Named owner:** the pitch names who would run it. Candidates: Timpark (parking), SMTT (transit), or the City Hall digital team as a CityApp feature **[DECIDE]**.
 - **Fits existing channels:** hands off to Timpark SMS / CityApp for payment and to Sesizări for problems; reads city data from the source.
 - **Runs without the team:**
-    - open-source licence, MIT or Apache-2.0 **[DECIDE]**;
+    - open-source licence: **MIT** (decided 14 Nov 2026, `LICENSE`);
     - a README someone else can follow;
     - no paid API on a personal card; every free account documented in `docs/third-party.md`;
     - nothing that needs a server tended at night.

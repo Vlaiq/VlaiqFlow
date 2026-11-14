@@ -61,6 +61,9 @@ export function useNavigation(places: NavPlaces) {
   const [follow, setFollow] = useState(true);
   const [perspective, setPerspective] = useState(true);
   const [pickOrigin, setPickOrigin] = useState(false);
+  const [switched, setSwitched] = useState(false);
+  /** DEMO playback speed (spec §6.8). The speedometer keeps showing the real simulated speed. */
+  const [playback, setPlayback] = useState<1 | 2 | 4>(1);
   const lengths = useMemo(() => (route ? cumulative(route.geometry) : []), [route]);
   const metrics = route ? tripMetrics(route, lengths, progress) : null;
   const request = useRef<AbortController>();
@@ -75,6 +78,8 @@ export function useNavigation(places: NavPlaces) {
   const acquireTimer = useRef<number>();
   const gpsError = useRef(false); // last error came from GPS, so "Reîncearcă" restarts GPS
   const routeFromGps = useRef(false); // current routes start at the GPS position, not at `origin`
+  /** Origin and target before a DEMO "parking full" switch, restored when the trip stops. */
+  const beforeSwitch = useRef<{ origin: Coordinate; destination: NavPlace } | null>(null);
 
   const stopWatcher = useCallback(() => {
     if (watcher.current != null) navigator.geolocation?.clearWatch(watcher.current);
@@ -123,7 +128,14 @@ export function useNavigation(places: NavPlaces) {
     window.clearTimeout(acquireTimer.current);
     request.current?.abort();
     setLoading(false);
-    if (routeFromGps.current) {
+    if (beforeSwitch.current) {
+      // Back to the preview the user started from; the effect on origin/destination reloads its route.
+      setOrigin(beforeSwitch.current.origin);
+      setDestination(beforeSwitch.current.destination);
+      beforeSwitch.current = null;
+      setSwitched(false);
+      routeFromGps.current = false;
+    } else if (routeFromGps.current) {
       routeFromGps.current = false;
       void loadRoutes(origin, destination.coordinate);
     }
@@ -396,11 +408,13 @@ export function useNavigation(places: NavPlaces) {
     let previous = performance.now(),
       frame = 0,
       lastPaint = 0;
+    // Real-time speed along the route; the DEMO playback factor (spec §6.8) only fast-forwards the marker.
     const speed = (lengths.at(-1) ?? 0) / route.duration;
+    const advance = speed * playback;
     const tick = (now: number) => {
       progressRef.current = Math.min(
         lengths.at(-1)!,
-        progressRef.current + Math.min((now - previous) / 1000, 0.25) * speed,
+        progressRef.current + Math.min((now - previous) / 1000, 0.25) * advance,
       );
       previous = now;
       if (now - lastPaint >= 100) {
@@ -438,7 +452,7 @@ export function useNavigation(places: NavPlaces) {
     };
     frame = requestAnimationFrame(tick);
     return () => cancelAnimationFrame(frame);
-  }, [mode, paused, arrived, route, lengths]);
+  }, [mode, paused, arrived, route, lengths, playback]);
 
   useEffect(() => {
     if (muted || !metrics || !['live', 'demo'].includes(mode) || !('speechSynthesis' in window))
@@ -480,6 +494,25 @@ export function useNavigation(places: NavPlaces) {
       document.removeEventListener('visibilitychange', acquire);
     };
   }, [mode, arrived]);
+
+  /**
+   * DEMO "parking full" scenario (spec §6.9): after the user accepts, drive on from the current simulated
+   * position to the backup parking along a newly routed path. Only the simulation changes; no shared data.
+   */
+  const switchTarget = useCallback(
+    (place: NavPlace) => {
+      if (mode !== 'demo' || !fix) return;
+      beforeSwitch.current ??= { origin, destination };
+      setSwitched(true);
+      spoken.current = '';
+      setPaused(false);
+      setArrived(false);
+      setNotice(`Ruta nouă spre ${place.name}`);
+      setOrigin(fix.coordinate);
+      setDestination(place);
+    },
+    [mode, fix, origin, destination],
+  );
 
   const mapPick = useCallback(
     (coordinate: Coordinate) => {
@@ -529,6 +562,10 @@ export function useNavigation(places: NavPlaces) {
     mapPick,
     startLive,
     startDemo,
+    switchTarget,
+    switched,
+    playback,
+    setPlayback,
     stop,
     retry: () => (gpsError.current ? startLive() : loadRoutes(origin, destination.coordinate)),
   };

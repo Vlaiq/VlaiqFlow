@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { DEFAULT_PARKING_SETTINGS, arriveIso } from './settings';
+import { DEFAULT_PARKING_SETTINGS, arriveIso, nextWeekdayAt10 } from './settings';
 import { chanceLevel, scoreLines } from './recommendationLabels';
 
 describe('score breakdown shows the real price next to its minute equivalent', () => {
@@ -43,6 +43,12 @@ describe('shared parking settings', () => {
   it('turns a device-time arrival into an ISO timestamp', () => {
     const iso = arriveIso({ ...DEFAULT_PARKING_SETTINGS, arrive: '2026-11-14T18:30' });
     expect(iso).toBe(new Date('2026-11-14T18:30').toISOString());
+  });
+  it('DEMO arrival is the next weekday at 10:00, so paid tariffs show on weekends', () => {
+    expect(nextWeekdayAt10(new Date('2026-11-14T15:00'))).toBe('2026-11-16T10:00'); // Saturday → Monday
+    expect(nextWeekdayAt10(new Date('2026-11-15T09:00'))).toBe('2026-11-16T10:00'); // Sunday → Monday
+    expect(nextWeekdayAt10(new Date('2026-11-16T08:00'))).toBe('2026-11-17T10:00'); // Monday → Tuesday
+    expect(nextWeekdayAt10(new Date('2026-11-20T12:00'))).toBe('2026-11-23T10:00'); // Friday → Monday
   });
 });
 

@@ -21,10 +21,25 @@ app.set('trust proxy', 1); // behind Caddy in production
 app.use(cors({ origin: config.corsOrigins }));
 app.use('/api/motion', express.json({ limit: '512kb' }));
 app.use(express.json({ limit: '100kb' }));
-app.use(
-  '/api',
-  rateLimit({ windowMs: 60_000, limit: 60, standardHeaders: 'draft-7', legacyHeaders: false }),
-);
+// Many people can share one IP (venue Wi-Fi, mobile carrier NAT), so the limits are per IP but generous.
+// Snapshot reads are served from memory and cost nothing upstream; routing and journeys reach external
+// providers (which have their own queue and cache), so they get the tighter limit.
+const limited = (limit: number) =>
+  rateLimit({
+    windowMs: 60_000,
+    limit,
+    standardHeaders: 'draft-7',
+    legacyHeaders: false,
+    handler: (_req, res) => {
+      const body: ApiError = {
+        error: { code: 'RATE_LIMITED', message: 'Prea multe cereri de la această rețea. Încearcă din nou într-un minut.' },
+      };
+      res.status(429).json(body);
+    },
+  });
+app.use(['/api/health', '/api/parkings', '/api/city', '/api/destinations'], limited(600));
+app.use(['/api/recommendations', '/api/journeys', '/api/navigation', '/api/motion'], limited(120));
+app.use('/api', limited(600)); // safety net for any route added later
 
 app.use('/api/health', healthRouter);
 app.use('/api/parkings', parkingsRouter);

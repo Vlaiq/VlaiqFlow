@@ -350,4 +350,61 @@ describe('candidates', () => {
     expect(lot.profile).toBe('centre'); // red tariff
     expect(list[1]!.price.quality).toBe('unknown');
   });
+
+  describe('OSM parkings inside a paid Timpark zone', () => {
+    const zoneRing: [number, number][] = [
+      [21.23, 45.76],
+      [21.24, 45.76],
+      [21.24, 45.77],
+      [21.23, 45.77],
+      [21.23, 45.76],
+    ];
+    const withZone: TimparkSnapshot = {
+      ...timpark,
+      data: {
+        ...timpark.data,
+        features: [
+          { id: 'z1', kind: 'zone', name: 'Z', tariff: 'red', progressive: false, checked: true, coordinates: zoneRing },
+        ],
+      },
+    };
+    const feeNo = (p: Parking): Parking => ({
+      ...p,
+      price: { value: { perHourRon: 0, note: 'fee=no in OSM' }, quality: 'estimated', source: 'OpenStreetMap fee tag' },
+    });
+    const build = (parkings: Parking[], at: Date) =>
+      buildCandidates({ destination: [21.235, 45.765], at, stayMinutes: 120, timpark: withZone, places: [], streets: null, parkings });
+
+    it('a fee=no lot in a red zone is not shown as free on a weekday', () => {
+      const [c] = build([feeNo(osm('in-zone', 21.235, 45.765, 'public'))], FRI_10);
+      expect(c!.price.total).toBeCloseTo(1.2); // 2 h × red tariff
+      expect(c!.price.quality).toBe('estimated');
+      expect(c!.price.note).toContain('fee=no');
+      expect(c!.smsCode).toBeNull(); // we do not tell people to pay by SMS for a lot that may not be Timpark
+      expect(c!.flags.join(' ')).toContain('zona Timpark roșu');
+    });
+
+    it('an unknown-price public lot in the zone gets the zone tariff as an estimate', () => {
+      const [c] = build([osm('in-zone', 21.235, 45.765, 'unknown')], FRI_10);
+      expect(c!.price.total).toBeCloseTo(1.2);
+      expect(c!.price.quality).toBe('estimated');
+    });
+
+    it('outside paid hours the zone estimate is free, still labelled estimated', () => {
+      const [c] = build([osm('in-zone', 21.235, 45.765, 'public')], SUN_12);
+      expect(c!.price.total).toBe(0);
+      expect(c!.price.quality).toBe('estimated');
+    });
+
+    it('customers-only lots and lots outside the zone keep their OpenStreetMap price', () => {
+      const list = build(
+        [feeNo(osm('shop', 21.235, 45.765, 'customers')), feeNo(osm('outside', 21.2295, 45.765, 'public'))],
+        FRI_10,
+      );
+      for (const c of list) {
+        expect(c.price.total).toBe(0);
+        expect(c.flags.join(' ')).not.toContain('zona Timpark');
+      }
+    });
+  });
 });

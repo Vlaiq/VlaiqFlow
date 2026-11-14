@@ -1,4 +1,4 @@
-import { formatAmountRo, isPaidAt, TIMPARK_CURRENCY, type TariffColor, type TimparkTariffs } from '@vlaiq/shared';
+import { formatAmountRo, isPaidAt, TARIFF_LABEL_RO, TIMPARK_CURRENCY, type TariffColor, type TimparkTariffs } from '@vlaiq/shared';
 import type { RecommendationOption } from '@vlaiq/shared';
 
 type Price = RecommendationOption['price'];
@@ -52,7 +52,7 @@ export function timparkPrice(
   } else {
     const rate = tariffs.hourly[tariff].eur;
     total = rate * hours;
-    note = `${hours} h × ${formatAmountRo(rate)} ${TIMPARK_CURRENCY}/h (tarif ${tariff}).`;
+    note = `${hours} h × ${formatAmountRo(rate)} ${TIMPARK_CURRENCY}/h (tarif ${TARIFF_LABEL_RO[tariff]}).`;
   }
   if (tariffs.day.tariffs.includes(tariff) && tariffs.day.eur < total) {
     total = tariffs.day.eur;
@@ -67,4 +67,23 @@ export function osmPrice(feeNo: boolean, source: string): Price {
   return feeNo
     ? { total: 0, currency: null, paidMinutes: 0, quality: 'estimated', source, note: 'Gratuită după OpenStreetMap (fee=no), neverificat.' }
     : { total: null, currency: null, paidMinutes: null, quality: 'unknown', source: 'none', note: 'Preț necunoscut.' };
+}
+
+/**
+ * An OSM parking (not a Timpark lot) inside a paid Timpark zone: we assume the zone's tariff
+ * (spec §5.2), but only as an estimate, because the lot may be private or run by someone else.
+ * An OSM `fee=no` inside a paid zone is a conflict, so it is never shown as a known free price.
+ */
+export function zoneEstimatePrice(zonePrice: Price, tariff: TariffColor, osmSaysFree: boolean): Price {
+  const zone = `zona Timpark ${TARIFF_LABEL_RO[tariff]}`;
+  const base =
+    zonePrice.total === 0
+      ? `Probabil gratuit la ora aleasă: în afara programului plătit al zonei (${zone}).`
+      : `Estimat după tariful zonei: parcarea e în ${zone}, dar nu e în lista Timpark. ${zonePrice.note ?? ''}`.trim();
+  return {
+    ...zonePrice,
+    quality: 'estimated',
+    source: `${zonePrice.source}; tariful zonei, presupus pentru această parcare`,
+    note: osmSaysFree ? `${base} OpenStreetMap o marchează gratuită (fee=no), neverificat.` : base,
+  };
 }

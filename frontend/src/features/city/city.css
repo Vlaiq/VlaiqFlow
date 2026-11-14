@@ -386,7 +386,7 @@
   margin: 0;
 }
 .city-allocation .city-tag {
-  font-size: 7px;
+  font-size: 9px;
   padding: 4px 6px;
 }
 .city-allocation-main {
@@ -1104,7 +1104,7 @@
     line-height: 1.7;
   }
   .city-allocation .city-tag {
-    font-size: 6px;
+    font-size: 8px;
     padding: 3px 5px;
     letter-spacing: 0.6px;
   }

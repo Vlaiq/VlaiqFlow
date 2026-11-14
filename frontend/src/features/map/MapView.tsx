@@ -239,7 +239,9 @@ export function MapView({
       new maplibregl.AttributionControl({ compact: true, customAttribution: FIX_THE_MAP }),
       'top-right',
     );
-    map.once('idle', () => {
+    // Compact attribution opens itself on narrow screens; close it as soon as the map shows (the ⓘ
+    // button keeps it one tap away), not only once every tile has loaded.
+    const collapseAttribution = () => {
       const attribution = map
         .getContainer()
         .querySelector<HTMLDetailsElement>('details.maplibregl-ctrl-attrib');
@@ -247,7 +249,9 @@ export function MapView({
         attribution.open = false;
         attribution.classList.remove('maplibregl-compact-show');
       }
-    });
+    };
+    map.once('load', collapseAttribution);
+    map.once('idle', collapseAttribution);
 
     const popup = new maplibregl.Popup({ closeButton: true, offset: 10, maxWidth: '300px' });
 

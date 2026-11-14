@@ -83,6 +83,10 @@ export function explain(options: RecommendationOption[]): string | null {
   return (
     `${best.name} e prima alegere: ${summary(best)}. ` +
     `Rezerva, ${next.name}: ${summary(next)}. ` +
-    (gain > 0 ? `Prima iese mai bine cu ${gain.toLocaleString('ro-RO', { maximumFractionDigits: 1 })} min echivalente.` : 'Cele două sunt la egalitate.')
+    (gain <= 0
+      ? 'Cele două sunt la egalitate.'
+      : gain < 1
+        ? 'Diferența dintre ele e mică: sub 1 minut în scorul SmartMatch.'
+        : `Prima are un scor SmartMatch mai bun cu ${gain.toLocaleString('ro-RO', { maximumFractionDigits: 1 })} min (mersul, riscul să fie plin și prețul, socotite în minute).`)
   );
 }

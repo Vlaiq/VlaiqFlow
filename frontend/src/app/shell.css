@@ -586,6 +586,57 @@
 .explore-primary svg:first-child {
   margin-right: auto;
 }
+.explore-demo {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-height: 47px;
+  margin-top: 10px;
+  padding: 8px 14px;
+  border: 1px solid rgb(var(--q-simulated) / 0.6);
+  border-radius: 12px;
+  background: rgb(var(--q-simulated) / 0.1);
+  color: rgb(var(--text));
+  font-size: 12px;
+  text-align: left;
+}
+.explore-demo svg {
+  color: rgb(var(--q-simulated));
+  flex-shrink: 0;
+}
+.explore-demo span {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  color: rgb(var(--text-muted));
+}
+.explore-demo strong {
+  color: rgb(var(--text));
+  font-size: 13px;
+}
+.explore-demo:hover {
+  background: rgb(var(--q-simulated) / 0.18);
+}
+.explore-demo-note {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+  margin-top: 10px !important;
+  padding: 10px 12px;
+  border: 1px solid rgb(var(--q-simulated) / 0.6);
+  border-radius: 10px;
+  background: rgb(var(--q-simulated) / 0.1);
+}
+.explore-demo-note strong {
+  flex-shrink: 0;
+  padding: 1px 6px;
+  border-radius: 6px;
+  background: rgb(var(--q-simulated));
+  color: rgb(var(--primary-fg));
+  font-size: 10px;
+  letter-spacing: 0.06em;
+}
 .explore-coverage {
   display: flex;
   align-items: flex-start;
@@ -775,6 +826,19 @@
   font-size: 12px;
   line-height: 1.8;
   margin-bottom: 16px;
+}
+.explore-alert p {
+  margin: 0;
+}
+.explore-alert button {
+  margin-top: 8px;
+  min-height: 44px;
+  padding: 0 14px;
+  border: 1px solid rgb(var(--border));
+  border-radius: 10px;
+  background: rgb(var(--surface-2));
+  color: rgb(var(--text));
+  font-weight: 600;
 }
 .flow-app .maplibregl-ctrl-top-right {
   top: 85px;
