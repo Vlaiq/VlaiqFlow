@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { CompleteJourneyResponse, type CompleteJourneyRequest } from '@vlaiq/shared';
+import { apiFetch } from '../../services/http';
 export type CompleteLoad =
   | { state: 'idle' | 'loading' }
   | { state: 'error'; message: string }
@@ -10,7 +11,7 @@ export async function fetchCompleteJourneys(
   input: CompleteJourneyRequest,
   signal: AbortSignal,
 ): Promise<CompleteJourneyResponse> {
-  const res = await fetch(`${BASE}/api/journeys/complete`, {
+  const res = await apiFetch(`${BASE}/api/journeys/complete`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     cache: 'no-store',

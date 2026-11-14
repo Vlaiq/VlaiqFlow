@@ -1,5 +1,6 @@
 import { DestinationsResponse, HealthResponse, ParkingsResponse, TimparkSnapshot, RoutesResponse, RecommendationResponse, AvailabilityModelResponse, AvailabilityExplainResponse, ParkingRegisterResponse, type AvoidCircle, type Coordinate, type RecommendationRequest } from '@vlaiq/shared';
 import type { z } from 'zod';
+import { apiFetch, httpErrorMessage, TIMEOUT_MESSAGE } from './http';
 
 // In dev the base is empty and Vite proxies /api to the backend.
 const BASE = (import.meta.env.VITE_API_URL ?? '').replace(/\/$/, '');
@@ -10,9 +11,14 @@ async function get<S extends z.ZodTypeAny>(path: string, schema: S): Promise<z.i
   const timer = setTimeout(() => ctrl.abort(), TIMEOUT_MS);
   try {
     // 'no-cache' = always revalidate with the server (ETag → cheap 304), never trust a stale stored copy.
-    const res = await fetch(`${BASE}${path}`, { signal: ctrl.signal, cache: 'no-cache' });
-    if (!res.ok) throw new Error(`${path} → HTTP ${res.status}`);
+    const res = await apiFetch(`${BASE}${path}`, { signal: ctrl.signal, cache: 'no-cache' });
+    if (!res.ok) throw new Error(httpErrorMessage(res.status));
     return schema.parse(await res.json());
+  } catch (e) {
+    // Our own timer cancelled it: for the user that is a timeout, not a cancellation.
+    if (ctrl.signal.aborted && e instanceof DOMException && e.name === 'AbortError')
+      throw new Error(TIMEOUT_MESSAGE);
+    throw e;
   } finally {
     clearTimeout(timer);
   }
@@ -23,7 +29,7 @@ export const api = {
     (await api.routeSet(origin, destination, signal, avoid)).routes,
   /** Driving routes plus whether the school zones in `avoid` were kept out (§6.16). */
   routeSet: async (origin: Coordinate, destination: Coordinate, signal?: AbortSignal, avoid?: AvoidCircle[]) => {
-    const res = await fetch(`${BASE}/api/navigation/routes`, {
+    const res = await apiFetch(`${BASE}/api/navigation/routes`, {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ origin, destination, ...(avoid?.length ? { avoid } : {}) }), signal: signal ?? AbortSignal.timeout(20000),
     });
@@ -34,7 +40,7 @@ export const api = {
     return RoutesResponse.parse(await res.json());
   },
   recommend: async (req: Partial<RecommendationRequest> & Pick<RecommendationRequest, 'destination'>, signal?: AbortSignal) => {
-    const res = await fetch(`${BASE}/api/recommendations`, {
+    const res = await apiFetch(`${BASE}/api/recommendations`, {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(req), signal: signal ?? AbortSignal.timeout(20000),
     });
