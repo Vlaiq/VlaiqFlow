@@ -636,35 +636,6 @@ function Explore({
                 )}
                 {destination.location && (
                   <div hidden={!!detail}>
-                    <div className="flow-planner-switch" role="group" aria-label="Compară parcări sau trasee">
-                      <button type="button" aria-pressed={plannerView === 'parking'} className={plannerView === 'parking' ? 'active' : ''} onClick={() => { setPlannerView('parking'); setJourneySelection(null); }}>
-                        <ParkingSquare size={17} aria-hidden="true" /> Parcări
-                      </button>
-                      <button type="button" aria-pressed={plannerView === 'journey'} className={plannerView === 'journey' ? 'active' : ''} onClick={() => { setPlannerView('journey'); setSelectedId(null); }}>
-                        <Navigation2 size={17} aria-hidden="true" /> Trasee
-                      </button>
-                    </div>
-                    {plannerView === 'parking' && <ParkingRecommendations
-                      key={destination.id}
-                      destination={destination}
-                      origin={origin?.coordinate ?? null}
-                      settings={parkingSettings}
-                      onSettings={setParkingSettings}
-                      selectedId={selectedId}
-                      onSelect={setSelectedId}
-                      onPick={pickOption}
-                      onOpen={openDetail}
-                      onResult={onResult}
-                      stops={stops}
-                      stopsSlot={
-                        <StopPicker
-                          destination={[destination.location.lng, destination.location.lat]}
-                          places={knownPlaces}
-                          stops={stops}
-                          onChange={setStops}
-                        />
-                      }
-                    />}
                     <div className="explore-origin">
                       <div className="explore-origin-label">
                         <LocateFixed size={13} /> PUNCTUL DE PLECARE
@@ -701,6 +672,35 @@ function Explore({
                         </p>
                       )}
                     </div>
+                    <div className="flow-planner-switch" role="group" aria-label="Compară parcări sau trasee">
+                      <button type="button" aria-pressed={plannerView === 'parking'} className={plannerView === 'parking' ? 'active' : ''} onClick={() => { setPlannerView('parking'); setJourneySelection(null); }}>
+                        <ParkingSquare size={17} aria-hidden="true" /> Parcări
+                      </button>
+                      <button type="button" aria-pressed={plannerView === 'journey'} className={plannerView === 'journey' ? 'active' : ''} onClick={() => { setPlannerView('journey'); setSelectedId(null); }}>
+                        <Navigation2 size={17} aria-hidden="true" /> Trasee
+                      </button>
+                    </div>
+                    {plannerView === 'parking' && <ParkingRecommendations
+                      key={destination.id}
+                      destination={destination}
+                      origin={origin?.coordinate ?? null}
+                      settings={parkingSettings}
+                      onSettings={setParkingSettings}
+                      selectedId={selectedId}
+                      onSelect={setSelectedId}
+                      onPick={pickOption}
+                      onOpen={openDetail}
+                      onResult={onResult}
+                      stops={stops}
+                      stopsSlot={
+                        <StopPicker
+                          destination={[destination.location.lng, destination.location.lat]}
+                          places={knownPlaces}
+                          stops={stops}
+                          onChange={setStops}
+                        />
+                      }
+                    />}
                     {plannerView === 'journey' && <GreenSwitch
                       origin={origin?.coordinate ?? null}
                       destination={destination}
