@@ -59,8 +59,10 @@ Existing `/api/recommendations` and `/api/journeys/compare` remain compatible.
 3. Complete-journey screening excludes customers-only parking. Unknown access remains explicitly
    unconfirmed. Existing containment deduplication is preserved; mere proximity no longer drops a
    separate OSM parking. Containment itself remains a heuristic, not verified cross-source identity.
-4. Balanced screening uses available matrix drive+walk totals, then SmartMatch cost and stable IDs.
-   Other parking preferences reuse SmartMatch screening. The walk formula fallback can only screen;
+4. Screening (every parking preference) orders by SmartMatch cost plus matrix driving minutes when
+   every candidate has one, otherwise by SmartMatch cost alone, then SmartMatch order and stable IDs
+   (`shortlistParkings`). Since 14 Nov it no longer sorts by drive+walk time only, which ignored the
+   risk of a full parking and the price. The walk formula fallback can only screen;
    it never supplies the geometry or duration of a complete journey.
 5. At most three screened parking candidates receive full driving and foot directions, two candidates
    concurrently. Actual pedestrian duration must satisfy the requested walk limit. A candidate with

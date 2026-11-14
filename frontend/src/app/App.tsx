@@ -485,7 +485,6 @@ function Explore({
                     }
                     stayMinutes={reco.stayMinutes}
                     smsNumber={timparkData?.data.tariffs.smsNumber ?? null}
-                    demoOrigin={null}
                     selectedOrigin={origin}
                     onOriginRequest={requestGps}
                     originError={originError}

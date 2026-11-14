@@ -82,7 +82,7 @@ const route = {
     await page.setViewportSize({ width: 390, height: 844 });
     await page.getByRole('combobox').fill('Victoriei');
     await page.getByRole('option').first().click();
-    await page.getByRole('button', { name: 'Vezi traseul', exact: true }).first().waitFor();
+    await page.getByRole('button', { name: 'Detalii și traseu', exact: true }).first().waitFor();
     assert.match(
       await page.locator('.explore-origin>strong').innerText(),
       /Alege/,

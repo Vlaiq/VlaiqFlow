@@ -53,8 +53,11 @@ Timișoara. Conturul județului nu extinde automat acoperirea serviciilor.
 
 ### 2. Comparația de parcări
 
-Deschideți recomandările SmartMatch și o parcare. Explicați diferența dintre datele
-oficiale, geometria OSM și o estimare. Un punct de parcare nu dovedește un loc liber.
+Panoul **Unde parchezi** apare imediat după destinație, fără punct de plecare. Arătați
+primul card și apoi **Detalii și traseu**: șansele estimate de loc (etichetate *Estimat*,
+model după zonă, zi și oră, nu senzori), mersul pe jos desenat pe hartă, costul pentru
+durata aleasă și **De ce e pe locul 1**. Explicați diferența dintre datele oficiale,
+geometria OSM și o estimare. Un punct de parcare nu dovedește un loc liber.
 Ocuparea live nu este disponibilă. Prețul necunoscut nu este zero.
 
 Folosiți **De unde provin datele?** pentru sursă, dată și limite, fără a transforma

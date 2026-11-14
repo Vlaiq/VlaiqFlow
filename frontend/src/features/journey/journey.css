@@ -641,58 +641,6 @@
 .journey-parking-details small {
   font-size: 10px;
 }
-.journey-settings {
-  margin: 8px 0 15px;
-}
-.journey-settings summary {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  min-height: 44px;
-  font-size: 11px;
-  color: rgb(var(--text-muted));
-  cursor: pointer;
-}
-.journey-settings summary svg:last-child {
-  margin-left: auto;
-}
-.journey-settings > div {
-  background: rgb(var(--surface-2));
-  border-radius: 13px;
-  padding: 13px;
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 12px;
-}
-.journey-settings label {
-  display: flex;
-  flex-direction: column;
-  gap: 7px;
-  font-size: 10px;
-  color: rgb(var(--text-muted));
-  min-width: 0;
-}
-.journey-settings label:nth-child(n + 3) {
-  grid-column: 1/-1;
-}
-.journey-settings select,
-.journey-settings input {
-  background: rgb(var(--surface));
-  border: 1px solid rgb(var(--border));
-  color: rgb(var(--text));
-  min-height: 44px;
-  border-radius: 8px;
-  padding: 0 8px;
-  width: 100%;
-  font: 12px var(--app-font-body);
-}
-.journey-settings p {
-  grid-column: 1/-1;
-  font-size: 10px;
-  line-height: 1.6;
-  color: rgb(var(--text-muted));
-  margin: 0;
-}
 .journey-loading > div {
   flex: 1;
 }
@@ -757,15 +705,6 @@
   display: grid;
   place-items: center;
   font: 750 18px var(--app-font-display);
-}
-.explore-other-parkings {
-  margin-top: 20px;
-  border-top: 1px solid rgb(var(--border));
-  padding-top: 8px;
-}
-.explore-other-parkings > summary {
-  font-size: 12px;
-  font-weight: 550;
 }
 @keyframes journey-enter {
   from {

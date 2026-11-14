@@ -175,7 +175,11 @@ Each parking shows: name, type, address?, capacity?, price (`Sourced`), availabi
 ### 6.5 Recommendation modes
 **Implemented (13 Nov):** **Echilibrat / Ieftin / Loc sigur** (balanced / cheap / sure), plus stay length (30 min–8 h), arrival time (default now) and a maximum walk (5–20 min). Fastest / Greenest need the driving origin and come with the navigation integration (§7.1).
 
+**Updated (14 Nov):** the UI offers **Echilibrat / Mai ieftin / Mai puțin mers** (`balanced`, `cheap`, `less_walk`; `sure` stays in the API). These settings live in the "Unde parchezi" panel and are shared with the Smart Journey car option, so both ask SmartMatch the same question.
+
 ### 6.6 Recommendation cards & details
+**Implemented (14 Nov), parking first:** "Unde parchezi" is the first panel after the destination and needs no origin. Each card shows the estimated chance of a free space (rule model `p_free`, labelled *Estimat*, with a text level and a meter), walk, cost for the stay, capacity, drive + walk once an origin exists, and the SmartMatch cost breakdown. "Detalii și traseu" opens the preview without an origin: the real walking route from the parking (provider geometry), the score breakdown, SMS payment, and the driving route after an origin is chosen. Smart Journey car options (P1–P3) keep the SmartMatch order (cost + driving minutes when known for all) and show the chosen parking without an extra tap. Live occupancy is shown as unknown everywhere. Not done yet: driving-km delta, "Report" button.
+
 **Card:**
 - name, total time with a breakdown (drive / search / walk / transit)
 - cost, availability badge, confidence

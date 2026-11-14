@@ -44,14 +44,29 @@ fs.mkdirSync(output, { recursive: true });
     await page.getByRole('combobox').fill('Victoriei');
     await page.getByRole('option').first().click();
     await page.getByRole('heading', { name: 'Un drum. Mai multe posibilități.' }).waitFor();
+    // Parking first: the SmartMatch list comes before Smart Journey and needs no origin.
+    await page.getByRole('heading', { name: 'Unde parchezi', exact: true }).waitFor();
+    assert(
+      await page.evaluate(() => {
+        const parking = document.querySelector('.parking-panel');
+        const journey = document.querySelector('.green-switch');
+        return !!parking && !!journey && !!(parking.compareDocumentPosition(journey) & 4);
+      }),
+      'parking list is shown above Smart Journey',
+    );
+    await page.getByRole('button', { name: 'Detalii și traseu', exact: true }).first().waitFor();
+    assert(
+      (await page.getByRole('meter', { name: 'Șanse estimate de loc liber' }).count()) > 0,
+      'cards show the estimated chance of a free space',
+    );
     await page.screenshot({ path: `${output}/02-destination-no-origin.png` });
-    // Actual server/config path first: this environment has no ORS credential.
-    await page.getByRole('button', { name: 'Locația mea', exact: true }).click();
-    await page
-      .getByText('Nicio călătorie completă nu poate fi calculată acum.', { exact: true })
-      .waitFor({ timeout: 45000 });
-    await page.locator('.journey-unavailable').scrollIntoViewIfNeeded();
-    await page.screenshot({ path: `${output}/03-provider-unavailable-real.png` });
+    // Parking preview without an origin: estimate, score and an explicit origin prompt, no error.
+    await page.getByRole('button', { name: 'Detalii și traseu', exact: true }).first().click();
+    await page.getByRole('heading', { name: /De ce e pe locul 1/ }).waitFor();
+    await page.getByText(/Alege de unde pornești/).first().waitFor();
+    assert.equal(await page.locator('article [role=alert]').count(), 0, 'no error without origin');
+    await shot('03-parking-preview-no-origin');
+    await page.getByRole('button', { name: 'Toate parcările', exact: true }).click();
     let requests = 0;
     let latestInput;
     await page.route('**/api/journeys/complete', async (route) => {
@@ -60,7 +75,7 @@ fs.mkdirSync(output, { recursive: true });
       await new Promise((r) => setTimeout(r, 300));
       await route.fulfill({ json: completeFixture(latestInput) });
     });
-    await page.getByRole('button', { name: 'Reîncearcă planificarea' }).click();
+    await page.getByRole('button', { name: 'Locația mea', exact: true }).click();
     await shot('04-loading-test-fixture');
     await page.locator('.journey-option[data-category=cycle]').waitFor();
     assert.equal(
@@ -77,6 +92,11 @@ fs.mkdirSync(output, { recursive: true });
       () => window.__vlaiqMap.getSource('flow-complete-journey')?._data?.features.length === 2,
     );
     await page.locator('.journey-summary-heading').scrollIntoViewIfNeeded();
+    // The chosen parking is visible without another tap: SmartMatch rank and the labelled estimate.
+    const chosen = page.getByRole('region', { name: 'Parcarea aleasă' });
+    await chosen.getByText('P1', { exact: true }).waitFor();
+    await chosen.getByRole('meter', { name: 'Șanse estimate de loc liber' }).waitFor();
+    await chosen.getByText(/Ocupare live: necunoscută/).waitFor();
     await shot('05-car-summary-mobile');
     await page.getByRole('button', { name: 'Detalii parcare', exact: true }).click();
     await page
@@ -204,16 +224,18 @@ fs.mkdirSync(output, { recursive: true });
     await page.route('**/api/journeys/complete', async (r) => {
       const own = ++index;
       const input = JSON.parse(r.request().postData());
+      latestInput = input;
       await new Promise((resolve) => setTimeout(resolve, own === 1 ? 800 : 30));
       const value = completeFixture(input);
       value.coverage = `LATEST_REQUEST_${own}`;
       await r.fulfill({ json: value }).catch(() => {});
     });
-    await page.getByText('Opțiuni pentru parcare', { exact: true }).click();
-    await page.getByLabel('Durata parcării', { exact: true }).selectOption('60');
+    // Parking settings live in "Unde parchezi" and are shared with the car journey.
+    await page.getByLabel('Stai cât?', { exact: true }).selectOption('60');
     await page.waitForTimeout(70);
-    await page.getByLabel('Durata parcării', { exact: true }).selectOption('240');
+    await page.getByLabel('Stai cât?', { exact: true }).selectOption('180');
     await page.waitForTimeout(1000);
+    assert.equal(latestInput.stayMinutes, 180, 'journey uses the shared parking stay');
     await page.getByText('Surse și limitele comparației', { exact: true }).click();
     await page.getByText('LATEST_REQUEST_2', { exact: true }).waitFor();
     assert.equal(await page.getByText('LATEST_REQUEST_1', { exact: true }).count(), 0);
@@ -256,7 +278,7 @@ fs.mkdirSync(output, { recursive: true });
     );
     assert.deepEqual(errors, []);
     console.log(
-      'PASS: actual missing-provider path; synthetic complete car/parking/walk, active profiles, timeline/map emphasis, no extra preference requests, theme/style preservation, 360–1440 layouts, fonts, reduced motion, explicit GPS, Motion context, zero selection rewards and stale-response rejection.',
+      'PASS: parking list before Smart Journey, parking preview without origin, shared parking settings; synthetic complete car/parking/walk with visible SmartMatch parking, active profiles, timeline/map emphasis, no extra preference requests, theme/style preservation, 360–1440 layouts, fonts, reduced motion, explicit GPS, Motion context, zero selection rewards and stale-response rejection.',
     );
     await context.close();
   } finally {

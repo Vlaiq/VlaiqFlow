@@ -26,14 +26,14 @@ const base = process.env.PRODUCTION_TEST_URL || 'http://localhost:8887';
     await page.waitForFunction(() => !!navigator.serviceWorker.controller);
     await page.getByRole('combobox').fill('Victoriei');
     await page.getByRole('option').first().click();
-    await page.getByRole('button', { name: 'Locația mea', exact: true }).click();
-    await page
-      .getByText('Nicio călătorie completă nu poate fi calculată acum.', { exact: true })
-      .waitFor();
+    // The SmartMatch list is served by the real backend and needs no origin.
+    await page.getByRole('button', { name: 'Detalii și traseu', exact: true }).first().waitFor();
+    // Real journeys depend on external routers (ORS or the keyless OSRM fallback), so the journey
+    // assertions use the synthetic fixture.
     await page.route('**/api/journeys/complete', async (r) =>
       r.fulfill({ json: completeFixture(JSON.parse(r.request().postData())) }),
     );
-    await page.getByRole('button', { name: 'Reîncearcă planificarea', exact: true }).click();
+    await page.getByRole('button', { name: 'Locația mea', exact: true }).click();
     await page.locator('.journey-option[data-category=cycle]').waitFor();
     await page.getByRole('button', { name: 'Cea mai rapidă', exact: true }).click();
     assert.equal(await page.locator('.journey-timeline li').count(), 4);

@@ -865,11 +865,6 @@ html[data-theme='dark'] .flow-app .maplibregl-ctrl-icon {
   color: rgb(var(--text-muted));
   margin: 8px 0;
 }
-.parking-preferences-label {
-  font-size: 10px;
-  color: rgb(var(--text-muted));
-  margin: 17px 0 7px;
-}
 .flow-app .motion-app {
   min-height: calc(100dvh - var(--flow-header));
   padding-top: 0;

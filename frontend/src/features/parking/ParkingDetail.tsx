@@ -48,7 +48,6 @@ type RouteState =
 
 type OriginChoice =
   | { kind: 'pending' }
-  | { kind: 'demo' }
   | { kind: 'gps'; origin: Origin; accuracy: number };
 
 interface Props {
@@ -59,7 +58,6 @@ interface Props {
   destination?: Coordinate | null;
   stayMinutes: number;
   smsNumber: string | null;
-  demoOrigin: Origin | null;
   selectedOrigin?: Origin | null;
   onOriginRequest?: () => void;
   originError?: string | null;
@@ -115,7 +113,6 @@ export function ParkingDetail({
   destination = null,
   stayMinutes,
   smsNumber,
-  demoOrigin,
   selectedOrigin,
   onOriginRequest,
   originError,
@@ -133,7 +130,7 @@ export function ParkingDetail({
 
   const origin: Origin | null =
     selectedOrigin ??
-    (choice.kind === 'gps' ? choice.origin : choice.kind === 'demo' ? demoOrigin : null);
+    (choice.kind === 'gps' ? choice.origin : null);
 
   const [walkState, setWalkState] = useState<WalkState>({ state: 'loading' });
   const [walkAttempt, setWalkAttempt] = useState(0);
