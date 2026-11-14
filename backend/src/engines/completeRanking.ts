@@ -12,17 +12,22 @@ export function rankCompleteJourneys(
   );
   const quickest = byTime[0];
   const active = byTime.filter((j) => j.category !== 'car_park_walk' && j.practical);
+  // The car option the parking engine ranks first (risk of a full parking and price count, not only time).
+  const bestParked = journeys
+    .filter((j) => j.parking)
+    .sort((a, b) => a.parking!.match.rank - b.parking!.match.rank || a.id.localeCompare(b.id))[0];
   const picks = {
     fastest: quickest,
     balanced:
       active.find((j) => j.travelSeconds.value! <= (quickest?.travelSeconds.value ?? 0) + 300) ??
+      bestParked ??
       quickest,
     green: active[0] ?? quickest,
   };
   const explanations: Record<JourneyPreference, string> = {
     fastest: 'Cel mai scurt timp calculat pe trasee. Căutarea parcării nu este inclusă.',
     balanced:
-      'Preferăm mersul activ dacă adaugă cel mult 5 minute față de cea mai rapidă variantă calculată. Prag de prototip; costurile incomplete nu sunt optimizate.',
+      'Preferăm mersul activ dacă adaugă cel mult 5 minute față de cea mai rapidă variantă calculată. Altfel, parcarea pe primul loc SmartMatch: drum, mers, șanse estimate de loc și preț. Prag de prototip.',
     green:
       'Preferăm o variantă activă practică: maximum 35 min pe jos sau 45 min cu bicicleta. Nu cuantificăm emisii evitate.',
   };

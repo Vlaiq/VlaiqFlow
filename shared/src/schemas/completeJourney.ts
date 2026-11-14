@@ -2,6 +2,8 @@ import { z } from 'zod';
 import { Coordinate, NavigationRoute } from './navigation';
 import { DataQuality } from './quality';
 import { JourneyPreference } from './journey';
+import { CandidateKind } from './recommendation';
+import { TariffColor } from './timpark';
 
 export const JourneyCategory = z.enum(['car_park_walk', 'walk', 'cycle']);
 export type JourneyCategory = z.infer<typeof JourneyCategory>;
@@ -60,6 +62,33 @@ export const JourneyLeg = z.discriminatedUnion('type', [
   }),
 ]);
 export type JourneyLeg = z.infer<typeof JourneyLeg>;
+export const ParkingMatch = z.object({
+  /** 1 = best car option of this response, after SmartMatch cost + driving minutes. */
+  rank: z.number().int().positive(),
+  kind: CandidateKind,
+  tariff: TariffColor.nullable(),
+  smsCode: z.string().nullable(),
+  capacity: z.object({
+    value: z.number().int().positive().nullable(),
+    quality: DataQuality,
+    source: z.string(),
+  }),
+  freeChance: z.object({
+    value: z.number().min(0).max(1),
+    quality: z.enum(['estimated', 'simulated']),
+    source: z.string().min(1),
+    factors: z.array(z.string()),
+  }),
+  /** Ranking cost in minute-equivalents; lower is better. `drive` is null when no driving time is known. */
+  score: z.object({
+    total: z.number().finite(),
+    walk: z.number().finite(),
+    risk: z.number().finite(),
+    price: z.number().finite(),
+    drive: z.number().finite().nonnegative().nullable(),
+  }),
+});
+export type ParkingMatch = z.infer<typeof ParkingMatch>;
 export const CompleteJourney = z
   .object({
     id: z.string().min(1),
@@ -86,6 +115,11 @@ export const CompleteJourney = z
         tariffAt: z.string().datetime(),
         source: z.string(),
         warnings: z.array(z.string()),
+        /**
+         * SmartMatch facts for this parking, computed by the deterministic engine. `freeChance` is the
+         * rule-model estimate (never 'confirmed'); `availability` above stays the live value, which is unknown.
+         */
+        match: ParkingMatch,
       })
       .nullable(),
     practical: z.boolean(),

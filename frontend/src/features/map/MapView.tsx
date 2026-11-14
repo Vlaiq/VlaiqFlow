@@ -31,6 +31,8 @@ const PARKINGS_SOURCE = 'parkings';
 const PARKINGS_LAYER = 'parkings-circle';
 const ROUTE_SOURCE = 'drive-route';
 const ROUTE_LAYER = 'drive-route-line';
+const WALK_SOURCE = 'parking-walk-route';
+const WALK_LAYER = 'parking-walk-route-line';
 
 function parkingsToGeoJSON(parkings: Parking[]): GeoJSON.FeatureCollection<GeoJSON.Point> {
   return {
@@ -56,6 +58,8 @@ interface Props {
   onSelectRecommendation?: (id: string) => void;
   /** Driving route to the open parking, exactly as returned by the routing provider. */
   route?: Coordinate[] | null;
+  /** Walking route parking → destination for the open parking, provider geometry only. */
+  walkRoute?: Coordinate[] | null;
   theme?: 'dark' | 'light';
   pickingOrigin?: boolean;
   onPickOrigin?: (coordinate: Coordinate) => void;
@@ -139,6 +143,7 @@ export function MapView({
   focusRecommendation = null,
   onSelectRecommendation,
   route = null,
+  walkRoute = null,
   theme = 'dark',
   pickingOrigin = false,
   onPickOrigin,
@@ -461,6 +466,78 @@ export function MapView({
       map.off('style.load', apply);
     };
   }, [route, attempt, styleRevision]);
+
+  // Walking leg of the open parking, dashed. Fitted to the view only when there is no driving route.
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map) return;
+    const apply = () => {
+      if (!map.getStyle()?.sources?.[PARKINGS_SOURCE]) return;
+      const data: GeoJSON.FeatureCollection<GeoJSON.LineString> = {
+        type: 'FeatureCollection',
+        features:
+          walkRoute && walkRoute.length >= 2
+            ? [
+                {
+                  type: 'Feature',
+                  geometry: { type: 'LineString', coordinates: walkRoute },
+                  properties: {},
+                },
+              ]
+            : [],
+      };
+      const source = map.getSource(WALK_SOURCE) as GeoJSONSource | undefined;
+      if (source) source.setData(data);
+      else {
+        map.addSource(WALK_SOURCE, {
+          type: 'geojson',
+          data,
+          attribution: '© OpenStreetMap contributors',
+        });
+        const before = map.getLayer(PARKINGS_LAYER) ? PARKINGS_LAYER : undefined;
+        map.addLayer(
+          {
+            id: `${WALK_LAYER}-casing`,
+            type: 'line',
+            source: WALK_SOURCE,
+            layout: { 'line-cap': 'round', 'line-join': 'round' },
+            paint: { 'line-color': theme === 'light' ? '#ffffff' : '#0b2015', 'line-width': 8 },
+          },
+          before,
+        );
+        map.addLayer(
+          {
+            id: WALK_LAYER,
+            type: 'line',
+            source: WALK_SOURCE,
+            layout: { 'line-cap': 'round', 'line-join': 'round' },
+            paint: {
+              'line-color': theme === 'light' ? '#567d31' : '#c5e7af',
+              'line-width': 4,
+              'line-dasharray': [1.4, 1.4],
+            },
+          },
+          before,
+        );
+      }
+      if (walkRoute && walkRoute.length >= 2 && !route) {
+        const bounds = new maplibregl.LngLatBounds(walkRoute[0], walkRoute[0]);
+        for (const c of walkRoute) bounds.extend(c);
+        const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+        map.fitBounds(bounds, {
+          padding: visibleMapPadding(),
+          maxZoom: 17,
+          animate: !reduceMotion,
+        });
+      }
+    };
+    if (map.getStyle()?.sources?.[PARKINGS_SOURCE]) apply();
+    else map.once('style.load', apply);
+    return () => {
+      map.off('style.load', apply);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [walkRoute, attempt, styleRevision]);
 
   // Numbered markers for the SmartMatch options; HTML buttons so they are keyboard-reachable.
   const onSelectRef = useRef(onSelectRecommendation);

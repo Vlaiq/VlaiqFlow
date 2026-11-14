@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import {
   ArrowLeft,
   ArrowRight,
@@ -14,6 +14,7 @@ import {
   RotateCw,
 } from 'lucide-react';
 import {
+  CompleteJourneyRequest,
   TARIFF_LABEL_RO,
   type Coordinate,
   type NavigationRoute,
@@ -22,7 +23,14 @@ import {
 import { QualityBadge } from '../../components/QualityBadge';
 import { api } from '../../services/api';
 import { cumulative, formatDistance, instruction } from '../navigation/geometry';
-import { ACCESS_LABEL, KIND_LABEL, fmt1, pct, priceText, stayLabel } from './recommendationLabels';
+import { fetchCompleteJourneys } from '../journey/useCompleteJourneys';
+import { ACCESS_LABEL, KIND_LABEL, priceText, stayLabel } from './recommendationLabels';
+import { FreeChance, ScoreBreakdown } from './ParkingFacts';
+
+type WalkState =
+  | { state: 'loading' }
+  | { state: 'ok'; route: NavigationRoute }
+  | { state: 'error'; message: string };
 
 export interface Origin {
   name: string;
@@ -33,6 +41,7 @@ export interface Origin {
 const MAX_ORIGIN_ACCURACY_M = 300;
 
 type RouteState =
+  | { state: 'no-origin' }
   | { state: 'loading' }
   | { state: 'ok'; route: NavigationRoute }
   | { state: 'error'; message: string };
@@ -46,6 +55,8 @@ interface Props {
   option: RecommendationOption;
   rank: number;
   destinationName: string;
+  /** Destination point, for the real walking route from the parking (provider geometry only). */
+  destination?: Coordinate | null;
   stayMinutes: number;
   smsNumber: string | null;
   demoOrigin: Origin | null;
@@ -57,6 +68,8 @@ interface Props {
   onBack: () => void;
   /** Driving route geometry for the map (provider geometry only), or null to clear it. */
   onRoute: (geometry: Coordinate[] | null) => void;
+  /** Walking route parking → destination for the map, or null to clear it. */
+  onWalkRoute?: (geometry: Coordinate[] | null) => void;
 }
 
 function StepIcon({ step }: { step: NavigationRoute['steps'][number] }) {
@@ -99,6 +112,7 @@ export function ParkingDetail({
   option: o,
   rank,
   destinationName,
+  destination = null,
   stayMinutes,
   smsNumber,
   demoOrigin,
@@ -109,6 +123,7 @@ export function ParkingDetail({
   onManualOrigin,
   onBack,
   onRoute,
+  onWalkRoute,
 }: Props) {
   const [choice, setChoice] = useState<OriginChoice>({ kind: 'pending' });
   const [locating, setLocating] = useState(false);
@@ -120,9 +135,58 @@ export function ParkingDetail({
     selectedOrigin ??
     (choice.kind === 'gps' ? choice.origin : choice.kind === 'demo' ? demoOrigin : null);
 
+  const [walkState, setWalkState] = useState<WalkState>({ state: 'loading' });
+  const [walkAttempt, setWalkAttempt] = useState(0);
+  const walkCallback = useRef(onWalkRoute);
+  walkCallback.current = onWalkRoute;
+
+  // Real walking route parking → destination. It does not need the user's origin, so the preview always has it.
+  useEffect(() => {
+    if (!destination) {
+      setWalkState({ state: 'error', message: 'Destinația nu are o poziție cunoscută.' });
+      return;
+    }
+    const ctrl = new AbortController();
+    let timedOut = false;
+    const timer = window.setTimeout(() => {
+      timedOut = true;
+      ctrl.abort();
+    }, 30000);
+    setWalkState({ state: 'loading' });
+    fetchCompleteJourneys(
+      CompleteJourneyRequest.parse({ origin: o.coordinate, destination, modes: ['walk'] }),
+      ctrl.signal,
+    )
+      .then((value) => {
+        const leg = value.journeys.find((j) => j.category === 'walk')?.legs[0];
+        if (!leg || leg.type === 'parking') throw new Error('Ruta pietonală nu este disponibilă acum.');
+        setWalkState({ state: 'ok', route: leg.route });
+        walkCallback.current?.(leg.route.geometry);
+      })
+      .catch((e: unknown) => {
+        if (ctrl.signal.aborted && !timedOut) return;
+        setWalkState({
+          state: 'error',
+          message: timedOut
+            ? 'Ruta pietonală durează prea mult.'
+            : e instanceof Error
+              ? e.message
+              : 'Ruta pietonală nu este disponibilă acum.',
+        });
+        walkCallback.current?.(null);
+      })
+      .finally(() => window.clearTimeout(timer));
+    return () => {
+      ctrl.abort();
+      window.clearTimeout(timer);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [o.coordinate[0], o.coordinate[1], destination?.[0], destination?.[1], walkAttempt]);
+  useEffect(() => () => walkCallback.current?.(null), []);
+
   useEffect(() => {
     if (!origin) {
-      setRouteState({ state: 'error', message: 'Alege punctul de plecare prin GPS sau pe hartă.' });
+      setRouteState({ state: 'no-origin' });
       onRoute(null);
       return;
     }
@@ -198,8 +262,9 @@ export function ParkingDetail({
     name: o.name,
     area: `Parcare pentru ${destinationName}`,
   }).toString()}`;
-  const pFull = 1 - o.pFree.value;
-  const walkMin = Math.max(1, Math.round(o.walk.minutes));
+  const walkRoute = walkState.state === 'ok' ? walkState.route : null;
+  const walkMin = Math.max(1, Math.round(walkRoute ? walkRoute.duration / 60 : o.walk.minutes));
+  const walkMeters = walkRoute ? walkRoute.distance : o.walk.meters;
 
   return (
     <article aria-labelledby="parking-detail-title" className="mb-3 border-b border-border pb-3">
@@ -230,23 +295,16 @@ export function ParkingDetail({
       </header>
 
       {/* Key facts */}
-      <dl className="mt-3 grid grid-cols-2 gap-2 text-xs">
-        <div className="rounded-xl bg-surface-2 p-2">
-          <dt className="text-muted">Disponibilitate</dt>
-          <dd className="text-lg font-semibold">Necunoscută</dd>
-          <dd className="text-muted">Estimarea modelului nu confirmă locuri libere.</dd>
-          <dd className="mt-1">
-            <QualityBadge quality={o.pFree.quality} />
-          </dd>
-        </div>
+      <FreeChance value={o.pFree.value} quality={o.pFree.quality} />
+      <dl className="parking-detail-facts mt-2 grid grid-cols-2 gap-2 text-xs">
         <div className="rounded-xl bg-surface-2 p-2">
           <dt className="text-muted">Pe jos până la {destinationName}</dt>
           <dd className="flex items-center gap-1 text-lg font-semibold tabular-nums">
             <Footprints className="h-4 w-4" aria-hidden /> {walkMin} min
           </dd>
-          <dd className="text-muted tabular-nums">{formatDistance(o.walk.meters)}</dd>
+          <dd className="text-muted tabular-nums">{formatDistance(walkMeters)}</dd>
           <dd className="mt-1">
-            <QualityBadge quality={o.walk.quality} />
+            <QualityBadge quality={walkRoute ? walkRoute.quality : o.walk.quality} />
           </dd>
         </div>
         <div className="rounded-xl bg-surface-2 p-2">
@@ -275,6 +333,25 @@ export function ParkingDetail({
           ))}
         </ul>
       )}
+
+      {o.smsCode && smsNumber && o.price.total !== 0 && (
+        <section className="mt-3 rounded-xl border border-border p-3 text-xs">
+          <h3 className="text-sm font-semibold">Plată</h3>
+          <p className="mt-1">
+            Trimite SMS cu <strong>{o.smsCode}</strong> la <strong>{smsNumber}</strong> (o oră) sau
+            plătește în CityApp.
+          </p>
+        </section>
+      )}
+
+      <section aria-labelledby="score-title" className="parking-detail-score">
+        <h3 id="score-title">De ce e pe locul {rank}</h3>
+        <ScoreBreakdown score={o.cost} />
+        <p className="text-xs text-muted">
+          Mai puțin = mai bine. Șansele de loc vin din: {o.pFree.factors.join('; ')}. Nu sunt o
+          măsurătoare în timp real.
+        </p>
+      </section>
 
       {/* Driving directions */}
       <section aria-labelledby="drive-title" className="mt-4">
@@ -319,6 +396,12 @@ export function ParkingDetail({
         )}
 
         <div className="mt-2" aria-live="polite">
+          {routeState.state === 'no-origin' && (
+            <p className="rounded-xl border border-border p-3 text-xs text-muted">
+              Alege de unde pornești (locația ta sau un punct pe hartă) ca să calculăm drumul cu
+              mașina până aici. Restul previzualizării nu are nevoie de plecare.
+            </p>
+          )}
           {routeState.state === 'loading' && (
             <p role="status" className="text-xs text-muted">
               Calculăm traseul…
@@ -378,50 +461,47 @@ export function ParkingDetail({
           <Footprints className="h-4 w-4 text-primary" aria-hidden /> Apoi pe jos până la{' '}
           {destinationName}
         </h3>
-        <p className="mt-1 text-xs">
-          ~{walkMin} min, {formatDistance(o.walk.meters)}.
-        </p>
-        <p className="text-xs text-muted">
-          Sursa: {o.walk.source}.
-          {o.walk.source.startsWith('estimat') &&
-            ' Traseul pe jos nu este desenat: avem nevoie de un router pietonal (cheie openrouteservice).'}
-        </p>
+        <div aria-live="polite">
+          {walkState.state === 'loading' && (
+            <p role="status" className="mt-1 text-xs text-muted">
+              Calculăm traseul pietonal… Până atunci: ~{Math.max(1, Math.round(o.walk.minutes))} min
+              estimat.
+            </p>
+          )}
+          {walkState.state === 'ok' && (
+            <>
+              <p className="mt-1 text-sm">
+                <strong className="tabular-nums">{formatDistance(walkState.route.distance)}</strong>{' '}
+                ·{' '}
+                <strong className="tabular-nums">
+                  ~{Math.max(1, Math.round(walkState.route.duration / 60))} min
+                </strong>
+              </p>
+              <p className="text-xs text-muted">
+                Sursa traseului: {walkState.route.source}. Traseul pietonal este desenat pe hartă,
+                punctat.
+              </p>
+            </>
+          )}
+          {walkState.state === 'error' && (
+            <div className="mt-1 text-xs">
+              <p>
+                ~{walkMin} min, {formatDistance(o.walk.meters)} (estimare: {o.walk.source}).
+              </p>
+              <p className="text-muted">
+                {walkState.message} Nu desenăm o linie dreaptă în locul traseului.
+              </p>
+              <button
+                type="button"
+                onClick={() => setWalkAttempt((a) => a + 1)}
+                className="mt-1 min-h-11 rounded-lg border border-border px-3 font-semibold"
+              >
+                Încearcă din nou
+              </button>
+            </div>
+          )}
+        </div>
       </section>
-
-      {o.smsCode && smsNumber && o.price.total !== 0 && (
-        <section className="mt-4 rounded-xl border border-border p-3 text-xs">
-          <h3 className="text-sm font-semibold">Plată</h3>
-          <p className="mt-1">
-            Trimite SMS cu <strong>{o.smsCode}</strong> la <strong>{smsNumber}</strong> (o oră) sau
-            plătește în CityApp.
-          </p>
-        </section>
-      )}
-
-      <details className="mt-3 text-xs">
-        <summary className="cursor-pointer text-muted hover:text-text">
-          De ce e pe locul {rank}?
-        </summary>
-        <ul className="mt-1 space-y-0.5 text-muted">
-          <li>
-            Șanse de loc estimate din: {o.pFree.factors.join('; ')}. Nu e o măsurătoare în timp
-            real.
-          </li>
-          <li>
-            Scor: mers {fmt1(o.cost.walk)} + risc de plin {fmt1(o.cost.risk)} + preț{' '}
-            {fmt1(o.cost.price)} ={' '}
-            <strong className="text-text">{fmt1(o.cost.total)} min echivalente</strong> (mai puțin =
-            mai bine).
-          </li>
-          <li>
-            Capacitate:{' '}
-            {o.capacity.value != null
-              ? `${o.capacity.value} locuri (${o.capacity.source})`
-              : 'necunoscută'}
-            .
-          </li>
-        </ul>
-      </details>
 
       <div className="mt-4 flex flex-wrap gap-2">
         <a

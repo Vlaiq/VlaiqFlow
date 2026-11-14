@@ -12,7 +12,7 @@ import {
   route,
   activeJourney,
 } from '../../../shared/test-fixtures/completeJourney';
-import { calculateCompleteJourneys, COMPLETE_POLICY } from './completeJourneys';
+import { calculateCompleteJourneys, COMPLETE_POLICY, shortlistParkings } from './completeJourneys';
 import { rankCompleteJourneys } from '../engines/completeRanking';
 import { validateEndpoints } from './activeRouting';
 const req = (extra: Partial<Request> = {}) =>
@@ -44,8 +44,39 @@ describe('complete journey orchestration', () => {
     expect(j.elapsedSeconds.value).toBeNull();
     expect(j.legs[1]!.duration.value).toBeNull();
     expect(j.parking?.fee.minorUnits).toBeNull();
-    expect(j.parking?.availability.quality).toBe('unknown');
-    expect(JSON.stringify(j.parking)).not.toContain('0.5');
+    // Live availability stays unknown; the rule-model chance is carried separately and labelled estimated.
+    expect(j.parking?.availability).toMatchObject({ value: null, quality: 'unknown' });
+    expect(j.parking?.match.freeChance).toMatchObject({ value: 0.5, quality: 'estimated' });
+    expect(j.parking?.match).toMatchObject({ rank: 1, kind: 'osm' });
+    expect(j.parking?.match.score).toEqual({ total: 10, walk: 3, risk: 1, price: 1, drive: 5 });
+  });
+  it('keeps the SmartMatch order (risk and price), not only the shortest drive', async () => {
+    // "near" is 1 driving minute closer but very likely full; "sure" wins on SmartMatch cost + drive.
+    const near = parking('near');
+    near.drive = { ...near.drive!, minutes: 4 };
+    near.pFree = { ...near.pFree, value: 0.1 };
+    near.cost = { total: 15, walk: 3, risk: 10.8, price: 1.2 };
+    const sure = parking('sure');
+    sure.drive = { ...sure.drive!, minutes: 5 };
+    sure.pFree = { ...sure.pFree, value: 0.9 };
+    sure.cost = { total: 5.4, walk: 3, risk: 1.2, price: 1.2 };
+    const d = deps([near, sure]);
+    // Same provider route for both, so travel time alone cannot decide.
+    const result = await calculateCompleteJourneys(req({ modes: ['car_park_walk'] }), d);
+    expect(result.journeys.map((j) => j.parking!.id)).toEqual(['sure', 'near']);
+    expect(result.journeys.map((j) => j.parking!.match.rank)).toEqual([1, 2]);
+    expect(result.rankings.balanced.recommendedId).toBe(result.journeys[0]!.id);
+  });
+  it('never treats a missing driving time as zero when ranking parkings', () => {
+    const a = parking('a'),
+      b = parking('b');
+    a.cost = { ...a.cost, total: 6 };
+    b.cost = { ...b.cost, total: 5 };
+    a.drive = { ...a.drive!, minutes: 1 };
+    b.drive = { ...b.drive!, minutes: null };
+    const list = shortlistParkings([a, b]);
+    expect(list.map((c) => c.option.id)).toEqual(['b', 'a']);
+    expect(list.every((c) => c.driveMinutes === null)).toBe(true);
   });
   it('preserves cycle/pedestrian profiles, unknown search and coherent references', async () => {
     const result = await calculateCompleteJourneys(req(), deps());

@@ -27,6 +27,7 @@ import { MapView } from '../features/map/MapView';
 import { TariffLegend } from '../features/parking/TariffLegend';
 import { ParkingRecommendations } from '../features/parking/ParkingRecommendations';
 import { ParkingDetail, type Origin } from '../features/parking/ParkingDetail';
+import { DEFAULT_PARKING_SETTINGS, type ParkingSettings } from '../features/parking/settings';
 import { DestinationSearch } from '../features/search/DestinationSearch';
 import { GreenSwitch, type JourneyMapSelection } from '../features/journey/GreenSwitch';
 import { InstallPrompt } from '../components/InstallPrompt';
@@ -217,6 +218,8 @@ function Explore({
   const [reco, setReco] = useState<RecommendationResponse | null>(null);
   const [detailId, setDetailId] = useState<string | null>(null);
   const [driveRoute, setDriveRoute] = useState<Coordinate[] | null>(null);
+  const [walkRoute, setWalkRoute] = useState<Coordinate[] | null>(null);
+  const [parkingSettings, setParkingSettings] = useState<ParkingSettings>(DEFAULT_PARKING_SETTINGS);
   const [journeySelection, setJourneySelection] = useState<JourneyMapSelection | null>(null);
   const [expanded, setExpanded] = useState(false);
   const [layers, setLayers] = useState(false);
@@ -243,7 +246,8 @@ function Explore({
       : null;
   const onResult = useCallback((value: RecommendationResponse | null) => {
     setReco(value);
-    setDetailId(null);
+    // A new list (e.g. after choosing the origin from the preview) keeps the open parking if it is still listed.
+    setDetailId((id) => (id && value?.options.some((o) => o.id === id) ? id : null));
   }, []);
   const pickOption = useCallback((id: string | null) => {
     setSelectedId(id);
@@ -259,7 +263,15 @@ function Explore({
   const closeDetail = useCallback(() => {
     setDetailId(null);
     setDriveRoute(null);
+    setWalkRoute(null);
   }, []);
+  /** From a Smart Journey car option: open the same parking's preview when the SmartMatch list has it. */
+  const openParkingFromJourney = useCallback(
+    (id: string) => {
+      if (options.some((o) => o.id === id)) openDetail(id);
+    },
+    [options, openDetail],
+  );
   const selectDestination = useCallback((value: Destination) => {
     setDestination(value);
     setDetailId(null);
@@ -331,6 +343,7 @@ function Explore({
         destination={destination}
         recommendations={options}
         route={detail ? driveRoute : null}
+        walkRoute={detail ? walkRoute : null}
         journey={detail ? null : journeySelection}
         selectedRecommendationId={selectedId}
         focusRecommendation={focus}
@@ -449,6 +462,7 @@ function Explore({
                           setDestination(null);
                           setReco(null);
                           setDriveRoute(null);
+                          setWalkRoute(null);
                           setJourneySelection(null);
                           setDetailId(null);
                         }}
@@ -456,37 +470,6 @@ function Explore({
                         <ArrowLeft size={13} /> Schimbă destinația
                       </button>
                     </div>
-                    {destination.location && (
-                      <>
-                        <div className="explore-origin">
-                          <div className="explore-origin-label">
-                            <LocateFixed size={13} /> PUNCTUL DE PLECARE
-                          </div>
-                          <strong>{origin?.name ?? 'Alege de unde pornești'}</strong>
-                          <div className="explore-origin-actions">
-                            <button onClick={requestGps} disabled={locating}>
-                              <LocateFixed size={14} />
-                              {locating ? 'Căutăm poziția…' : 'Locația mea'}
-                            </button>
-                            <button onClick={manualOrigin}>
-                              <MapPin size={14} /> Alege pe hartă
-                            </button>
-                          </div>
-                          {originError && (
-                            <p className="explore-origin-error" role="alert">
-                              {originError}
-                            </p>
-                          )}
-                        </div>
-                        <GreenSwitch
-                          origin={origin?.coordinate ?? null}
-                          destination={destination}
-                          onJourney={setJourneySelection}
-                          onInspectRoute={() => setExpanded(false)}
-                          onStartActivity={onStartActivity}
-                        />
-                      </>
-                    )}
                   </>
                 )}
                 {detail && reco && (
@@ -495,6 +478,11 @@ function Explore({
                     option={detail}
                     rank={detailIndex + 1}
                     destinationName={destination.name}
+                    destination={
+                      destination.location
+                        ? [destination.location.lng, destination.location.lat]
+                        : null
+                    }
                     stayMinutes={reco.stayMinutes}
                     smsNumber={timparkData?.data.tariffs.smsNumber ?? null}
                     demoOrigin={null}
@@ -505,23 +493,52 @@ function Explore({
                     onManualOrigin={manualOrigin}
                     onBack={closeDetail}
                     onRoute={setDriveRoute}
+                    onWalkRoute={setWalkRoute}
                   />
                 )}
                 {destination.location && (
                   <div hidden={!!detail}>
-                    <details className="explore-other-parkings" open={!origin || undefined}>
-                      <summary>Explorează și alte parcări din apropiere</summary>
-                      <ParkingRecommendations
-                        key={destination.id}
-                        destination={destination}
-                        origin={origin?.coordinate ?? null}
-                        selectedId={selectedId}
-                        onSelect={setSelectedId}
-                        onPick={pickOption}
-                        onOpen={openDetail}
-                        onResult={onResult}
-                      />
-                    </details>
+                    <ParkingRecommendations
+                      key={destination.id}
+                      destination={destination}
+                      origin={origin?.coordinate ?? null}
+                      settings={parkingSettings}
+                      onSettings={setParkingSettings}
+                      selectedId={selectedId}
+                      onSelect={setSelectedId}
+                      onPick={pickOption}
+                      onOpen={openDetail}
+                      onResult={onResult}
+                    />
+                    <div className="explore-origin">
+                      <div className="explore-origin-label">
+                        <LocateFixed size={13} /> PUNCTUL DE PLECARE
+                      </div>
+                      <strong>{origin?.name ?? 'Alege de unde pornești'}</strong>
+                      <div className="explore-origin-actions">
+                        <button onClick={requestGps} disabled={locating}>
+                          <LocateFixed size={14} />
+                          {locating ? 'Căutăm poziția…' : 'Locația mea'}
+                        </button>
+                        <button onClick={manualOrigin}>
+                          <MapPin size={14} /> Alege pe hartă
+                        </button>
+                      </div>
+                      {originError && (
+                        <p className="explore-origin-error" role="alert">
+                          {originError}
+                        </p>
+                      )}
+                    </div>
+                    <GreenSwitch
+                      origin={origin?.coordinate ?? null}
+                      destination={destination}
+                      parkingSettings={parkingSettings}
+                      onJourney={setJourneySelection}
+                      onInspectRoute={() => setExpanded(false)}
+                      onOpenParking={openParkingFromJourney}
+                      onStartActivity={onStartActivity}
+                    />
                   </div>
                 )}
                 <a href="/data" className="explore-data-link">

@@ -31,6 +31,9 @@ import {
   journeyMinutes,
   plannedActivity,
 } from './journeyPresentation';
+import { FreeChance, ScoreBreakdown } from '../parking/ParkingFacts';
+import { pct, stayLabel } from '../parking/recommendationLabels';
+import { PARKING_MODE_LABEL, arriveIso, type ParkingSettings } from '../parking/settings';
 import './journey.css';
 export type { ActiveJourneyContext } from '@vlaiq/shared';
 export interface JourneyMapSelection {
@@ -40,10 +43,20 @@ export interface JourneyMapSelection {
 interface Props {
   origin: Coordinate | null;
   destination: Destination;
+  /** Same settings as the "Unde parchezi" list, so both show the same SmartMatch parkings. */
+  parkingSettings: ParkingSettings;
   onJourney: (selection: JourneyMapSelection | null) => void;
   onInspectRoute?: () => void;
+  /** Opens the parking preview for a SmartMatch option id, when the list has it. */
+  onOpenParking?: (parkingId: string) => void;
   onStartActivity: (mode: 'walk' | 'cycle', journey?: ActiveJourneyContext) => void;
 }
+const fee = (p: NonNullable<CompleteJourney['parking']>) =>
+  p.fee.minorUnits === null
+    ? 'Preț necunoscut'
+    : p.fee.minorUnits === 0
+      ? 'Gratuit'
+      : `${(p.fee.minorUnits / 100).toLocaleString('ro-RO')} ${p.fee.currency ?? ''}`.trim();
 const names: Record<JourneyCategory, string> = {
   car_park_walk: 'Auto + parcare + mers',
   cycle: 'Cu bicicleta',
@@ -58,33 +71,30 @@ const preferences: { id: JourneyPreference; label: string; icon: typeof Leaf }[]
 export function GreenSwitch({
   origin,
   destination,
+  parkingSettings,
   onJourney,
   onStartActivity,
   onInspectRoute,
+  onOpenParking,
 }: Props) {
   const [preference, setPreference] = useState<JourneyPreference>('balanced');
   const [manualId, setManualId] = useState<string | null>(null);
   const [legId, setLegId] = useState<string | null>(null);
   const [attempt, setAttempt] = useState(0);
-  const [stay, setStay] = useState(120),
-    [maxWalk, setMaxWalk] = useState(12);
-  const [parkingPreference, setParkingPreference] = useState<'balanced' | 'cheap' | 'less_walk'>(
-    'balanced',
-  );
-  const [tariffTime, setTariffTime] = useState('');
   const [parkingOpen, setParkingOpen] = useState(false);
   const callback = useRef(onJourney);
   callback.current = onJourney;
   const loc = destination.location;
+  const arriveAt = arriveIso(parkingSettings);
   const result = useCompleteJourneys(
     origin && loc
       ? CompleteJourneyRequest.parse({
           origin,
           destination: [loc.lng, loc.lat],
-          stayMinutes: stay,
-          maxWalkMinutes: maxWalk,
-          parkingPreference,
-          ...(tariffTime ? { arriveAt: new Date(tariffTime).toISOString() } : {}),
+          stayMinutes: parkingSettings.stayMinutes,
+          maxWalkMinutes: parkingSettings.maxWalkMinutes,
+          parkingPreference: parkingSettings.mode,
+          ...(arriveAt ? { arriveAt } : {}),
         })
       : null,
     attempt,
@@ -156,79 +166,22 @@ export function GreenSwitch({
           </button>
         ))}
       </div>
-      <details className="journey-settings">
-        <summary>
-          <SlidersHorizontal size={14} /> Opțiuni pentru parcare <ChevronDown size={14} />
-        </summary>
-        <div>
-          <label>
-            Durata parcării
-            <select
-              aria-label="Durata parcării"
-              value={stay}
-              onChange={(e) => setStay(+e.target.value)}
-            >
-              {[30, 60, 120, 240, 480].map((n) => (
-                <option key={n} value={n}>
-                  {n < 60 ? `${n} min` : `${n / 60} h`}
-                </option>
-              ))}
-            </select>
-          </label>
-          <label>
-            Mers după parcare
-            <select
-              aria-label="Mers după parcare"
-              value={maxWalk}
-              onChange={(e) => setMaxWalk(+e.target.value)}
-            >
-              {[5, 8, 12, 15, 20].map((n) => (
-                <option key={n} value={n}>
-                  maximum {n} min
-                </option>
-              ))}
-            </select>
-          </label>
-          <label>
-            Preferința parcării
-            <select
-              aria-label="Preferința parcării"
-              value={parkingPreference}
-              onChange={(e) => setParkingPreference(e.target.value as typeof parkingPreference)}
-            >
-              <option value="balanced">Echilibrat</option>
-              <option value="cheap">Cost cunoscut mai mic</option>
-              <option value="less_walk">Mai puțin mers</option>
-            </select>
-          </label>
-          <label>
-            Ora pentru tarif · ora dispozitivului
-            <input
-              type="datetime-local"
-              value={tariffTime}
-              min="2020-01-01T00:00"
-              max="2100-12-31T23:59"
-              onChange={(e) => {
-                const next = e.target.value;
-                if (
-                  !next ||
-                  (Number.isFinite(new Date(next).getTime()) &&
-                    next.slice(0, 4) >= '2020' &&
-                    next.slice(0, 4) <= '2100')
-                )
-                  setTariffTime(next);
-              }}
-            />
-          </label>
-          <p>
-            Fără oră aleasă, tariful este calculat pentru acum. Ora nu este o predicție a sosirii.
-          </p>
-        </div>
-      </details>
+      <p className="journey-parking-settings">
+        <SlidersHorizontal size={14} aria-hidden />
+        <span>
+          Parcare: {stayLabel(parkingSettings.stayMinutes)} · maximum {parkingSettings.maxWalkMinutes}{' '}
+          min pe jos · {PARKING_MODE_LABEL[parkingSettings.mode]}
+          {arriveAt ? ` · sosire ${new Date(arriveAt).toLocaleString('ro-RO')}` : ' · acum'}. Se
+          schimbă din „Unde parchezi”.
+        </span>
+      </p>
       {!origin && (
         <div className="journey-empty">
           <MapPin size={18} />
-          <p>Alege plecarea mai sus. Nu folosim automat o locație demonstrativă.</p>
+          <p>
+            Alege plecarea mai sus ca să compari auto + parcare cu mersul pe jos și bicicleta. Nu
+            folosim automat o locație demonstrativă.
+          </p>
         </div>
       )}
       {result.state === 'loading' && (
@@ -272,10 +225,22 @@ export function GreenSwitch({
                   </span>
                   <span className="journey-option-name">
                     {names[j.category]}
-                    <small>
-                      {j.parking?.name ?? journeyDistance(j.distance.value!)}
-                      {!j.practical && ' · drum lung'}
-                    </small>
+                    {j.parking ? (
+                      <>
+                        <small className="journey-option-parking">
+                          P{j.parking.match.rank} · {j.parking.name}
+                        </small>
+                        <small>
+                          ~{pct(j.parking.match.freeChance.value)} șanse estimate de loc ·{' '}
+                          {fee(j.parking)}
+                        </small>
+                      </>
+                    ) : (
+                      <small>
+                        {journeyDistance(j.distance.value!)}
+                        {!j.practical && ' · drum lung'}
+                      </small>
+                    )}
                     <span className="journey-option-quality">
                       {active ? <Check size={11} /> : null} Timp estimat pe trasee
                     </span>
@@ -316,10 +281,65 @@ export function GreenSwitch({
                 </div>
               </div>
               {selected.parking && (
-                <p className="journey-uncertainty">
-                  Timpul de căutare și manevrare a parcării este necunoscut și nu este inclus.
-                  Disponibilitate neconfirmată.
-                </p>
+                <section className="journey-parking-focus" aria-label="Parcarea aleasă">
+                  <div className="journey-parking-focus-head">
+                    <span className="journey-parking-focus-rank" aria-hidden>
+                      P{selected.parking.match.rank}
+                    </span>
+                    <div>
+                      <span>PARCHEZI AICI · LOCUL {selected.parking.match.rank}</span>
+                      <h4>{selected.parking.name}</h4>
+                    </div>
+                  </div>
+                  <FreeChance
+                    value={selected.parking.match.freeChance.value}
+                    quality={selected.parking.match.freeChance.quality}
+                    compact
+                  />
+                  <dl>
+                    <div>
+                      <dt>Cost pentru {stayLabel(selected.parking.stayMinutes)}</dt>
+                      <dd>{fee(selected.parking)}</dd>
+                    </div>
+                    <div>
+                      <dt>Apoi pe jos</dt>
+                      <dd>
+                        {(() => {
+                          const walk = selected.legs.find((l) => l.type === 'walk');
+                          return walk && walk.type === 'walk'
+                            ? `${journeyMinutes(walk.route.duration)} min`
+                            : 'Necunoscut';
+                        })()}
+                      </dd>
+                    </div>
+                    <div>
+                      <dt>Capacitate</dt>
+                      <dd>
+                        {selected.parking.match.capacity.value != null
+                          ? `~${selected.parking.match.capacity.value} locuri`
+                          : 'Necunoscută'}
+                      </dd>
+                    </div>
+                    {selected.parking.match.smsCode && (
+                      <div>
+                        <dt>Cod SMS Timpark</dt>
+                        <dd>{selected.parking.match.smsCode}</dd>
+                      </div>
+                    )}
+                  </dl>
+                  <p className="journey-uncertainty">
+                    Timpul de căutare și manevrare a parcării este necunoscut și nu este inclus.
+                    Ocupare live: necunoscută.
+                  </p>
+                  {onOpenParking && (
+                    <button
+                      className="journey-parking-open"
+                      onClick={() => onOpenParking(selected.parking!.id)}
+                    >
+                      Previzualizează parcarea <ArrowRight size={15} />
+                    </button>
+                  )}
+                </section>
               )}
               <JourneyTimeline
                 journey={selected}
@@ -369,6 +389,11 @@ export function GreenSwitch({
                   {selected.parking.warnings.map((w) => (
                     <p key={w}>{w}</p>
                   ))}
+                  <ScoreBreakdown score={selected.parking.match.score} />
+                  <small>
+                    Șanse estimate din: {selected.parking.match.freeChance.factors.join('; ')}.{' '}
+                    {selected.parking.match.freeChance.source}
+                  </small>
                 </section>
               )}
               {selected.category !== 'car_park_walk' ? (

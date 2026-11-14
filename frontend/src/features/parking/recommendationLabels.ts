@@ -23,3 +23,10 @@ export function priceText(o: RecommendationOption): string {
 }
 
 export const pct = (p: number) => `${Math.round(p * 100)}%`;
+
+/** Plain-language level for the estimated chance of a free space. Text is always shown, never colour alone. */
+export function chanceLevel(p: number): { label: string; tone: 'good' | 'medium' | 'low' } {
+  if (p >= 0.7) return { label: 'Șanse bune', tone: 'good' };
+  if (p >= 0.4) return { label: 'Șanse medii', tone: 'medium' };
+  return { label: 'Risc mare să fie plin', tone: 'low' };
+}

@@ -1,21 +1,22 @@
 import { useEffect, useState } from 'react';
-import { ChevronRight, Footprints, Info, ParkingSquare, RotateCcw } from 'lucide-react';
+import { ChevronRight, Info, ParkingSquare, RotateCcw, SlidersHorizontal } from 'lucide-react';
 import {
   TARIFF_LABEL_RO,
   type Destination,
   type Coordinate,
-  type RecommendationMode,
   type RecommendationOption,
   type RecommendationResponse,
 } from '@vlaiq/shared';
 import { QualityBadge } from '../../components/QualityBadge';
 import { api } from '../../services/api';
 import { KIND_LABEL, pct, priceText, stayLabel } from './recommendationLabels';
+import { FreeChance, ScoreBreakdown } from './ParkingFacts';
+import { PARKING_MODE_LABEL, arriveIso, type ParkingSettings } from './settings';
 
-const MODES: { id: RecommendationMode; label: string; hint: string }[] = [
-  { id: 'balanced', label: 'Echilibrat', hint: 'timp, șanse de loc și preț' },
-  { id: 'cheap', label: 'Mai ieftin', hint: 'prețul contează mai mult' },
-  { id: 'less_walk', label: 'Mai puțin mers', hint: 'mersul pe jos contează mai mult' },
+const MODES: { id: ParkingSettings['mode']; hint: string }[] = [
+  { id: 'balanced', hint: 'mersul, șansele de loc și prețul, la fel de important' },
+  { id: 'cheap', hint: 'prețul contează mai mult' },
+  { id: 'less_walk', hint: 'mersul pe jos contează mai mult' },
 ];
 const STAYS = [30, 60, 120, 180, 300, 480];
 
@@ -33,6 +34,8 @@ type State =
 interface Props {
   destination: Destination;
   origin?: Coordinate | null;
+  settings: ParkingSettings;
+  onSettings: (next: ParkingSettings) => void;
   selectedId: string | null;
   onSelect: (id: string | null) => void;
   /** The user picked an option in the list: select it and show it on the map. */
@@ -46,18 +49,19 @@ interface Props {
 export function ParkingRecommendations({
   destination,
   origin,
+  settings,
+  onSettings,
   selectedId,
   onSelect,
   onPick,
   onOpen,
   onResult,
 }: Props) {
-  const [mode, setMode] = useState<RecommendationMode>('balanced');
-  const [stay, setStay] = useState(120);
-  const [arrive, setArrive] = useState<string | null>(null); // null = now
-  const [maxWalk, setMaxWalk] = useState(12);
+  const { mode, stayMinutes: stay, maxWalkMinutes: maxWalk, arrive } = settings;
+  const set = (patch: Partial<ParkingSettings>) => onSettings({ ...settings, ...patch });
   const [attempt, setAttempt] = useState(0);
   const [result, setResult] = useState<State>({ state: 'loading' });
+  const arriveAt = arriveIso(settings);
 
   const loc = destination.location;
   useEffect(() => {
@@ -77,7 +81,7 @@ export function ParkingRecommendations({
           mode,
           stayMinutes: stay,
           maxWalkMinutes: maxWalk,
-          ...(arrive ? { arriveAt: new Date(arrive).toISOString() } : {}),
+          ...(arriveAt ? { arriveAt } : {}),
         },
         ctrl.signal,
       )
@@ -105,26 +109,32 @@ export function ParkingRecommendations({
       ctrl.abort();
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [loc?.lng, loc?.lat, origin?.[0], origin?.[1], mode, stay, arrive, maxWalk, attempt]);
+  }, [loc?.lng, loc?.lat, origin?.[0], origin?.[1], mode, stay, arriveAt, maxWalk, attempt]);
 
   useEffect(() => () => onResult(null), [onResult]);
 
   if (!loc) return null;
 
   return (
-    <section aria-labelledby="reco-title" className="mb-3 border-b border-border pb-3">
-      <div className="flex items-center gap-2">
-        <ParkingSquare className="h-4 w-4 text-primary" aria-hidden />
-        <h2 id="reco-title" className="text-sm font-semibold">
-          Unde parchezi
-        </h2>
+    <section aria-labelledby="reco-title" className="parking-panel">
+      <div className="parking-panel-heading">
+        <span className="parking-panel-icon">
+          <ParkingSquare size={20} aria-hidden />
+        </span>
+        <div>
+          <span className="parking-panel-eyebrow">SMARTMATCH · PARCARE</span>
+          <h2 id="reco-title">Unde parchezi</h2>
+        </div>
       </div>
+      <p className="parking-panel-description">
+        Comparăm parcările Timpark și OpenStreetMap din jurul destinației după mersul pe jos, șansele
+        estimate de loc și costul pentru {stayLabel(stay)}.
+      </p>
 
-      <p className="parking-preferences-label">PREFERINȚE PENTRU PARCARE</p>
       <div
         role="radiogroup"
         aria-label="Preferințe pentru parcare"
-        className="mt-2 grid grid-cols-3 gap-1 rounded-xl bg-surface-2 p-1"
+        className="mt-3 grid grid-cols-3 gap-1 rounded-xl bg-surface-2 p-1"
       >
         {MODES.map((m) => (
           <button
@@ -132,25 +142,21 @@ export function ParkingRecommendations({
             type="button"
             role="radio"
             aria-checked={mode === m.id}
-            onClick={() => setMode(m.id)}
+            onClick={() => set({ mode: m.id })}
             className={`min-h-11 rounded-lg px-2 text-xs font-semibold focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary ${
               mode === m.id ? 'bg-primary text-primary-fg' : 'text-muted hover:text-text'
             }`}
           >
-            {m.label}
+            {PARKING_MODE_LABEL[m.id]}
           </button>
         ))}
       </div>
       <p className="mt-1 text-xs text-muted">Contează: {MODES.find((m) => m.id === mode)!.hint}.</p>
 
-      <div className="mt-2 grid grid-cols-2 gap-2 text-xs">
-        <label className="flex flex-col gap-1 text-muted">
+      <div className="parking-settings">
+        <label>
           Stai cât?
-          <select
-            value={stay}
-            onChange={(e) => setStay(Number(e.target.value))}
-            className="min-h-11 rounded-lg border border-border bg-surface-2 px-2 text-sm text-text"
-          >
+          <select value={stay} onChange={(e) => set({ stayMinutes: Number(e.target.value) })}>
             {STAYS.map((s) => (
               <option key={s} value={s}>
                 {stayLabel(s)}
@@ -158,13 +164,9 @@ export function ParkingRecommendations({
             ))}
           </select>
         </label>
-        <label className="flex flex-col gap-1 text-muted">
+        <label>
           Mergi pe jos maximum
-          <select
-            value={maxWalk}
-            onChange={(e) => setMaxWalk(Number(e.target.value))}
-            className="min-h-11 rounded-lg border border-border bg-surface-2 px-2 text-sm text-text"
-          >
+          <select value={maxWalk} onChange={(e) => set({ maxWalkMinutes: Number(e.target.value) })}>
             {[5, 8, 12, 15, 20].map((m) => (
               <option key={m} value={m}>
                 {m} min
@@ -172,21 +174,17 @@ export function ParkingRecommendations({
             ))}
           </select>
         </label>
-        <label className="col-span-2 flex flex-col gap-1 text-muted">
-          Când ajungi?
-          <span className="flex gap-2">
+        <label className="parking-settings-wide">
+          Când ajungi? (pentru tarif și șanse)
+          <span>
             <input
               type="datetime-local"
               value={arrive ?? localInputValue(new Date())}
-              onChange={(e) => setArrive(e.target.value || null)}
-              className="min-h-11 min-w-0 flex-1 rounded-lg border border-border bg-surface-2 px-2 text-sm text-text [color-scheme:dark]"
+              min="2020-01-01T00:00"
+              max="2100-12-31T23:59"
+              onChange={(e) => set({ arrive: e.target.value || null })}
             />
-            <button
-              type="button"
-              onClick={() => setArrive(null)}
-              disabled={arrive == null}
-              className="min-h-11 rounded-lg border border-border px-3 text-xs font-semibold text-text disabled:opacity-50"
-            >
+            <button type="button" onClick={() => set({ arrive: null })} disabled={arrive == null}>
               Acum
             </button>
           </span>
@@ -195,9 +193,10 @@ export function ParkingRecommendations({
 
       <div className="mt-3" aria-live="polite">
         {result.state === 'loading' && (
-          <p role="status" className="text-xs text-muted">
-            Calculăm cea mai bună parcare…
-          </p>
+          <div className="parking-loading" role="status">
+            <span className="parking-loading-track" />
+            <p>Calculăm cea mai bună parcare…</p>
+          </div>
         )}
 
         {result.state === 'error' && (
@@ -220,7 +219,7 @@ export function ParkingRecommendations({
             {maxWalk < 20 && (
               <button
                 type="button"
-                onClick={() => setMaxWalk(20)}
+                onClick={() => set({ maxWalkMinutes: 20 })}
                 className="mt-2 min-h-11 rounded-lg border border-border px-3 font-semibold"
               >
                 Caută până la 20 min
@@ -232,11 +231,9 @@ export function ParkingRecommendations({
         {result.state === 'ok' && result.data.options.length > 0 && (
           <>
             {result.data.explanation && (
-              <details className="mb-3 text-xs leading-relaxed text-muted">
-                <summary>De ce această ordine?</summary>
-                <p>{result.data.explanation}</p>
-                <p>{result.data.model.note}</p>
-              </details>
+              <p className="parking-explanation">
+                <SlidersHorizontal size={13} aria-hidden /> {result.data.explanation}
+              </p>
             )}
             <ol className="flex flex-col gap-2">
               {result.data.options.map((o, i) => (
@@ -248,9 +245,13 @@ export function ParkingRecommendations({
                   onSelect={() => onPick(o.id)}
                   onOpen={() => onOpen(o.id)}
                   stayMinutes={result.data.stayMinutes}
+                  hasOrigin={!!origin}
                 />
               ))}
             </ol>
+            <p className="parking-considered">
+              Am analizat {result.data.considered} parcări la cel mult {maxWalk} min de mers.
+            </p>
             <HowWeRank data={result.data} />
           </>
         )}
@@ -266,6 +267,7 @@ function OptionCard({
   onSelect,
   onOpen,
   stayMinutes,
+  hasOrigin,
 }: {
   option: RecommendationOption;
   rank: number;
@@ -273,6 +275,7 @@ function OptionCard({
   onSelect: () => void;
   onOpen: () => void;
   stayMinutes: number;
+  hasOrigin: boolean;
 }) {
   const badge = rank === 1 ? 'Recomandat' : rank === 2 ? 'Rezervă' : null;
 
@@ -304,46 +307,39 @@ function OptionCard({
         </span>
       </button>
 
+      <FreeChance value={o.pFree.value} quality={o.pFree.quality} compact />
+
       <dl className="parking-card-facts">
+        <div>
+          <dt>Pe jos până la destinație</dt>
+          <dd>
+            ~{Math.max(1, Math.round(o.walk.minutes))} min · {o.walk.meters} m
+          </dd>
+        </div>
+        <div>
+          <dt>Cost pentru {stayLabel(stayMinutes)}</dt>
+          <dd>
+            {priceText(o)} <QualityBadge quality={o.price.quality} />
+          </dd>
+        </div>
         <div>
           <dt>Drum auto + pe jos</dt>
           <dd>
             {o.journeyMinutes != null
               ? `~${Math.max(1, Math.round(o.journeyMinutes))} min`
-              : 'Necunoscut'}
+              : hasOrigin
+                ? 'Necunoscut'
+                : 'Alege plecarea'}
           </dd>
         </div>
         <div>
-          <dt>Ultima parte, pe jos</dt>
-          <dd>~{Math.max(1, Math.round(o.walk.minutes))} min</dd>
-        </div>
-        <div>
-          <dt>Cost pentru {stayLabel(stayMinutes)}</dt>
-          <dd>{priceText(o)}</dd>
-        </div>
-        <div>
-          <dt>Distanță pe jos estimată</dt>
-          <dd>{o.walk.meters} m</dd>
+          <dt>Capacitate</dt>
+          <dd>{o.capacity.value != null ? `~${o.capacity.value} locuri` : 'Necunoscută'}</dd>
         </div>
       </dl>
-      <p className="parking-availability">
-        <Info size={12} /> Date de ocupare indisponibile
-      </p>
       <p className="parking-card-quality">
         Estimare, nu loc confirmat. Durata nu include căutarea unui loc.
       </p>
-      <details className="parking-card-source">
-        <summary>Vezi sursa și ipotezele</summary>
-        <p>{o.walk.source}</p>
-        <p>
-          {o.price.source} · {o.price.note}
-        </p>
-        <p>{o.drive?.source ?? 'Alege plecarea pentru a calcula drumul auto.'}</p>
-        <p>
-          Model de ocupare: ~{pct(o.pFree.value)} probabilitate estimată, fără validare prin
-          măsurători live. {o.pFree.source}
-        </p>
-      </details>
 
       {o.flags.length > 0 && (
         <ul className="mt-2 list-disc pl-4 text-xs text-warning">
@@ -353,6 +349,19 @@ function OptionCard({
         </ul>
       )}
 
+      <details className="parking-card-source">
+        <summary>De ce pe locul {rank}?</summary>
+        <ScoreBreakdown score={o.cost} />
+        <p>{o.walk.source}</p>
+        <p>
+          {o.price.source} · {o.price.note}
+        </p>
+        <p>{o.drive?.source ?? 'Alege plecarea pentru a calcula drumul auto.'}</p>
+        <p>
+          Șanse ~{pct(o.pFree.value)} din: {o.pFree.factors.join('; ')}. {o.pFree.source}
+        </p>
+      </details>
+
       <button
         type="button"
         onClick={onOpen}
@@ -360,7 +369,7 @@ function OptionCard({
           rank === 1 ? 'bg-primary text-primary-fg' : 'border border-border text-text'
         }`}
       >
-        Vezi traseul <ChevronRight className="h-4 w-4" aria-hidden />
+        Detalii și traseu <ChevronRight className="h-4 w-4" aria-hidden />
       </button>
     </li>
   );
@@ -381,7 +390,8 @@ function HowWeRank({ data }: { data: RecommendationResponse }) {
             {params.minutesPerCurrency} min
           </strong>
           . {params.fullPenaltyMinutes} min este timpul pierdut dacă parcarea e plină și cauți alta.
-          Câștigă costul cel mai mic.
+          Câștigă costul cel mai mic. Când alegi plecarea, în Smart Journey se adaugă și minutele de
+          condus.
         </p>
         <p>{data.model.note}</p>
         <p>

@@ -98,11 +98,38 @@ function construct(
     ],
   });
 }
+export interface ShortlistedParking {
+  option: RecommendationOption;
+  /** Driving minutes used for ranking, or null when no driving time is known for every candidate. */
+  driveMinutes: number | null;
+  score: number;
+}
+/**
+ * Deterministic shortlist for car journeys: SmartMatch cost (walk + risk of a full parking + price) plus the
+ * driving minutes from the origin when every candidate has one. A candidate without a driving time is never
+ * treated as zero drive: then no candidate gets a drive term and the SmartMatch order is kept.
+ */
+export function shortlistParkings(options: RecommendationOption[]): ShortlistedParking[] {
+  const allDrive = options.every((o) => o.drive?.minutes != null);
+  return options
+    .map((option, i) => {
+      const driveMinutes = allDrive ? option.drive!.minutes! : null;
+      return { option, driveMinutes, score: option.cost.total + (driveMinutes ?? 0), i };
+    })
+    .sort((a, b) => a.score - b.score || a.i - b.i || a.option.id.localeCompare(b.option.id))
+    .map(({ option, driveMinutes, score }) => ({
+      option,
+      driveMinutes,
+      score: Math.round(score * 10) / 10,
+    }));
+}
 function parkingInfo(
-  p: RecommendationOption,
+  c: ShortlistedParking,
+  rank: number,
   req: CompleteJourneyRequest,
   tariffAt: string,
 ): NonNullable<CompleteJourney['parking']> {
+  const p = c.option;
   const priceKnown = p.price.total === 0 || (p.price.total !== null && p.price.currency !== null);
   return {
     id: p.id,
@@ -134,6 +161,27 @@ function parkingInfo(
         ? ['Accesul nu este confirmat; verifică indicatoarele înainte de a intra.']
         : []),
     ],
+    match: {
+      rank,
+      kind: p.kind,
+      tariff: p.tariff,
+      smsCode: p.smsCode,
+      capacity: p.capacity,
+      freeChance: {
+        value: p.pFree.value,
+        // The rule model is an estimate; only demo data may be 'simulated'. Never 'confirmed' here.
+        quality: p.pFree.quality === 'simulated' ? 'simulated' : 'estimated',
+        source: p.pFree.source,
+        factors: p.pFree.factors,
+      },
+      score: {
+        total: c.score,
+        walk: p.cost.walk,
+        risk: p.cost.risk,
+        price: p.cost.price,
+        drive: c.driveMinutes,
+      },
+    },
   };
 }
 /** Candidate routes are deliberately bounded: up to 3 candidates, 2 at a time, 2 directions each. */
@@ -153,16 +201,11 @@ async function carJourneys(
     }),
   );
   // Customers-only is not public access. Unknown access is disclosed, never asserted public.
-  const candidates = screened.options.filter((p) => p.access !== 'customers');
-  // Use actual matrix totals if present. The formula walking estimate only screens; never becomes geometry.
-  if (req.parkingPreference === 'balanced')
-    candidates.sort(
-      (a, b) =>
-        (a.journeyMinutes ?? Infinity) - (b.journeyMinutes ?? Infinity) ||
-        a.cost.total - b.cost.total ||
-        a.id.localeCompare(b.id),
-    );
+  const candidates = shortlistParkings(
+    screened.options.filter((p) => p.access !== 'customers'),
+  );
   const selected = candidates.slice(0, COMPLETE_POLICY.parkingCandidates);
+  const rankOf = new Map(selected.map((c, i) => [c.option.id, i + 1]));
   const result: CompleteJourney[] = [];
   let next = 0;
   await Promise.all(
@@ -170,8 +213,9 @@ async function carJourneys(
       { length: Math.min(selected.length, COMPLETE_POLICY.concurrentParking) },
       async () => {
         for (;;) {
-          const p = selected[next++];
-          if (!p) return;
+          const c = selected[next++];
+          if (!c) return;
+          const p = c.option;
           try {
             const [drive, walk] = await Promise.all([
               deps.drive(req.origin, p.coordinate),
@@ -191,7 +235,13 @@ async function carJourneys(
               movingLeg('walk', p.coordinate, req.destination, walk.route),
             ];
             result.push(
-              construct(req, 'car_park_walk', legs, parkingInfo(p, req, screened.arriveAt), at),
+              construct(
+                req,
+                'car_park_walk',
+                legs,
+                parkingInfo(c, rankOf.get(p.id)!, req, screened.arriveAt),
+                at,
+              ),
             );
           } catch {
             /* This candidate must not invalidate the other candidates or active modes. */
@@ -200,9 +250,8 @@ async function carJourneys(
       },
     ),
   );
-  return result.sort(
-    (a, b) => a.travelSeconds.value! - b.travelSeconds.value! || a.id.localeCompare(b.id),
-  );
+  // Parking order is the SmartMatch order, not the shortest drive: availability risk and price count too.
+  return result.sort((a, b) => a.parking!.match.rank - b.parking!.match.rank);
 }
 export async function calculateCompleteJourneys(
   req: CompleteJourneyRequest,

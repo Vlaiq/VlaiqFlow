@@ -99,8 +99,16 @@ Reuse of the published Timpark schedule/stay/hourly/progressive/day-ticket model
 universal final payment. The source's `eur` field is kept as EUR. New complete-journey parking fees are
 labelled **orientative/estimated**, include the chosen time/stay/source and tell users to verify the final
 amount for their payment method in Timpark/CityApp. No implicit RON conversion. OSM fee=no remains an
-explicit estimated source, not a live confirmation. Occupancy is always unknown in this contract; the
-uncalibrated SmartMatch probability never becomes a displayed live probability here.
+explicit estimated source, not a live confirmation. Live occupancy (`parking.availability`) is always
+unknown in this contract. Since 14 Nov the SmartMatch facts travel separately in `parking.match`: rank,
+capacity, cost breakdown and `freeChance`, the rule-model chance of a free space, always labelled
+`estimated` (or `simulated` in a demo), never `confirmed`, and shown next to "Ocupare live: necunoscută".
+
+Car options keep the SmartMatch order: SmartMatch cost (walk + risk of a full parking + price) plus the
+driving minutes from the origin when every candidate has one. If any candidate lacks a driving time, none
+gets a drive term (a missing time is never zero) and the plain SmartMatch order is kept. The "balanced"
+preference falls back to the car option ranked first by this order, not to the shortest drive. The
+Explore list and Smart Journey share one set of parking settings, so both show the same parkings.
 
 ## Cache, limits and privacy
 

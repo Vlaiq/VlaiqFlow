@@ -1,0 +1,372 @@
+/* Parking-first panel, SmartMatch facts and parking preview. Tokens only (frontend/src/styles/tokens.css). */
+.parking-panel {
+  padding: 18px 0 20px;
+  color: rgb(var(--text));
+  font-variant-numeric: tabular-nums;
+}
+.parking-panel-heading {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.parking-panel-icon {
+  display: grid;
+  place-items: center;
+  width: 38px;
+  height: 38px;
+  border-radius: 12px;
+  background: rgb(var(--primary) / 0.14);
+  color: rgb(var(--primary));
+  flex-shrink: 0;
+}
+.parking-panel-eyebrow {
+  color: rgb(var(--primary));
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 1.1px;
+}
+.parking-panel h2 {
+  font-size: 19px;
+  line-height: 1.25;
+  font-weight: 650;
+  margin: 3px 0 0;
+  letter-spacing: -0.3px;
+}
+.parking-panel-description {
+  font-size: 12px;
+  line-height: 1.7;
+  margin: 12px 0 0;
+  color: rgb(var(--text-muted));
+}
+.parking-settings {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  margin-top: 10px;
+  font-size: 11px;
+}
+.parking-settings label {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  color: rgb(var(--text-muted));
+  min-width: 0;
+}
+.parking-settings-wide {
+  grid-column: 1 / -1;
+}
+.parking-settings-wide > span {
+  display: flex;
+  gap: 8px;
+}
+.parking-settings select,
+.parking-settings input {
+  min-height: 44px;
+  min-width: 0;
+  flex: 1;
+  border-radius: 10px;
+  border: 1px solid rgb(var(--border));
+  background: rgb(var(--surface-2));
+  color: rgb(var(--text));
+  padding: 0 8px;
+  font-size: 13px;
+}
+.flow-app[data-theme='dark'] .parking-settings input,
+html[data-theme='dark'] .parking-settings input {
+  color-scheme: dark;
+}
+.parking-settings button {
+  min-height: 44px;
+  border-radius: 10px;
+  border: 1px solid rgb(var(--border));
+  background: transparent;
+  color: rgb(var(--text));
+  padding: 0 12px;
+  font-size: 12px;
+  font-weight: 600;
+}
+.parking-settings button:disabled {
+  opacity: 0.5;
+}
+.parking-loading p {
+  font-size: 12px;
+  color: rgb(var(--text-muted));
+  margin: 8px 0 0;
+}
+.parking-loading-track {
+  display: block;
+  height: 2px;
+  background: rgb(var(--border));
+  overflow: hidden;
+  position: relative;
+}
+.parking-loading-track::after {
+  content: '';
+  position: absolute;
+  width: 35%;
+  height: 100%;
+  background: rgb(var(--primary));
+  animation: journey-progress 1.7s ease-in-out infinite alternate;
+}
+.parking-explanation {
+  display: flex;
+  gap: 6px;
+  align-items: flex-start;
+  margin: 0 0 10px;
+  padding: 10px 12px;
+  border-radius: 10px;
+  background: rgb(var(--surface-2));
+  font-size: 11px;
+  line-height: 1.7;
+  color: rgb(var(--text));
+}
+.parking-explanation svg {
+  flex-shrink: 0;
+  margin-top: 3px;
+  color: rgb(var(--primary));
+}
+.parking-considered {
+  font-size: 10px;
+  color: rgb(var(--text-muted));
+  margin: 10px 0 0;
+}
+
+/* Estimated chance of a free space: value, text level, bar. Never colour alone. */
+.free-chance {
+  margin-top: 12px;
+  padding: 10px 12px;
+  border-radius: 10px;
+  background: rgb(var(--surface-2));
+}
+.free-chance.compact {
+  padding: 8px 10px;
+}
+.free-chance-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+.free-chance-label {
+  font-size: 10px;
+  color: rgb(var(--text-muted));
+}
+.free-chance-value {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  margin-top: 2px;
+}
+.free-chance-value strong {
+  font-size: 20px;
+  font-weight: 650;
+  letter-spacing: -0.4px;
+}
+.free-chance.compact .free-chance-value strong {
+  font-size: 16px;
+}
+.free-chance-value span {
+  font-size: 12px;
+  font-weight: 600;
+}
+.free-chance[data-tone='good'] .free-chance-value span {
+  color: rgb(var(--q-confirmed));
+}
+.free-chance[data-tone='medium'] .free-chance-value span {
+  color: rgb(var(--warning));
+}
+.free-chance[data-tone='low'] .free-chance-value span {
+  color: rgb(var(--danger));
+}
+.free-chance-bar {
+  height: 6px;
+  margin-top: 6px;
+  border-radius: 999px;
+  background: rgb(var(--border));
+  overflow: hidden;
+}
+.free-chance-bar > span {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: rgb(var(--q-estimated));
+}
+.free-chance-note {
+  margin: 6px 0 0;
+  font-size: 10px;
+  line-height: 1.6;
+  color: rgb(var(--text-muted));
+}
+
+/* SmartMatch cost in minute-equivalents. Each part has a text label next to its number. */
+.score-breakdown {
+  margin: 8px 0;
+}
+.score-breakdown-bar {
+  display: flex;
+  height: 8px;
+  border-radius: 999px;
+  overflow: hidden;
+  background: rgb(var(--border));
+  gap: 2px;
+}
+.score-breakdown [data-part='drive'] {
+  --part: var(--app-route);
+}
+.score-breakdown [data-part='walk'] {
+  --part: rgb(var(--q-confirmed));
+}
+.score-breakdown [data-part='risk'] {
+  --part: rgb(var(--warning));
+}
+.score-breakdown [data-part='price'] {
+  --part: rgb(var(--q-simulated));
+}
+.score-breakdown-bar > span {
+  background: var(--part);
+}
+.score-breakdown ul {
+  list-style: none;
+  padding: 0;
+  margin: 8px 0 0;
+  display: grid;
+  gap: 3px;
+  font-size: 11px;
+}
+.score-breakdown li {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  color: rgb(var(--text-muted));
+}
+.score-breakdown li[data-part]::before {
+  content: '';
+  width: 8px;
+  height: 8px;
+  border-radius: 2px;
+  background: var(--part);
+  align-self: center;
+  flex-shrink: 0;
+}
+.score-breakdown li > span {
+  flex: 1;
+}
+.score-breakdown li strong {
+  color: rgb(var(--text));
+  font-weight: 600;
+}
+.score-breakdown-total {
+  border-top: 1px solid rgb(var(--border));
+  padding-top: 4px;
+  margin-top: 2px;
+}
+
+.parking-detail-score {
+  margin-top: 16px;
+  padding: 12px;
+  border-radius: 12px;
+  border: 1px solid rgb(var(--border));
+}
+.parking-detail-score h3 {
+  font-size: 13px;
+  font-weight: 600;
+  margin: 0;
+}
+.parking-detail-facts dd {
+  overflow-wrap: anywhere;
+}
+
+/* Parking inside the Smart Journey car option. */
+.journey-option-parking {
+  color: rgb(var(--text)) !important;
+  font-weight: 600;
+}
+.journey-parking-settings {
+  display: flex;
+  gap: 8px;
+  align-items: flex-start;
+  margin: 10px 0 14px;
+  font-size: 11px;
+  line-height: 1.6;
+  color: rgb(var(--text-muted));
+}
+.journey-parking-settings svg {
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+.journey-parking-focus {
+  margin: 14px 0 8px;
+  padding: 14px;
+  border-radius: 14px;
+  border: 1px solid rgb(var(--primary) / 0.45);
+  background: rgb(var(--primary) / 0.06);
+}
+.journey-parking-focus-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.journey-parking-focus-head span:not(.journey-parking-focus-rank) {
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 1px;
+  color: rgb(var(--primary));
+}
+.journey-parking-focus-head h4 {
+  margin: 2px 0 0;
+  font-size: 14px;
+  font-weight: 600;
+}
+.journey-parking-focus-rank {
+  display: grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  border-radius: 10px;
+  background: rgb(var(--primary));
+  color: rgb(var(--primary-fg));
+  font-weight: 750;
+  font-size: 13px;
+  flex-shrink: 0;
+}
+.journey-parking-focus dl {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px 12px;
+  margin: 10px 0 0;
+}
+.journey-parking-focus dt {
+  font-size: 10px;
+  color: rgb(var(--text-muted));
+}
+.journey-parking-focus dd {
+  margin: 2px 0 0;
+  font-size: 14px;
+  font-weight: 600;
+}
+.journey-parking-focus .journey-uncertainty {
+  color: rgb(var(--warning));
+  font-size: 10px;
+  line-height: 1.7;
+  margin: 10px 0 0;
+}
+.journey-parking-open {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 44px;
+  margin-top: 8px;
+  padding: 0 14px;
+  border-radius: 10px;
+  border: 1px solid rgb(var(--primary));
+  background: transparent;
+  color: rgb(var(--primary));
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+}
+@media (prefers-reduced-motion: reduce) {
+  .parking-loading-track::after {
+    animation: none;
+  }
+}
