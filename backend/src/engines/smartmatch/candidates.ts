@@ -3,6 +3,7 @@ import {
   inRing,
   ringAreaM2,
   ringCentre,
+  TARIFF_LABEL_RO,
   type AreaProfile,
   type CandidateKind,
   type Coordinate,
@@ -13,7 +14,7 @@ import {
   type TariffColor,
   type TimparkSnapshot,
 } from '@vlaiq/shared';
-import { osmPrice, timparkPrice } from './price';
+import { osmPrice, timparkPrice, zoneEstimatePrice } from './price';
 import { CANDIDATE_RADIUS_M, CUSTOMERS_ONLY_MAX_M, MAX_STREET_CANDIDATES } from './weights';
 
 /** A parking candidate before walking times are known. */
@@ -44,9 +45,30 @@ export interface CandidateInput {
 }
 
 /** Timpark lots: about 25 m² of surface per car including the aisles (common planning figure). */
-const M2_PER_SPACE = 25;
+export const M2_PER_SPACE = 25;
 
-const PROFILE_RADIUS_M: Partial<Record<OsmPlace['category'], [AreaProfile, number]>> = {
+/**
+ * Kerbside parking: one parallel space per ~6 m of kerb (a 5–5.5 m bay plus manoeuvring gap), counted on
+ * one side only and on at most 300 m of the segment (what a driver can scan from one point). Conservative
+ * on purpose: driveways, crossings and loading bays are not in the data and only lower the real number.
+ */
+export const M_PER_KERB_SPACE = 6;
+export const MAX_KERB_COUNTED_M = 300;
+
+export function streetCapacity(line: Coordinate[]): Candidate['capacity'] {
+  let length = 0;
+  for (let i = 1; i < line.length; i++) length += distanceM(line[i - 1]!, line[i]!);
+  const counted = Math.min(length, MAX_KERB_COUNTED_M);
+  const spaces = Math.floor(counted / M_PER_KERB_SPACE);
+  if (spaces < 1) return { value: null, quality: 'unknown', source: 'none' };
+  return {
+    value: spaces,
+    quality: 'estimated',
+    source: `lungimea segmentului Timpark (${Math.round(length)} m${length > MAX_KERB_COUNTED_M ? `, numărăm ${MAX_KERB_COUNTED_M} m` : ''}) ÷ ${M_PER_KERB_SPACE} m pe loc, o singură parte a străzii`,
+  };
+}
+
+export const PROFILE_RADIUS_M: Partial<Record<OsmPlace['category'], [AreaProfile, number]>> = {
   mall: ['commercial', 250],
   university: ['campus', 300],
   hospital: ['hospital', 250],
@@ -97,7 +119,7 @@ export function buildCandidates(input: CandidateInput): Candidate[] {
     : '';
   const zones = features
     .filter((f) => f.kind === 'zone')
-    .map((f) => ({ tariff: f.tariff, ring: f.coordinates as Coordinate[] }));
+    .map((f) => ({ tariff: f.tariff, progressive: f.progressive, ring: f.coordinates as Coordinate[] }));
 
   // 1. Timpark lots: polygons with a real tariff.
   const lots = features.filter((f) => f.kind === 'lot');
@@ -167,7 +189,7 @@ export function buildCandidates(input: CandidateInput): Candidate[] {
         access: 'public',
         tariff: f.tariff,
         smsCode: f.progressive ? null : tariffs.hourly[f.tariff].code,
-        capacity: { value: null, quality: 'unknown', source: 'none' },
+        capacity: streetCapacity(f.coordinates as Coordinate[]),
         profile: areaProfile(point, { zones, places, tariff: f.tariff }),
         price: timparkPrice(f.tariff, f.progressive, at, stayMinutes, tariffs, timparkSource),
         flags: f.checked ? [] : ['Segment neverificat de Primărie'],
@@ -191,6 +213,20 @@ export function buildCandidates(input: CandidateInput): Candidate[] {
     if (p.access === 'unknown') flags.push('Acces nespecificat în OpenStreetMap');
     if (p.nameIsDerived) flags.push('Nume dat de noi după poziție, nu oficial');
     const feeNo = p.price.value?.perHourRon === 0;
+    // Inside a paid Timpark zone a public lot most likely pays the zone tariff (spec §5.2).
+    // Customers-only lots (shops, malls) keep their own rules.
+    const zone = p.access !== 'customers' && tariffs ? zones.find((z) => inRing(point, z.ring)) : undefined;
+    if (zone) {
+      flags.push(`În zona Timpark ${TARIFF_LABEL_RO[zone.tariff]}: am presupus tariful zonei, neconfirmat aici`);
+    }
+    const price =
+      zone && tariffs
+        ? zoneEstimatePrice(
+            timparkPrice(zone.tariff, zone.progressive, at, stayMinutes, tariffs, timparkSource),
+            zone.tariff,
+            feeNo,
+          )
+        : osmPrice(feeNo, p.price.source);
     out.push({
       id: p.id,
       kind: 'osm',
@@ -206,7 +242,7 @@ export function buildCandidates(input: CandidateInput): Candidate[] {
           ? { value: p.capacity.value, quality: p.capacity.quality, source: p.capacity.source }
           : { value: null, quality: 'unknown', source: 'none' },
       profile: areaProfile(point, { zones, places, customersOnly: p.access === 'customers' }),
-      price: osmPrice(feeNo, p.price.source),
+      price,
       flags,
     });
   }

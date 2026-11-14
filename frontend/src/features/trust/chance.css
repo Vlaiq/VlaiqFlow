@@ -1,0 +1,353 @@
+/* "Cum calculăm șansele" page. Reuses parkingData.css; series colours validated with the dataviz script. */
+.chance-page {
+  --pc-line: #3987e5;
+  --pc-full: #d95926;
+}
+:root[data-theme='light'] .chance-page {
+  --pc-line: #2a78d6;
+  --pc-full: #eb6834;
+}
+.chance-page h2 {
+  margin-bottom: 18px !important;
+}
+
+.chance-short-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 14px;
+}
+.chance-short-grid article,
+.chance-steps article {
+  padding: 18px;
+  border-radius: 14px;
+  background: rgb(var(--surface-2));
+  min-width: 0;
+}
+.chance-short-grid h3,
+.chance-steps h3 {
+  font-size: 15px;
+  font-weight: 600;
+  margin: 0 0 8px;
+}
+.chance-short-grid p,
+.chance-steps p,
+.chance-steps li {
+  font-size: 13px;
+  line-height: 1.75;
+  margin: 0;
+}
+.chance-steps p + p {
+  margin-top: 10px;
+}
+.chance-steps {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+}
+.chance-steps ul {
+  margin: 8px 0 0;
+  padding-left: 18px;
+  list-style: disc;
+  color: rgb(var(--text-muted));
+}
+.chance-steps b {
+  color: rgb(var(--text));
+  font-weight: 600;
+}
+.chance-step-icon {
+  display: grid;
+  place-items: center;
+  width: 38px;
+  height: 38px;
+  border-radius: 12px;
+  margin-bottom: 12px;
+  background: rgb(var(--primary) / 0.1);
+  color: rgb(var(--primary));
+}
+.chance-warn {
+  border-left: 3px solid rgb(var(--warning));
+  padding-left: 10px;
+}
+.chance-warn a,
+.chance-page .flowdata-footnote a {
+  color: rgb(var(--primary));
+}
+
+.chance-controls {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 12px;
+  margin-bottom: 18px;
+}
+.chance-controls input[type='date'],
+.chance-controls input[type='time'],
+.chance-controls input[type='number'] {
+  min-height: 44px;
+  border-radius: 10px;
+  border: 1px solid rgb(var(--border));
+  background: rgb(var(--surface));
+  color: rgb(var(--text));
+  padding: 8px 12px;
+  font: inherit;
+  font-size: 14px;
+  color-scheme: inherit;
+}
+.chance-controls input[type='number'] {
+  width: 110px;
+}
+.chance-controls input:disabled {
+  opacity: 0.5;
+}
+.chance-page label.chance-check {
+  flex-direction: row;
+  align-items: center;
+  gap: 8px;
+  min-height: 44px;
+  text-transform: none;
+  letter-spacing: 0;
+  font-size: 13px;
+  font-weight: 500;
+  color: rgb(var(--text));
+}
+.chance-check input {
+  width: 20px;
+  height: 20px;
+  accent-color: rgb(var(--primary));
+}
+
+.chance-result {
+  display: grid;
+  gap: 16px;
+}
+.chance-headline {
+  display: grid;
+  gap: 10px;
+  padding: 18px;
+  border-radius: 14px;
+  background: rgb(var(--surface-2));
+}
+.chance-headline > div:first-child {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+}
+.chance-big {
+  font-size: 44px;
+  line-height: 1;
+  font-weight: 650;
+  letter-spacing: -1.5px;
+}
+.chance-level {
+  font-size: 14px;
+  font-weight: 600;
+}
+.chance-ten {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.chance-ten span {
+  display: grid;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 700;
+}
+.chance-ten .found {
+  background: rgb(var(--primary));
+  color: rgb(var(--primary-fg));
+}
+.chance-ten .missed {
+  border: 1px dashed rgb(var(--text-muted));
+  color: rgb(var(--text-muted));
+}
+
+.chance-calc {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+.chance-calc li {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 10px 12px;
+  border-radius: 10px;
+  border: 1px solid rgb(var(--border));
+  font-size: 13px;
+}
+.chance-calc li span {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.4px;
+  text-transform: uppercase;
+  color: rgb(var(--text-muted));
+}
+.chance-calc li strong {
+  font-weight: 550;
+}
+.chance-calc-final {
+  grid-column: 1 / -1;
+  border-color: rgb(var(--primary) / 0.5) !important;
+  background: rgb(var(--primary) / 0.07);
+}
+.chance-sub {
+  font-size: 15px;
+  font-weight: 600;
+  margin: 6px 0 0;
+}
+
+.chance-figure {
+  margin: 0;
+  padding: 14px;
+  border-radius: 14px;
+  background: rgb(var(--surface-2));
+}
+.chance-figure svg {
+  width: 100%;
+  height: auto;
+  display: block;
+  touch-action: pan-y;
+}
+.chance-figure figcaption {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 16px;
+  margin-top: 8px;
+  font-size: 12px;
+  color: rgb(var(--text-muted));
+}
+.chance-area.free {
+  fill: var(--pc-line);
+  fill-opacity: 0.35;
+}
+.chance-area.full {
+  fill: var(--pc-full);
+  fill-opacity: 0.55;
+}
+.chance-threshold {
+  stroke: var(--pc-full);
+  stroke-width: 2;
+  stroke-dasharray: 5 4;
+}
+.chance-mean {
+  stroke: rgb(var(--text));
+  stroke-width: 1.5;
+}
+.chance-key {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.chance-key::before {
+  content: '';
+  width: 14px;
+  height: 10px;
+  border-radius: 3px;
+}
+.chance-key.free::before {
+  background: color-mix(in srgb, var(--pc-line) 45%, transparent);
+}
+.chance-key.full::before {
+  background: color-mix(in srgb, var(--pc-full) 60%, transparent);
+}
+.chance-key.mean::before {
+  width: 2px;
+  height: 12px;
+  border-radius: 0;
+  background: rgb(var(--text));
+}
+.chance-band {
+  fill: var(--pc-line);
+  fill-opacity: 0.16;
+}
+.chance-line {
+  stroke: var(--pc-line);
+  stroke-width: 2;
+  stroke-linejoin: round;
+}
+.chance-dot {
+  fill: var(--pc-line);
+  stroke: rgb(var(--surface-2));
+  stroke-width: 2;
+}
+
+.chance-example-steps {
+  margin: 0;
+  padding-left: 22px;
+  display: grid;
+  gap: 8px;
+  font-size: 14px;
+  line-height: 1.75;
+}
+.chance-example-steps b {
+  font-weight: 650;
+}
+.chance-formula {
+  margin: 16px 0 0;
+  padding: 12px 14px;
+  border-radius: 10px;
+  background: rgb(var(--surface-2));
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 13px;
+  overflow-x: auto;
+}
+
+.chance-why {
+  display: grid;
+  gap: 14px;
+  margin: 0;
+}
+.chance-why dt {
+  font-size: 15px;
+  font-weight: 600;
+}
+.chance-why dd {
+  margin: 4px 0 0;
+  font-size: 13px;
+  line-height: 1.75;
+  color: rgb(var(--text-muted));
+}
+.chance-limits {
+  color: rgb(var(--text)) !important;
+  font-size: 13px !important;
+}
+
+@media (max-width: 900px) {
+  .chance-short-grid,
+  .chance-steps {
+    grid-template-columns: 1fr;
+  }
+}
+@media (max-width: 520px) {
+  .chance-calc {
+    grid-template-columns: 1fr;
+  }
+  .chance-big {
+    font-size: 36px;
+  }
+}
+.chance-sym {
+  text-transform: none;
+  font-style: italic;
+}
+.chance-bar.free {
+  fill: var(--pc-line);
+}
+.chance-bar.full {
+  fill: var(--pc-full);
+}
+.chance-bar.is-hover {
+  stroke: rgb(var(--text));
+  stroke-width: 1.5;
+}
+.chance-figure svg {
+  max-width: 760px;
+}

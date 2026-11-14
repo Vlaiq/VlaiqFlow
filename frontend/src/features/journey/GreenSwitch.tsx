@@ -22,6 +22,7 @@ import {
   type JourneyCategory,
   type JourneyPreference,
   type ActiveJourneyContext,
+  formatAmountRo,
 } from '@vlaiq/shared';
 import { useCompleteJourneys } from './useCompleteJourneys';
 import { JourneyTimeline } from './JourneyTimeline';
@@ -29,6 +30,7 @@ import {
   carNavigationHref,
   journeyDistance,
   journeyMinutes,
+  missingRanks,
   plannedActivity,
 } from './journeyPresentation';
 import { FreeChance, ScoreBreakdown } from '../parking/ParkingFacts';
@@ -51,12 +53,19 @@ interface Props {
   onOpenParking?: (parkingId: string) => void;
   onStartActivity: (mode: 'walk' | 'cycle', journey?: ActiveJourneyContext) => void;
 }
+const amount = (p: NonNullable<CompleteJourney['parking']>) =>
+  `${formatAmountRo(p.fee.minorUnits! / 100)} ${p.fee.currency ?? ''}`.trim();
 const fee = (p: NonNullable<CompleteJourney['parking']>) =>
-  p.fee.minorUnits === null
-    ? 'Preț necunoscut'
-    : p.fee.minorUnits === 0
-      ? 'Gratuit'
-      : `${(p.fee.minorUnits / 100).toLocaleString('ro-RO')} ${p.fee.currency ?? ''}`.trim();
+  p.fee.minorUnits === null ? 'Preț necunoscut' : p.fee.minorUnits === 0 ? 'Gratuit' : amount(p);
+/** "luni, 16 noiembrie, 10:00": no seconds, the weekday matters for Timpark's schedule. */
+const when = (iso: string) =>
+  new Date(iso).toLocaleString('ro-RO', {
+    weekday: 'long',
+    day: 'numeric',
+    month: 'long',
+    hour: '2-digit',
+    minute: '2-digit',
+  });
 const names: Record<JourneyCategory, string> = {
   car_park_walk: 'Auto + parcare + mers',
   cycle: 'Cu bicicleta',
@@ -119,7 +128,9 @@ export function GreenSwitch({
   }
   const opportunity = value?.opportunity;
   const alternative = value?.journeys.find((j) => j.id === opportunity?.journeyId);
-  const navHref = selected ? carNavigationHref(selected) : null;
+  const navHref = selected
+    ? carNavigationHref(selected, value?.journeys ?? [], destination.name)
+    : null;
   return (
     <section
       className="green-switch"
@@ -171,7 +182,7 @@ export function GreenSwitch({
         <span>
           Parcare: {stayLabel(parkingSettings.stayMinutes)} · maximum {parkingSettings.maxWalkMinutes}{' '}
           min pe jos · {PARKING_MODE_LABEL[parkingSettings.mode]}
-          {arriveAt ? ` · sosire ${new Date(arriveAt).toLocaleString('ro-RO')}` : ' · acum'}. Se
+          {arriveAt ? ` · sosire ${when(arriveAt)}` : ' · acum'}. Se
           schimbă din „Unde parchezi”.
         </span>
       </p>
@@ -253,6 +264,16 @@ export function GreenSwitch({
               );
             })}
           </div>
+          {missingRanks(value.journeys).length > 0 && (
+            <p className="journey-missing-note">
+              {missingRanks(value.journeys)
+                .map((r) => `P${r}`)
+                .join(', ')}{' '}
+              {missingRanks(value.journeys).length === 1 ? 'nu apare' : 'nu apar'} aici: traseul
+              calculat pe jos de la parcare depășește {parkingSettings.maxWalkMinutes} min sau nu a
+              putut fi calculat acum. Lista „Unde parchezi” poate folosi o estimare a mersului.
+            </p>
+          )}
           <p className="journey-live-status" role="status" aria-live="polite">
             {selected
               ? `${names[selected.category]} selectat · ${journeyMinutes(selected.travelSeconds.value!)} min pe trasee calculate.`
@@ -377,13 +398,15 @@ export function GreenSwitch({
                   <p>
                     {selected.parking.fee.minorUnits === null
                       ? 'Preț necunoscut'
-                      : `Tarif orientativ: ${(selected.parking.fee.minorUnits / 100).toLocaleString('ro-RO')} ${selected.parking.fee.currency ?? ''}`}{' '}
+                      : selected.parking.fee.minorUnits === 0
+                        ? 'Gratuit la ora aleasă'
+                        : `Tarif orientativ: ${amount(selected.parking)}`}{' '}
                     · {selected.parking.stayMinutes} min
                   </p>
                   <p>{selected.parking.fee.note}</p>
                   <small>
                     {selected.parking.fee.source} · tarif pentru{' '}
-                    {new Date(selected.parking.tariffAt).toLocaleString('ro-RO')}. Combustibilul nu
+                    {when(selected.parking.tariffAt)}. Combustibilul nu
                     este inclus.
                   </small>
                   {selected.parking.warnings.map((w) => (

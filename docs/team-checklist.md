@@ -19,7 +19,7 @@ Agentul AI nu poate face aceste lucruri. Bifați-le și notați rezultatul (link
     - Există senzori sau numărători în parcările Timpark (de exemplu Piața Huniade / Modex)?
     → răspuns: ___
 - [ ] **Numărători manuale (Living Labs):** 2 zone demo (Piața Victoriei, Iulius Mall), 5–10 parcări, câte 20–30 de observații „am găsit loc / era plin la ora X”. Notați data, ora, parcarea și rezultatul în `docs/user-testing/`. Cu ele calibrăm curbele din `backend/src/engines/smartmatch/occupancy.ts`
-- [ ] **Licența proiectului:** MIT sau Apache-2.0 (ghidul cere open source) → ___
+- [x] **Licența proiectului:** MIT (decis pe 14 nov., fișierul `LICENSE`)
 - [ ] **Cine ar prelua proiectul** după hackathon (Timpark, SMTT, echipa digitală a Primăriei)? → îl spunem în pitch
 - [ ] **Numărul de urmărit** (un singur indicator că proiectul funcționează) → ___
 - [ ] **Tarifele de parcare** pentru zona demo (Piața Victoriei, Piața Unirii): sursa oficială și data verificării → ___

@@ -1,7 +1,7 @@
 import { describe, expect, it, vi, afterEach } from 'vitest';
 import { ActiveJourneyContext, CompleteJourneyRequest } from '@vlaiq/shared';
 import { activeJourney } from '../../../../shared/test-fixtures/completeJourney';
-import { plannedActivity, carNavigationHref } from './journeyPresentation';
+import { plannedActivity, carNavigationHref, missingRanks } from './journeyPresentation';
 import { fetchCompleteJourneys } from './useCompleteJourneys';
 import { journeyFeatures } from '../map/journeyLayers';
 const destination = { id: 'd', name: 'Destinație de test' } as import('@vlaiq/shared').Destination;
@@ -48,5 +48,16 @@ describe('validated journey presentation', () => {
     await expect(fetchCompleteJourneys(input, new AbortController().signal)).rejects.toThrow(
       'Furnizor indisponibil',
     );
+  });
+});
+describe('missing car options', () => {
+  const car = (rank: number) =>
+    ({ parking: { match: { rank } } }) as unknown as import('@vlaiq/shared').CompleteJourney;
+  const active = { parking: null } as unknown as import('@vlaiq/shared').CompleteJourney;
+  it('names the SmartMatch ranks that have no complete journey below the last one shown', () => {
+    expect(missingRanks([car(2), car(3), active])).toEqual([1]);
+    expect(missingRanks([car(1), car(3)])).toEqual([2]);
+    expect(missingRanks([car(1), car(2)])).toEqual([]);
+    expect(missingRanks([active])).toEqual([]);
   });
 });

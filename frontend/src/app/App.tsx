@@ -10,6 +10,7 @@ import {
   MapPin,
   Navigation2,
   ParkingSquare,
+  Play,
   ShieldCheck,
   X,
 } from 'lucide-react';
@@ -27,7 +28,11 @@ import { MapView } from '../features/map/MapView';
 import { TariffLegend } from '../features/parking/TariffLegend';
 import { ParkingRecommendations } from '../features/parking/ParkingRecommendations';
 import { ParkingDetail, type Origin } from '../features/parking/ParkingDetail';
-import { DEFAULT_PARKING_SETTINGS, type ParkingSettings } from '../features/parking/settings';
+import {
+  DEFAULT_PARKING_SETTINGS,
+  nextWeekdayAt10,
+  type ParkingSettings,
+} from '../features/parking/settings';
 import { DestinationSearch } from '../features/search/DestinationSearch';
 import { GreenSwitch, type JourneyMapSelection } from '../features/journey/GreenSwitch';
 import { InstallPrompt } from '../components/InstallPrompt';
@@ -39,10 +44,11 @@ import { useTheme } from './theme';
 
 type Load<T> =
   { state: 'loading' } | { state: 'ok'; data: T } | { state: 'error'; message: string };
-function useLoad<T>(fn: () => Promise<T>): Load<T> {
+function useLoad<T>(fn: () => Promise<T>, attempt = 0): Load<T> {
   const [value, setValue] = useState<Load<T>>({ state: 'loading' });
   useEffect(() => {
     let alive = true;
+    setValue((v) => (v.state === 'error' ? { state: 'loading' } : v));
     fn().then(
       (data) => alive && setValue({ state: 'ok', data }),
       (e: unknown) =>
@@ -55,7 +61,7 @@ function useLoad<T>(fn: () => Promise<T>): Load<T> {
     return () => {
       alive = false;
     };
-  }, [fn]);
+  }, [fn, attempt]);
   return value;
 }
 const NavigationScreen = lazy(() =>
@@ -70,10 +76,25 @@ const CityScreen = lazy(() =>
 const DataTrustScreen = lazy(() =>
   import('../features/trust/DataTrustScreen').then((m) => ({ default: m.DataTrustScreen })),
 );
+const ParkingDataScreen = lazy(() =>
+  import('../features/trust/ParkingDataScreen').then((m) => ({ default: m.ParkingDataScreen })),
+);
+const parkingDataPaths = ['/date-parcari', '/parking-data'];
+const ChanceScreen = lazy(() =>
+  import('../features/trust/ChanceScreen').then((m) => ({ default: m.ChanceScreen })),
+);
+const chancePaths = ['/sanse-parcare', '/parking-chance'];
 const PrivacyScreen = lazy(() =>
   import('../features/trust/PrivacyScreen').then((m) => ({ default: m.PrivacyScreen })),
 );
 const privacyPaths = ['/confidentialitate', '/privacy'];
+/** DEMO scenario: real places from the local snapshot, never invented coordinates. */
+const DEMO_ORIGIN = { id: 'place-osm-node-9322434969', name: 'Timișoara Nord' }; // railway station, OSM
+const DEMO_DESTINATION = { id: 'street-11784', name: 'Piața Victoriei' }; // City Hall street register
+const findPlace = (list: Destination[] | null, ref: { id: string; name: string }) =>
+  list?.find((d) => d.id === ref.id && d.location) ??
+  list?.find((d) => d.name === ref.name && d.location) ??
+  null;
 const motionPaths = ['/motion', '/challenges', '/community', '/wallet'];
 
 export function App() {
@@ -190,6 +211,16 @@ export function App() {
           <DataTrustScreen />
         </Suspense>
       )}
+      {chancePaths.includes(path) && (
+        <Suspense fallback={loading}>
+          <ChanceScreen />
+        </Suspense>
+      )}
+      {parkingDataPaths.includes(path) && (
+        <Suspense fallback={loading}>
+          <ParkingDataScreen />
+        </Suspense>
+      )}
       {privacyPaths.includes(path) && (
         <Suspense fallback={loading}>
           <PrivacyScreen />
@@ -200,6 +231,8 @@ export function App() {
         '/',
         ...motionPaths,
         ...privacyPaths,
+        ...parkingDataPaths,
+        ...chancePaths,
         '/navigation',
         '/city',
         '/data',
@@ -225,9 +258,12 @@ function Explore({
   onStartActivity: (mode: 'walk' | 'cycle', journey?: ActiveJourneyContext) => void;
 }) {
   const { theme } = useTheme();
-  const parkings = useLoad<ParkingsResponse>(api.parkings),
-    timpark = useLoad<TimparkSnapshot>(api.timpark),
-    destinations = useLoad<DestinationsResponse>(api.destinations);
+  const [loadAttempt, setLoadAttempt] = useState(0);
+  const parkings = useLoad<ParkingsResponse>(api.parkings, loadAttempt),
+    timpark = useLoad<TimparkSnapshot>(api.timpark, loadAttempt),
+    destinations = useLoad<DestinationsResponse>(api.destinations, loadAttempt);
+  const loadFailed =
+    parkings.state === 'error' || timpark.state === 'error' || destinations.state === 'error';
   const [destination, setDestination] = useState<Destination | null>(null);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [focus, setFocus] = useState<{ id: string; n: number } | null>(null);
@@ -243,6 +279,8 @@ function Explore({
   const [pickingOrigin, setPickingOrigin] = useState(false);
   const [locating, setLocating] = useState(false);
   const [originError, setOriginError] = useState<string | null>(null);
+  /** The DEMO arrival value while the DEMO origin is in use; null outside the scenario. */
+  const [demo, setDemo] = useState<string | null>(null);
   const panelRef = useRef<HTMLDivElement>(null);
   const locateTicket = useRef(0);
   useEffect(
@@ -296,15 +334,42 @@ function Explore({
     setExpanded(true);
     panelRef.current?.scrollTo({ top: 0 });
   }, []);
-  const pickOrigin = useCallback((coordinate: Coordinate) => {
-    if (!isInTimisCounty(coordinate)) return;
+  /** A real origin replaces the DEMO one; the DEMO arrival goes back to "now" unless the user changed it. */
+  const leaveDemo = useCallback(() => {
+    if (!demo) return;
+    setParkingSettings((s) => (s.arrive === demo ? { ...s, arrive: null } : s));
+    setDemo(null);
+  }, [demo]);
+  const pickOrigin = useCallback(
+    (coordinate: Coordinate) => {
+      if (!isInTimisCounty(coordinate)) return;
+      locateTicket.current++;
+      setLocating(false);
+      setOrigin({ name: 'Punct ales pe hartă', coordinate });
+      leaveDemo();
+      setPickingOrigin(false);
+      setOriginError(null);
+      setExpanded(true);
+    },
+    [leaveDemo],
+  );
+  const demoOrigin = findPlace(knownPlaces, DEMO_ORIGIN);
+  const demoDestination = findPlace(knownPlaces, DEMO_DESTINATION);
+  const startDemo = () => {
+    if (!demoOrigin?.location || !demoDestination) return;
     locateTicket.current++;
     setLocating(false);
-    setOrigin({ name: 'Punct ales pe hartă', coordinate });
     setPickingOrigin(false);
     setOriginError(null);
-    setExpanded(true);
-  }, []);
+    setOrigin({
+      name: `DEMO · plecare fixă: gara ${demoOrigin.name}`,
+      coordinate: [demoOrigin.location.lng, demoOrigin.location.lat],
+    });
+    const arrive = nextWeekdayAt10(new Date());
+    setParkingSettings((s) => ({ ...s, arrive }));
+    setDemo(arrive);
+    selectDestination(demoDestination);
+  };
   const requestGps = useCallback(() => {
     if (!navigator.geolocation || !window.isSecureContext) {
       setOriginError('Localizarea necesită HTTPS. Poți alege plecarea pe hartă.');
@@ -329,6 +394,7 @@ function Explore({
           return;
         }
         setOrigin({ name: `Locația mea · ±${Math.round(p.coords.accuracy)} m`, coordinate });
+        leaveDemo();
       },
       (e) => {
         if (current !== locateTicket.current) return;
@@ -341,7 +407,7 @@ function Explore({
       },
       { enableHighAccuracy: true, timeout: 10000, maximumAge: 15000 },
     );
-  }, []);
+  }, [leaveDemo]);
   const manualOrigin = useCallback(() => {
     locateTicket.current++;
     setLocating(false);
@@ -448,6 +514,15 @@ function Explore({
                 >
                   <MapPin size={16} /> Unde vrei să ajungi? <ArrowRight size={17} />
                 </button>
+                {demoOrigin && demoDestination && (
+                  <button className="explore-demo" onClick={startDemo}>
+                    <Play size={15} aria-hidden="true" />
+                    <span>
+                      <strong>Încearcă DEMO</strong>
+                      Gara de Nord → {demoDestination.name}, fără GPS
+                    </span>
+                  </button>
+                )}
                 <div className="explore-coverage">
                   <ShieldCheck size={14} />
                   <span>
@@ -473,6 +548,17 @@ function Explore({
                           ? `${destination.precision === 'exact' ? 'Poziție exactă în sursă.' : destination.precision === 'street' ? 'Poziție la nivel de stradă, nu de număr poștal.' : 'Poziție aproximativă la nivel de cartier.'} Sursa: ${destination.locationSource ?? 'date locale'}.`
                           : 'Poziția exactă nu este cunoscută. Nu calculăm rute pentru o locație inventată.'}
                       </p>
+                      {demo && (
+                        <p className="explore-demo-note" role="note">
+                          <strong>DEMO</strong>
+                          <span>
+                            Plecare fixă din gara Timișoara Nord și sosire într-o zi lucrătoare la
+                            10:00, ca să vezi tarifele din programul plătit. Parcările, tarifele și
+                            rutele sunt reale; șansele de loc rămân estimate. Alege „Locația mea”
+                            sau un punct pe hartă ca să ieși din DEMO.
+                          </span>
+                        </p>
+                      )}
                       <button
                         onClick={() => {
                           setDestination(null);
@@ -510,6 +596,9 @@ function Explore({
                     onBack={closeDetail}
                     onRoute={setDriveRoute}
                     onWalkRoute={setWalkRoute}
+                    backup={
+                      options.find((o) => o.id !== detail.id && o.access !== 'customers') ?? null
+                    }
                   />
                 )}
                 {destination.location && (
@@ -562,11 +651,16 @@ function Explore({
                 </a>
               </>
             )}
-            {destinations.state === 'error' && (
-              <p role="alert" className="explore-alert">
-                Căutarea nu poate încărca datele acum. Harta și celelalte secțiuni rămân
-                disponibile.
-              </p>
+            {loadFailed && (
+              <div role="alert" className="explore-alert">
+                <p>
+                  {destinations.state === 'error'
+                    ? 'Căutarea nu poate încărca datele acum.'
+                    : 'Parcările sau tarifele nu au putut fi încărcate acum.'}{' '}
+                  Harta și celelalte secțiuni rămân disponibile.
+                </p>
+                <button onClick={() => setLoadAttempt((n) => n + 1)}>Încearcă din nou</button>
+              </div>
             )}
           </div>
         </section>

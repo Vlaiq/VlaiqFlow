@@ -53,6 +53,10 @@ Timișoara. Conturul județului nu extinde automat acoperirea serviciilor.
 
 ### 2. Comparația de parcări
 
+Cel mai rapid start: butonul **Încearcă DEMO** din Explorează. Pune plecarea la gara Timișoara Nord,
+destinația Piața Victoriei și sosirea într-o zi lucrătoare la 10:00, ca să se vadă tarifele Timpark
+și în weekend (jurizarea e duminică, când parcarea e gratuită). Nota DEMO explică asta pe ecran.
+
 Panoul **Unde parchezi** apare imediat după destinație, fără punct de plecare. Arătați
 primul card și apoi **Detalii și traseu**: șansele estimate de loc (etichetate *Estimat*,
 model după zonă, zi și oră, nu senzori), mersul pe jos desenat pe hartă, costul pentru
@@ -74,6 +78,14 @@ auto drept pistă de biciclete. Nu promiteți siguranță ori accesibilitate nev
 În lipsa cheii/accesului/rutei necesare, arătați explicația de indisponibilitate.
 O opțiune absentă este mai credibilă decât o alternativă inventată. Transportul public
 nu trebuie prezentat ca integrat sau live dacă feed-ul și motorul de rutare nu sunt conectate.
+
+### 3b. Navigația DEMO și „parcarea s-a umplut”
+
+Din Smart Journey, **Navighează până la parcare** → **Încearcă experiența DEMO** (viteză 1×/2×/4×).
+Apăsați **Simulează: parcarea s-a umplut**: bannerul propune următoarea parcare SmartMatch, cu
+șansele estimate și mersul pe jos. **Schimbă** recalculează ruta din poziția simulată; fără răspuns,
+bannerul dispare după 15 s și ruta rămâne. La sosire apare pasul „Continuă pe jos”.
+Spuneți clar că evenimentul „plin” este simulat: nu există date live de ocupare.
 
 ### 4. Mișcare, apoi recompensă
 
@@ -145,8 +157,8 @@ instalarea de pe un telefon real sau disponibilitatea furnizorilor externi.
   Nu transformați un asset lipsă într-un răspuns HTML cu status 200.
 - Păstrați cheile doar în backend. Datele municipale se actualizează prin scripturi,
   nu prin cereri repetate ale fiecărui utilizator către Primărie.
-- Verificați fișierul de licență din versiunea predată. Nu afirmați „MIT” sau
-  „Apache-2.0” dacă echipa nu a stabilit și inclus licența proiectului.
+- Codul este sub licența MIT (fișierul `LICENSE`, decis pe 14 noiembrie). Datele și
+  resursele terțe își păstrează licențele lor (`docs/third-party.md`).
 - Documentați proprietarul operațional propus, sursele, snapshoturile, lipsa ocupării
   live, limitele portofelului și verificarea GPS. Legăturile spre serviciile municipale
   completează fluxul; nu creați un al doilea inbox de sesizări sau o casierie.

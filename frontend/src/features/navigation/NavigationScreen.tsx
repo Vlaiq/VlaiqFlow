@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import {
   ArrowDown,
   ArrowLeft,
@@ -30,6 +30,7 @@ import type { NavigationRoute } from '@vlaiq/shared';
 import { brand } from '@vlaiq/shared';
 import { useNavigation } from './useNavigation';
 import { loadNavPlaces, type NavPlaces } from './places';
+import { handoffFromUrl } from './scenario';
 import { formatDistance, instruction } from './geometry';
 import { NavigationMap } from './NavigationMap';
 import { useTheme } from '../../app/theme';
@@ -46,6 +47,10 @@ function TurnIcon({ step }: { step?: NavigationRoute['steps'][number] }) {
   return <ArrowUp />;
 }
 const minutes = (seconds: number) => Math.max(1, Math.ceil(seconds / 60));
+const percent = (share: number) => `${Math.round(share * 100)}%`;
+const walkLabel = (m: number) => `${Math.max(1, Math.round(m))} min`;
+/** Seconds the "parking full" offer stays up before it keeps the current route (spec §6.9). */
+const OFFER_SECONDS = 15;
 
 /** Loads the destinations from the data snapshots, then shows the navigation view. */
 export function NavigationScreen() {
@@ -102,6 +107,45 @@ function NavigationView({ places }: { places: NavPlaces }) {
   const [recenter, setRecenter] = useState(0);
   const active = nav.mode === 'live' || nav.mode === 'demo';
   const demo = nav.mode === 'demo';
+  const handoff = useMemo(() => handoffFromUrl(window.location.search), []);
+  const backup = handoff.backup;
+  // DEMO "parking full" offer: null = not shown, otherwise seconds left before it keeps the current route.
+  const [offer, setOffer] = useState<number | null>(null);
+  const [fullName, setFullName] = useState<string | null>(null);
+  useEffect(() => {
+    if (!demo) {
+      setOffer(null);
+      setFullName(null);
+    }
+  }, [demo]);
+  useEffect(() => {
+    if (offer == null) return;
+    if (offer <= 0) {
+      setOffer(null);
+      return;
+    }
+    const t = window.setTimeout(() => setOffer((s) => (s == null ? s : s - 1)), 1000);
+    return () => window.clearTimeout(t);
+  }, [offer]);
+  const showFull = () => {
+    if (!backup) return;
+    setFullName(nav.destination.name);
+    setOffer(OFFER_SECONDS);
+    if (!nav.muted && 'speechSynthesis' in window) {
+      const text = new SpeechSynthesisUtterance(
+        `Simulare: ${nav.destination.name} s-a umplut. ${backup.place.name} are șanse estimate de ${percent(backup.chance)}. Schimbi?`,
+      );
+      text.lang = 'ro-RO';
+      window.speechSynthesis.cancel();
+      window.speechSynthesis.speak(text);
+    }
+  };
+  const acceptSwitch = () => {
+    if (!backup) return;
+    setOffer(null);
+    nav.switchTarget(backup.place);
+  };
+  const finalWalk = nav.switched ? backup?.walkMinutes : handoff.current.walkMinutes;
   const arrival = nav.metrics
     ? new Intl.DateTimeFormat('ro-RO', {
         hour: '2-digit',
@@ -151,7 +195,7 @@ function NavigationView({ places }: { places: NavPlaces }) {
         </a>
         {!active && (
           <span className="nav-location-label">
-            TIMIȘOARA <span>/</span> ROUTE PREVIEW
+            TIMIȘOARA <span>/</span> PREVIZUALIZARE RUTĂ
           </span>
         )}
         {active && (
@@ -330,6 +374,15 @@ function NavigationView({ places }: { places: NavPlaces }) {
               <span className="demo-live-dot" />
               <span>SIMULARE PE TRASEU REAL</span>
               <button
+                className="icon-button demo-speed-toggle"
+                onClick={() =>
+                  nav.setPlayback(nav.playback === 1 ? 2 : nav.playback === 2 ? 4 : 1)
+                }
+                aria-label={`Viteza simulării: ${nav.playback}×. Apasă pentru a schimba`}
+              >
+                {nav.playback}×
+              </button>
+              <button
                 className="icon-button"
                 onClick={() => nav.setPaused(!nav.paused)}
                 disabled={nav.arrived}
@@ -343,12 +396,58 @@ function NavigationView({ places }: { places: NavPlaces }) {
               </button>
               <button
                 className="icon-button"
-                onClick={nav.startDemo}
-                aria-label="Repornește demonstrația"
+                onClick={nav.switched ? nav.stop : nav.startDemo}
+                aria-label={
+                  nav.switched
+                    ? 'Oprește demonstrația și revino la ruta inițială'
+                    : 'Repornește demonstrația'
+                }
               >
                 <RotateCcw size={17} />
               </button>
+              {backup && !nav.switched && !nav.arrived && offer == null && (
+                <button className="demo-scenario" onClick={showFull}>
+                  Simulează: parcarea s-a umplut
+                </button>
+              )}
             </div>
+          )}
+          {demo && offer != null && backup && (
+            <section className="full-offer panel" role="alert" aria-label="Parcarea s-a umplut">
+              <span className="full-offer-tag">SIMULARE</span>
+              <h2>{fullName} s-a umplut.</h2>
+              <p>
+                <strong>{backup.place.name}</strong>: ~{percent(backup.chance)} șanse estimate de loc
+                {handoff.current.chance != null && ` (față de ~${percent(handoff.current.chance)})`},{' '}
+                {walkLabel(backup.walkMinutes)} pe jos
+                {handoff.final ? ` până la ${handoff.final.name}` : ''}
+                {handoff.current.walkMinutes != null &&
+                  ` (acum ${walkLabel(handoff.current.walkMinutes)})`}
+                . Cifre SmartMatch, estimate; ruta nouă se calculează din poziția simulată.
+              </p>
+              <button className="full-offer-switch" onClick={acceptSwitch}>
+                Schimbă spre {backup.place.name}
+              </button>
+              <button className="full-offer-keep" onClick={() => setOffer(null)}>
+                Rămân pe ruta actuală · {offer} s
+              </button>
+            </section>
+          )}
+          {nav.arrived && handoff.final && (
+            <section className="walk-handoff panel" aria-label="Continuă pe jos">
+              <strong>Ai parcat. Continuă pe jos până la {handoff.final.name}.</strong>
+              <p>
+                {finalWalk != null
+                  ? `Aproximativ ${walkLabel(finalWalk)} pe jos (estimat). `
+                  : ''}
+                {nav.switched && backup
+                  ? `În planificator, deschide „${backup.place.name}” ca să vezi ruta pe jos pe hartă.`
+                  : 'În planificator vezi ruta pe jos de la parcare, desenată pe hartă.'}
+              </p>
+              <a href="/" onClick={nav.stop}>
+                Vezi mersul pe jos <ArrowRight size={15} />
+              </a>
+            </section>
           )}
           <section
             className={`trip-bar panel ${expanded ? 'expanded' : ''}`}

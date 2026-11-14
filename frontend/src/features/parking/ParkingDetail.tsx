@@ -1,3 +1,4 @@
+import { handoffParams } from '../navigation/scenario';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import {
   ArrowLeft,
@@ -71,6 +72,8 @@ interface Props {
   onRoute: (geometry: Coordinate[] | null) => void;
   /** Walking route parking → destination for the map, or null to clear it. */
   onWalkRoute?: (geometry: Coordinate[] | null) => void;
+  /** The next SmartMatch option, offered by the DEMO "parking full" scenario during navigation. */
+  backup?: RecommendationOption | null;
 }
 
 function StepIcon({ step }: { step: NavigationRoute['steps'][number] }) {
@@ -125,6 +128,7 @@ export function ParkingDetail({
   onBack,
   onRoute,
   onWalkRoute,
+  backup = null,
 }: Props) {
   const [choice, setChoice] = useState<OriginChoice>({ kind: 'pending' });
   const [locating, setLocating] = useState(false);
@@ -258,12 +262,31 @@ export function ParkingDetail({
     () => (routeState.state === 'ok' ? turnList(routeState.route, o.name) : []),
     [routeState, o.name],
   );
+  const walkRoute = walkState.state === 'ok' ? walkState.route : null;
   const navHref = `/navigation?${new URLSearchParams({
     to: `${o.coordinate[0].toFixed(6)},${o.coordinate[1].toFixed(6)}`,
     name: o.name,
     area: `Parcare pentru ${destinationName}`,
+    ...(origin
+      ? {
+          from: `${origin.coordinate[0].toFixed(6)},${origin.coordinate[1].toFixed(6)}`,
+          fromName: origin.name,
+        }
+      : {}),
+    ...handoffParams({
+      chance: o.pFree.value,
+      walkMinutes: walkRoute ? walkRoute.duration / 60 : o.walk.minutes,
+      backup: backup
+        ? {
+            name: backup.name,
+            coordinate: backup.coordinate,
+            chance: backup.pFree.value,
+            walkMinutes: backup.walk.minutes,
+          }
+        : null,
+      final: destination ? { name: destinationName, coordinate: destination } : null,
+    }),
   }).toString()}`;
-  const walkRoute = walkState.state === 'ok' ? walkState.route : null;
   const walkMin = Math.max(1, Math.round(walkRoute ? walkRoute.duration / 60 : o.walk.minutes));
   const walkMeters = walkRoute ? walkRoute.distance : o.walk.meters;
 
@@ -296,7 +319,7 @@ export function ParkingDetail({
       </header>
 
       {/* Key facts */}
-      <FreeChance value={o.pFree.value} quality={o.pFree.quality} />
+      <FreeChance value={o.pFree.value} quality={o.pFree.quality} range={o.pFree.range} />
       <dl className="parking-detail-facts mt-2 grid grid-cols-2 gap-2 text-xs">
         <div className="rounded-xl bg-surface-2 p-2">
           <dt className="text-muted">Pe jos până la {destinationName}</dt>

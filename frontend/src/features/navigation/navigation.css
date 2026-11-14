@@ -699,7 +699,7 @@
   margin-top: 3px;
 }
 .speedometer small {
-  font-size: 7px;
+  font-size: 8px;
   letter-spacing: 1px;
   color: #e5b67b;
   margin-top: 5px;
@@ -1000,7 +1000,7 @@
   }
   .journey-line small,
   .journey-line label {
-    font-size: 7px;
+    font-size: 9px;
     letter-spacing: 0.5px;
   }
   .origin-select,
@@ -1166,7 +1166,7 @@
     font-size: 8px;
   }
   .speedometer small {
-    font-size: 6px;
+    font-size: 7px;
     margin-top: 3px;
   }
   .is-navigating .map-tools {
@@ -1208,7 +1208,7 @@
     gap: 6px;
   }
   .demo-playback > span:nth-child(2) {
-    font-size: 7px;
+    font-size: 8px;
     letter-spacing: 0.8px;
     margin-right: 4px;
   }
@@ -1244,7 +1244,7 @@
     font-size: 20px;
   }
   .trip-metric small {
-    font-size: 7px;
+    font-size: 8px;
   }
   .maneuver-primary strong {
     font-size: 25px;
@@ -1363,4 +1363,123 @@ html[data-theme='light'] .navigation-screen .mode-chip.is-demo {
 }
 html[data-theme='light'] .navigation-screen .mode-chip > span {
   color: inherit;
+}
+
+/* DEMO "parking full" scenario (spec §6.9) and the drive → walk handoff (spec §6.10). */
+.demo-scenario {
+  min-height: 36px;
+  padding: 0 12px;
+  border: 1px solid #edbd7880;
+  border-radius: 9px;
+  background: #edbd781a;
+  color: #f3d6a8;
+  font-size: 11px;
+  font-weight: 650;
+}
+.demo-scenario:hover {
+  background: #edbd7833;
+}
+.full-offer,
+.walk-handoff {
+  position: absolute;
+  left: 50%;
+  bottom: calc(205px + env(safe-area-inset-bottom));
+  transform: translateX(-50%);
+  width: min(440px, calc(100% - 32px));
+  padding: 16px 18px;
+  border-radius: 18px !important;
+  z-index: 6;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.full-offer h2 {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 700;
+}
+.full-offer p,
+.walk-handoff p {
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.55;
+  opacity: 0.9;
+}
+.full-offer-tag {
+  align-self: flex-start;
+  padding: 2px 8px;
+  border-radius: 6px;
+  background: #c9adf6;
+  color: #0b2015;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+}
+.full-offer-switch {
+  min-height: 52px;
+  border: 0;
+  border-radius: 13px;
+  background: #46c985;
+  color: #0b2015;
+  font-size: 15px;
+  font-weight: 700;
+}
+.full-offer-keep {
+  min-height: 44px;
+  border: 1px solid currentColor;
+  border-radius: 13px;
+  background: transparent;
+  color: inherit;
+  font-size: 13px;
+  opacity: 0.85;
+}
+.walk-handoff strong {
+  font-size: 15px;
+}
+.walk-handoff a {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 46px;
+  border-radius: 13px;
+  background: #46c985;
+  color: #0b2015;
+  font-weight: 700;
+  text-decoration: none;
+}
+@media (max-width: 700px) {
+  .full-offer,
+  .walk-handoff {
+    bottom: calc(190px + env(safe-area-inset-bottom));
+    width: calc(100% - 24px);
+  }
+  .demo-playback:has(.demo-scenario) > span:nth-child(2) {
+    display: none;
+  }
+}
+html[data-theme='light'] .navigation-screen .demo-scenario {
+  color: rgb(var(--warning));
+  border-color: rgb(var(--warning) / 0.5);
+  background: rgb(var(--warning) / 0.08);
+}
+.demo-speed-toggle {
+  font-size: 12px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+@media (max-width: 700px) {
+  .demo-playback:has(.demo-scenario) {
+    left: 12px;
+    right: 12px;
+    transform: none;
+    justify-content: center;
+    white-space: normal;
+  }
+  .demo-scenario {
+    flex: 1 1 auto;
+    min-width: 0;
+    line-height: 1.2;
+    padding: 4px 10px;
+  }
 }

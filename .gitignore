@@ -22,3 +22,7 @@ Thumbs.db
 # files that are not part of the project
 *.exe
 *.winmd
+
+# private team notes, kept locally only
+readme.txt
+docs/*.docx

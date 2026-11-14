@@ -11,7 +11,7 @@ import { QualityBadge } from '../../components/QualityBadge';
 import { api } from '../../services/api';
 import { KIND_LABEL, pct, priceText, stayLabel } from './recommendationLabels';
 import { FreeChance, ScoreBreakdown } from './ParkingFacts';
-import { PARKING_MODE_LABEL, arriveIso, type ParkingSettings } from './settings';
+import { PARKING_MODE_LABEL, arriveIso, localInputValue, type ParkingSettings } from './settings';
 
 const MODES: { id: ParkingSettings['mode']; hint: string }[] = [
   { id: 'balanced', hint: 'mersul, șansele de loc și prețul, la fel de important' },
@@ -19,12 +19,6 @@ const MODES: { id: ParkingSettings['mode']; hint: string }[] = [
   { id: 'less_walk', hint: 'mersul pe jos contează mai mult' },
 ];
 const STAYS = [30, 60, 120, 180, 300, 480];
-
-/** Value for <input type="datetime-local"> in the device's local time. */
-function localInputValue(d: Date): string {
-  const pad = (n: number) => String(n).padStart(2, '0');
-  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
-}
 
 type State =
   | { state: 'loading' }
