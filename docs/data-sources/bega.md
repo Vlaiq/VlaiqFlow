@@ -1,5 +1,50 @@
 # Bega corridor data: extraction blocked
 
+## Latest permission verification — 14 November 2026, approximately 19:12 Bucharest
+
+After notification that Overpass had been added to the environment configuration,
+the selected running instance was checked again. Current environment status reported
+an enforced restricted policy with only `api.heigit.org` as a custom allowed host;
+`overpass-api.de` is absent from the effective allowlist. The intended grant is not
+observed as applied to this instance. This report does not infer whether a separate
+saved source configuration was updated.
+
+One fresh bounded HTTPS connection check to the fixed extractor endpoint failed
+with curl exit 56, **proxy CONNECT 403**, and HTTP status `000`. No Overpass HTTP
+response was received. No query was submitted; the extractor was not run after
+the denied connection, and no alternate endpoint or external retry was attempted.
+Proxy configuration, normal TLS verification and destination policy were preserved.
+
+Required permission: apply **`overpass-api.de`** to the actual running environment's
+allowed hosts, permitting **HTTPS port 443 / POST `/api/interpreter`**, or resume in
+an instance where that permission is current and enforced. Preserve the existing
+`api.heigit.org` grant and other configured access. After a confirmed configuration
+change, verify the applied policy before making a new connection.
+
+The production snapshot remains unchanged: **zero features**, no observed OSM
+objects/geometry, `metadata.status: "blocked"`, `osmBaseTimestamp: null`. Its original
+`extractedAt` failed-attempt date is retained rather than replaced with this policy
+check's time. Source attribution remains © OpenStreetMap contributors / ODbL-1.0.
+There is no authentic evidence yet to evaluate riverside association, shared-node
+connectivity, opposite-bank errors, mapping gaps, or threshold false negatives.
+
+The authorized offline alternative is an authentic JSON response from this script's
+exact Overpass query, exported in an environment legitimately allowed to reach the
+source. Include `osm3s.timestamp_osm_base`, original Bega waterway and path geometry,
+original way/node IDs, way versions/timestamps, tags, and documented source/export
+time and OSM licensing. Keep the response within the existing 8 MiB cap. Preserve
+the raw response and query provenance; do not manually create or connect geometry.
+Replay with `node scripts/fetch-bega-corridor.mjs --input <local-export.json>`, then
+validate the snapshot through Zod and inspect actual geographic/network evidence.
+No offline export was supplied for this revalidation.
+
+The source query, bbox, access exclusions, geometry thresholds, budgets and production
+JSON are unchanged. The [latest verification report](../bega-verification.md) records
+the separate routing-provider dependency and the newly rerun software checks. A
+successful data export alone would not establish a navigable route or physical safety.
+
+---
+
 **Status on 14 November 2026: BLOCKED.** No Bega infrastructure geometry or OSM
 object identifiers were retrieved in this environment. The committed production
 snapshot `shared/src/data/bega-corridor.json` is intentionally empty and carries

@@ -1,5 +1,99 @@
 # Bega Green Spine — delivery and verification report
 
+## Revalidation — 14 November 2026, approximately 19:12–19:14 Bucharest
+
+**Overall PARTIAL; authentic geographic and live routing validation remain BLOCKED.**
+This revalidation started from the fetched remote `feature/bega-green-spine` commit
+`6c929e36b7df927140c7644b16e02b2e5c7a812a` in the clean isolated worktree
+`/workspace/work/bega`. The ancestry check passed. Only this report and
+`docs/data-sources/bega.md` change in this follow-up; implementation, production data,
+tests, thresholds, shared routing and frontend files remain unchanged.
+
+### Applied network policy and observed connection
+
+The selected running environment reported `observations_current: true`,
+`network_policy.state: enforced`, restricted networking, and only `api.heigit.org`
+as a custom allowed hostname. Its effective allowlist excludes `overpass-api.de`
+and `api.openrouteservice.org`. The newly reported Overpass permission is therefore
+not observed as applied to this running instance; this does not establish the state
+of a separate source configuration or another machine.
+
+One bounded check, with inherited proxy/TLS settings and no redirects or retries:
+
+```sh
+curl -sS --max-time 20 -o /dev/null -w 'HTTP_STATUS=%{http_code}\n' \
+  https://overpass-api.de/api/interpreter
+```
+
+Actual result: curl exit **56**, `CONNECT tunnel failed, response 403`,
+`HTTP_STATUS=000`. The proxy refused the connection before an HTTP response from
+Overpass. No query or extraction was submitted, and no alternate host was attempted.
+The bounded fetch was not run after that denial. Required permission: apply outbound
+HTTPS access to **`overpass-api.de:443`**, including **POST `/api/interpreter`**, to
+the running task, or use a new instance whose current enforced allowlist includes it.
+Do not replace the restricted policy or redirect through another host.
+
+### Separate evidence outcomes
+
+| Evidence | Current result |
+|---|---|
+| Authentic OSM acquisition | BLOCKED; zero production features, no acquired object IDs or geometry |
+| Snapshot provenance | Original failed-attempt timestamp retained; OSM base timestamp remains null; ODbL attribution preserved |
+| Geographic/network findings | Not established; no conclusion about physical connectivity, mapping gaps, wrong banks or access can follow from an empty snapshot |
+| Real provider routing | Not executed; no authentic corridor and no compatible approved live provider wired on this branch |
+| Synthetic automated checks | All 355 current test cases pass; this is not live mapping or routing evidence |
+| Frontend / deployment | Handoff only; no integration, merge or deployment performed |
+
+Production JSON SHA-256 remains
+`d2cdd888dd7f5d39f33275c11ff36ba4c79b90c45c17c240ac5ab38bae2cd570`.
+The actual shipped-snapshot smoke returned schema-valid `data_unavailable`,
+`providerCalls: 0`, `baseline: null`, `alternative: null`.
+
+The existing chain is `adaptActiveDirections` → `activeDirections` →
+`requestActiveRoute`; on this branch `backend/src/services/journeys.ts:91` targets
+`api.openrouteservice.org`. Its keyless alternative targets
+`routing.openstreetmap.de`. Neither hostname is permitted by the current effective
+allowlist. The ready `ORS_API_KEY` binding is scoped to `api.heigit.org`; that grant
+does not establish endpoint/protocol/credential compatibility with this branch's
+client. No credential value was inspected, forwarded to another domain or printed, and
+no routing-provider request was attempted. The integration owner must supply an
+already verified compatible active-routing function through `adaptActiveDirections`,
+or an approved implementation of the existing `BegaRouteProvider` interface. This
+follow-up does not merge/cherry-pick HeiGIT or introduce a new client or migration.
+
+No policy threshold changed: 250 m minimum corridor, 20% share, 100 m gain,
+1.35 time/distance ratios, 300 s extra time, 6 m overlap tolerance, 20° heading,
+0.25 m join precision, access restrictions and extraction geometry rules are intact.
+There is no real-data evidence to justify changing them or to determine whether
+they incorrectly reject a valid mapped path. No regression test was added because
+no implementation behavior changed.
+
+### Checks rerun in this follow-up
+
+| Command | Actual result |
+|---|---|
+| `node --check scripts/fetch-bega-corridor.mjs` | PASS |
+| `node --test scripts/fetch-bega-corridor.test.mjs` | PASS: 18 tests, zero failures |
+| `pnpm typecheck` | PASS: shared, backend, frontend |
+| `pnpm test` | PASS: shared 112 + backend 195 + frontend 30 = 337 tests, zero failures |
+| `pnpm build` | PASS; existing Vite >500 kB chunk warning remains |
+| Shipped-snapshot smoke | PASS: fail-closed response and zero provider calls |
+
+Tooling remains Node 24.22.1 / available pnpm 11.25.0 / Vitest 2.1.9. No dependency,
+manifest or lockfile changes. No software regression was observed; real routing,
+physical accessibility/safety and device integration remain unverified.
+
+Next action: apply the missing hostname permission to the actual running environment,
+or supply a legitimate offline export for the existing local replay mode. Then acquire
+and inspect a non-empty snapshot and resolve the approved routing dependency before
+attempting one bounded real test. The documentation-only follow-up's final commit
+and verified remote SHA are supplied in the delivery response.
+
+---
+
+The original implementation-delivery evidence follows; its live-data limitations
+remain in force.
+
 ## A. Executive status — PARTIAL
 
 Implemented an isolated walk/cycle routing engine, strict Zod contracts, existing-activeDirections
