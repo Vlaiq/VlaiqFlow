@@ -1,0 +1,119 @@
+.school-shield {
+  margin-block-end: 1rem;
+  padding: 1rem;
+  border: 1px solid rgb(var(--border));
+  border-radius: var(--app-radius-sm, 12px);
+  background: rgb(var(--surface-2));
+  color: rgb(var(--text));
+  font-size: 0.875rem;
+  line-height: 1.6;
+  overflow-wrap: anywhere;
+}
+.school-shield[data-state='active'] { border-color: var(--app-accent-border); }
+.school-shield .school-shield-heading { display: flex; align-items: flex-start; gap: 0.75rem; }
+.school-shield .school-shield-heading > div { min-width: 0; }
+.school-shield .school-shield-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 2.5rem;
+  height: 2.5rem;
+  border-radius: 0.75rem;
+  background: var(--app-accent-soft);
+  color: var(--app-accent-text);
+}
+.school-shield .school-shield-eyebrow {
+  margin: 0 0 0.125rem;
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  color: var(--app-accent-text);
+}
+.school-shield h3 { margin: 0; font: 700 1rem/1.4 var(--app-font-display); }
+.school-shield .school-shield-meta { margin: 0.375rem 0 0; color: rgb(var(--text-muted)); font-size: 0.8125rem; }
+.school-shield .school-shield-badges { display: flex; flex-wrap: wrap; align-items: center; gap: 0.5rem; margin-block: 0.75rem; }
+.school-shield .school-shield-state {
+  padding: 0.125rem 0.625rem;
+  border: 1px solid rgb(var(--border));
+  border-radius: 999px;
+  font-weight: 600;
+  font-size: 0.75rem;
+}
+.school-shield[data-state='active'] .school-shield-state { background: var(--app-accent-soft); color: var(--app-accent-text); }
+.school-shield .school-shield-explanation { margin: 0; }
+.school-shield .school-shield-facts { display: flex; flex-wrap: wrap; gap: 0.75rem 1.5rem; margin: 0.875rem 0; }
+.school-shield .school-shield-facts > div { flex: 1 1 7rem; min-width: 0; }
+.school-shield dt { font-size: 0.75rem; color: rgb(var(--text-muted)); }
+.school-shield dd { margin: 0.125rem 0 0; font-weight: 650; }
+.school-shield .school-shield-guidance { margin: 0.75rem 0; }
+.school-shield .school-shield-toggle {
+  display: block;
+  width: 100%;
+  min-height: 44px;
+  margin-top: 0.875rem;
+  padding: 0.625rem 0.75rem;
+  border: 1px solid rgb(var(--border));
+  border-radius: 0.625rem;
+  background: rgb(var(--surface));
+  color: rgb(var(--text));
+  font: inherit;
+  font-weight: 600;
+  text-align: left;
+  cursor: pointer;
+}
+.school-shield .school-shield-note { margin: 0.875rem 0; padding-inline-start: 0.75rem; border-inline-start: 2px solid var(--app-accent-border); }
+.school-shield details { border-top: 1px solid rgb(var(--border)); padding-block: 0.25rem; }
+.school-shield summary { min-height: 44px; padding-block: 0.625rem; cursor: pointer; font-weight: 600; }
+.school-shield details p { margin: 0.5rem 0; }
+.school-shield ul { margin: 0.5rem 0; padding-inline-start: 1.25rem; }
+.school-shield li { margin-block: 0.5rem; }
+.school-shield a { color: var(--app-accent-text); text-decoration: underline; text-underline-offset: 3px; }
+.school-shield .school-shield-sources a { display: inline-block; min-height: 44px; padding-block: 0.625rem; }
+.school-shield a svg { display: inline-block; vertical-align: middle; flex-shrink: 0; }
+.school-shield label { display: block; font-weight: 600; margin-top: 0.75rem; }
+.school-shield textarea {
+  display: block;
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
+  margin-top: 0.375rem;
+  padding: 0.75rem;
+  border: 1px solid rgb(var(--border));
+  border-radius: 0.5rem;
+  background: rgb(var(--surface));
+  color: rgb(var(--text));
+  font: inherit;
+  resize: vertical;
+}
+.school-shield .school-shield-actions { display: flex; flex-wrap: wrap; gap: 0.5rem; margin-top: 0.75rem; }
+.school-shield .school-shield-actions > * {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  min-height: 44px;
+  max-width: 100%;
+  padding: 0.625rem 0.875rem;
+  border: 1px solid rgb(var(--border));
+  border-radius: 0.625rem;
+  font: inherit;
+  font-weight: 600;
+  text-decoration: none;
+  cursor: pointer;
+}
+.school-shield .school-shield-actions button { background: rgb(var(--primary)); color: rgb(var(--primary-fg)); border-color: transparent; }
+.school-shield button:disabled { cursor: wait; }
+.school-shield .school-shield-copy-status { font-weight: 500; }
+.school-shield .school-shield-copy-status:empty { display: none; }
+.school-shield :is(button, a, summary, textarea):focus-visible { outline: 2px solid rgb(var(--primary)); outline-offset: 3px; }
+.school-shield :is(button, summary, a) { transition: outline-offset var(--app-duration-fast, 150ms); }
+.school-shield :is(button, summary, a):hover { outline: 1px solid currentColor; outline-offset: 2px; }
+@media (max-width: 360px) {
+  .school-shield { padding: 0.75rem; }
+  .school-shield .school-shield-actions > * { flex: 1 1 100%; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .school-shield :is(button, summary, a) { transition: none; }
+}

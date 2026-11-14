@@ -1,84 +1,94 @@
-import { useState } from 'react';
+import { useId, useState } from 'react';
 import { Check, Copy, ExternalLink, School } from 'lucide-react';
 import { DECIDEM_URL, schoolLabel, schoolStreetProposal, type ProtectedZone } from '@vlaiq/shared';
 import { QualityBadge } from '../../components/QualityBadge';
+import './schoolShield.css';
 
-/**
- * "Zonă protejată la școală" (spec §6.16): tells the driver why parkings next to the school are left out
- * at drop-off times, lets them switch it off for this trip, and drafts a "Stradă școlară" proposal that
- * they send themselves on Decidem. Every value comes from the backend zone; nothing is sent from here.
- */
+/** Product-defined recommendation, separate from route-provider avoidance and legal access. */
 export function SchoolZoneCard({ zone, onToggle }: { zone: ProtectedZone; onToggle: (on: boolean) => void }) {
+  const titleId = useId();
   const main = zone.schools[0]!;
-  const name = schoolLabel(main);
   const windows = zone.windows.map((w) => `${w.start}–${w.end}`).join(', ');
   const others = zone.schools.length - 1;
+  const state = zone.optedOut ? 'off' : zone.applied ? 'active' : 'inactive';
+  const status = zone.optedOut ? 'Oprit pentru acest drum' : zone.applied ? 'Activ' : 'Inactiv';
+  const proposal = schoolStreetProposal(zone);
 
   return (
-    <section className={`school-zone ${zone.applied ? 'applied' : ''}`} aria-labelledby="school-zone-title">
-      <div className="school-zone-heading">
-        <span className="school-zone-icon" aria-hidden>
-          <School size={18} />
-        </span>
+    <section className="school-shield" data-state={state} aria-labelledby={titleId}>
+      <header className="school-shield-heading">
+        <span className="school-shield-icon" aria-hidden="true"><School size={20} /></span>
         <div>
-          <span className="school-zone-eyebrow">
-            {zone.applied ? 'ZONĂ PROTEJATĂ ACTIVĂ' : zone.optedOut ? 'ZONĂ PROTEJATĂ OPRITĂ' : 'ZONĂ PROTEJATĂ LA ȘCOALĂ'}
-          </span>
-          <h3 id="school-zone-title">{name}</h3>
-          <p className="school-zone-meta">
-            {main.distanceM < 20 ? 'Chiar destinația ta' : `La ${main.distanceM} m de destinație`}
-            {others > 0 ? ` · încă ${others} ${others === 1 ? 'unitate' : 'unități'} de învățământ aproape` : ''}{' '}
-            <QualityBadge quality={zone.quality} />
+          <p className="school-shield-eyebrow">School Shield</p>
+          <h3 id={titleId}>{schoolLabel(main)}</h3>
+          <p className="school-shield-meta">
+            Punct OSM la aproximativ {main.distanceM} m de destinație
+            {others > 0 ? ` · încă ${others} ${others === 1 ? 'instituție' : 'instituții'} în apropiere` : ''}
           </p>
         </div>
+      </header>
+      <div className="school-shield-badges">
+        <span className="school-shield-state" role="status">{status}</span>
+        <QualityBadge quality={zone.quality} />
       </div>
 
-      {zone.applied && (
-        <p>
-          Între {zone.window!.start} și {zone.window!.end} copiii ajung pe jos la școală. Nu te ducem cu
-          mașina până la poartă: am lăsat deoparte{' '}
-          {zone.excluded === 0
-            ? 'zona de'
-            : `${zone.excluded} ${zone.excluded === 1 ? 'parcare' : 'parcări'} din raza de`}{' '}
-          {zone.radiusM} m (cercul punctat de pe hartă). Oprește la una dintre parcările de mai jos și fă ultimele minute pe jos.
-        </p>
-      )}
-      {zone.active && zone.optedOut && (
-        <p>
-          Ai oprit zona pentru acest drum, așa că apar și parcările de lângă școală ({zone.insideZone} în raza de{' '}
-          {zone.radiusM} m). Te rugăm să mergi încet: la ora asta copiii ajung pe jos.
-        </p>
-      )}
-      {!zone.active && (
-        <p>
-          {zone.inactiveReason} Zona se activează singură în zilele de școală, la {windows}.
-        </p>
-      )}
-
-      {zone.applied ? (
-        <button type="button" className="school-zone-toggle" onClick={() => onToggle(false)}>
-          Am nevoie să ajung cu mașina până la intrare
-          <span>de exemplu: dizabilitate, un copil bolnav, bagaje grele</span>
-        </button>
-      ) : zone.optedOut ? (
-        <button type="button" className="school-zone-toggle" onClick={() => onToggle(true)}>
-          Pornește din nou zona protejată
-        </button>
-      ) : null}
-
-      <Proposal zone={zone} />
-
-      <p className="school-zone-source">
-        {zone.source}. {zone.note}
+      <p className="school-shield-explanation">
+        {zone.optedOut
+          ? 'Recomandarea este oprită pentru acest drum. Parcările din cercurile de analiză nu sunt excluse de School Shield.'
+          : zone.applied
+            ? 'La ora sosirii, recomandarea exclude parcările candidate din cercurile de analiză ale instituțiilor apropiate.'
+            : `${zone.inactiveReason ?? 'Ora sosirii este în afara intervalelor configurate.'} School Shield nu exclude parcări acum.`}
       </p>
+      <dl className="school-shield-facts">
+        <div><dt>Rază de analiză</dt><dd>{zone.radiusM} m / instituție</dd></div>
+        <div><dt>Parcări excluse</dt><dd>{zone.excluded}</dd></div>
+        {zone.window && <div><dt>Interval la sosire</dt><dd>{zone.window.start}–{zone.window.end}</dd></div>}
+      </dl>
+      <p className="school-shield-meta">Program configurat: luni–vineri, {windows}, ora Timișoarei. Sărbătorile legale sunt excluse.</p>
+      {zone.applied && (
+        <p className="school-shield-guidance">
+          {zone.excluded === 0 ? 'Nicio parcare candidată nu a fost exclusă. ' : ''}
+          Verifică opțiunile disponibile și condițiile de acces. Dacă nu apare o parcare potrivită, poți ajusta căutarea sau opri recomandarea. Excluderea nu garantează o alternativă disponibilă.
+        </p>
+      )}
+      <button
+        type="button"
+        className="school-shield-toggle"
+        aria-pressed={!zone.optedOut}
+        onClick={() => onToggle(zone.optedOut)}
+      >
+        {zone.optedOut ? 'Reactivează recomandarea' : 'Oprește recomandarea pentru acest drum'}
+      </button>
+      <p className="school-shield-meta">Poți avea nevoie de acces cu mașina. Nu trebuie să explici motivul.</p>
+      <p className="school-shield-note">{zone.note}</p>
+
+      <details className="school-shield-sources">
+        <summary>Surse și instituții apropiate</summary>
+        <p>{zone.source}</p>
+        <ul>
+          {zone.schools.map((s) => (
+            <li key={s.id}>
+              {s.osmUrl ? (
+                <a href={s.osmUrl} target="_blank" rel="noopener noreferrer">
+                  {schoolLabel(s)} <ExternalLink size={13} aria-hidden="true" />
+                  <span className="sr-only"> (OpenStreetMap, filă nouă)</span>
+                </a>
+              ) : schoolLabel(s)}
+              {s.street && <p>Reper OSM: {s.street}; intrarea nu este verificată.</p>}
+            </li>
+          ))}
+        </ul>
+      </details>
+      <Proposal key={`${proposal.title}\n${proposal.body}`} {...proposal} />
     </section>
   );
 }
 
-function Proposal({ zone }: { zone: ProtectedZone }) {
-  const { title, body } = schoolStreetProposal(zone);
-  const [copied, setCopied] = useState<'ok' | 'failed' | null>(null);
+function Proposal({ title, body }: { title: string; body: string }) {
+  const textId = useId();
+  const [copied, setCopied] = useState<'pending' | 'ok' | 'failed' | null>(null);
   const copy = async () => {
+    setCopied('pending');
     try {
       await navigator.clipboard.writeText(`${title}\n\n${body}`);
       setCopied('ok');
@@ -87,27 +97,27 @@ function Proposal({ zone }: { zone: ProtectedZone }) {
     }
   };
   return (
-    <details className="school-zone-proposal">
-      <summary>Propune o „Stradă școlară” pe Decidem</summary>
+    <details className="school-shield-proposal">
+      <summary>Pregătește o propunere pentru Decidem</summary>
       <p>
-        O stradă școlară se închide traficului auto doar la orele de intrare și ieșire. Mai jos e o propunere
-        scrisă din datele acestei zone. Decidem nu primește propuneri de la aplicații, așa că o copiezi și o
-        trimiți tu, cu contul tău.
+        Poți cere autorităților să evalueze o „Stradă școlară”. Aceasta este o ciornă, fără aprobare oficială.
+        O poți copia, modifica și trimite tu pe Decidem. Aplicația nu trimite nimic automat.
       </p>
-      <label htmlFor="school-zone-text">Textul propunerii (îl poți modifica pe Decidem)</label>
-      <textarea id="school-zone-text" readOnly rows={8} value={`${title}\n\n${body}`} onFocus={(e) => e.currentTarget.select()} />
-      <div className="school-zone-actions">
-        <button type="button" onClick={copy}>
-          {copied === 'ok' ? <Check size={14} aria-hidden /> : <Copy size={14} aria-hidden />}
-          {copied === 'ok' ? 'Copiat' : 'Copiază textul'}
+      <label htmlFor={textId}>Textul propunerii</label>
+      <textarea id={textId} readOnly rows={8} value={`${title}\n\n${body}`} onFocus={(e) => e.currentTarget.select()} />
+      <div className="school-shield-actions">
+        <button type="button" onClick={copy} disabled={copied === 'pending'} aria-busy={copied === 'pending'}>
+          {copied === 'ok' ? <Check size={15} aria-hidden="true" /> : <Copy size={15} aria-hidden="true" />}
+          {copied === 'pending' ? 'Se copiază…' : copied === 'ok' ? 'Copiază din nou' : 'Copiază textul'}
         </button>
         <a href={DECIDEM_URL} target="_blank" rel="noopener noreferrer">
-          Deschide Decidem <ExternalLink size={13} aria-hidden />
+          Deschide Decidem <ExternalLink size={14} aria-hidden="true" />
           <span className="sr-only"> (se deschide într-o filă nouă)</span>
         </a>
       </div>
-      <p role="status" className="school-zone-copy-status">
-        {copied === 'failed' ? 'Browserul nu a permis copierea. Selectează textul și copiază-l manual.' : ''}
+      <p role="status" className="school-shield-copy-status">
+        {copied === 'ok' ? 'Text copiat. Îl poți modifica și trimite pe Decidem.'
+          : copied === 'failed' ? 'Browserul nu a permis copierea. Selectează textul și copiază-l manual.' : ''}
       </p>
     </details>
   );
