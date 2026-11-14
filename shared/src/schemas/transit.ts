@@ -8,6 +8,14 @@ export const ServiceDate = z.string().regex(/^\d{8}$/).refine((s) => {
   return Number.isFinite(d.valueOf()) && d.toISOString().slice(0, 10).replaceAll('-', '') === s;
 }, 'Invalid GTFS date');
 const flag = z.number().int().min(0).max(2).nullable();
+const Acquisition = z.enum(['publisher_download', 'user_supplied_archive']);
+export const TransitArchiveProvenance = z.object({
+  source: z.literal('https://smtt.ro/transit/gtfs/maps/smtt-timisoara-ro.zip'),
+  fetchedAt: TransitTimestamp.nullable(), sha256: z.string().regex(/^[a-f0-9]{64}$/),
+  archiveBytes: z.number().int().positive().max(64 * 1024 * 1024),
+  acquisition: Acquisition.default('publisher_download'), originalFileName: z.string().min(1).max(512).optional(),
+}).strict().refine((p) => p.fetchedAt !== null || p.acquisition === 'user_supplied_archive',
+  'Publisher download requires its actual retrieval timestamp');
 export const TransitStop = z.object({
   id, name: z.string().min(1), coordinate: Coordinate.nullable(),
   parentStation: id.nullable(), locationType: z.number().int().min(0).max(4), wheelchairBoarding: flag,
@@ -32,7 +40,11 @@ export const TransitException = z.object({
   serviceId: id, date: ServiceDate, type: z.union([z.literal(1), z.literal(2)]),
 }).strict();
 export const TransitFeedMetadata = z.object({
-  source: z.string().url(), fetchedAt: TransitTimestamp, version: z.string().nullable(),
+  source: z.string().url(), fetchedAt: TransitTimestamp.nullable(), version: z.string().nullable(),
+  ingestedAt: TransitTimestamp.optional(), acquisition: Acquisition.optional(), originalFileName: z.string().optional(),
+  publisher: z.object({ name: z.string().min(1), url: z.string().url(), language: z.string().min(1) }).strict().optional(),
+  attributions: z.array(z.object({ organizationName: z.string().min(1), url: z.string().url().nullable(),
+    isProducer: z.boolean(), isOperator: z.boolean(), isAuthority: z.boolean() }).strict()).optional(),
   validFrom: ServiceDate, validUntil: ServiceDate,
   agencies: z.array(z.object({ id, name: z.string().min(1), timezone: z.string().min(1) }).strict()).min(1).max(64),
   timezone: z.string().refine((tz) => { try { new Intl.DateTimeFormat('en', { timeZone: tz }); return true; } catch { return false; } }),
@@ -49,6 +61,7 @@ export const TransitStopTime = z.tuple([
   id, id, z.number().int().nonnegative(), z.number().int().min(0).max(604799).nullable(),
   z.number().int().min(0).max(604799).nullable(), z.number().int().min(0).max(3),
   z.number().int().min(0).max(3), z.string().nullable(),
+  z.union([z.literal(0), z.literal(1)]).optional(),
 ]);
 export type TransitStopTime = z.infer<typeof TransitStopTime>;
 export const TransitDigest = z.object({
@@ -63,6 +76,7 @@ export const ScheduledDeparture = z.object({
   scheduledAt: TransitTimestamp, routeShortName: z.string(), headsign: z.string().nullable(),
   directionId: z.union([z.literal(0), z.literal(1)]).nullable(),
   quality: z.enum(['confirmed', 'simulated']), source: z.string().url(), feedVersion: z.string().nullable(),
+  timepoint: z.union([z.literal(0), z.literal(1)]).optional(),
 }).strict();
 export type ScheduledDeparture = z.infer<typeof ScheduledDeparture>;
 export const WalkingAccess = z.object({

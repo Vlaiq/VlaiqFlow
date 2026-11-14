@@ -73,7 +73,8 @@ export function validateDigest(input: unknown): TransitDigest {
 
 /** CSV quoting/UTF-8/ZIP handling is delegated to Python's maintained standard library. */
 export function normalizeGtfs(tables: GtfsTables, provenance: {
-  source: string; fetchedAt: string; sha256: string; archiveBytes: number;
+  source: string; fetchedAt: string | null; sha256: string; archiveBytes: number;
+  acquisition?: 'publisher_download' | 'user_supplied_archive'; ingestedAt?: string; originalFileName?: string;
   quality?: 'confirmed' | 'simulated';
 }): TransitDigest {
   function table(name: string, required: string[], optional = false) {
@@ -128,6 +129,7 @@ export function normalizeGtfs(tables: GtfsTables, provenance: {
     r.trip_id!, r.stop_id!, integer(r.stop_sequence!, 'stop_sequence'),
     r.arrival_time ? parseGtfsTime(r.arrival_time) : null, r.departure_time ? parseGtfsTime(r.departure_time) : null,
     integer(r.pickup_type || '0', 'pickup_type'), integer(r.drop_off_type || '0', 'drop_off_type'), r.stop_headsign || null,
+    integer(r.timepoint || '1', 'timepoint'),
   ]);
   for (const r of stopRows) {
     if (r.timepoint && !['0', '1'].includes(r.timepoint)) fail('invalid timepoint');
@@ -135,6 +137,7 @@ export function normalizeGtfs(tables: GtfsTables, provenance: {
     if (r.start_pickup_drop_off_window || r.end_pickup_drop_off_window) fail('flexible pickup windows unsupported');
   }
   if (stopTimes.some((r) => r[4] === null)) warnings.push('Untimed intermediate stops retained but omitted from exact departure lookup; no interpolation.');
+  if (stopRows.some((r) => r.timepoint === '0')) warnings.push('GTFS timepoint=0 rows are approximate published times; the timepoint flag is preserved on departures.');
   const weekdays = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'];
   const calendars = table('calendar.txt', ['service_id', 'start_date', 'end_date', ...weekdays], true).map((r) => {
     if (weekdays.some((day) => !['0', '1'].includes(r[day]!))) fail('invalid weekday flag');
@@ -146,16 +149,26 @@ export function normalizeGtfs(tables: GtfsTables, provenance: {
   if (!calendars.length && !exceptions.length) fail('missing service calendars');
   const info = table('feed_info.txt', ['feed_publisher_name', 'feed_publisher_url', 'feed_lang'], true);
   if (info.length > 1) fail('multiple feed_info rows');
+  const attributionRows = table('attributions.txt', ['organization_name'], true);
+  for (const r of attributionRows) {
+    for (const field of ['is_producer', 'is_operator', 'is_authority']) if (r[field] && !['0', '1'].includes(r[field]!)) fail(`invalid attribution ${field}`);
+    if ((r.agency_id && !agencies.some((a) => a.id === r.agency_id)) ||
+      (r.route_id && !routes.some((route) => route.id === r.route_id)) || (r.trip_id && !trips.some((t) => t.id === r.trip_id))) fail('invalid attribution reference');
+  }
   const starts = [...calendars.map((c) => c.startDate), ...exceptions.filter((e) => e.type === 1).map((e) => e.date)].sort();
   const ends = [...calendars.map((c) => c.endDate), ...exceptions.filter((e) => e.type === 1).map((e) => e.date)].sort();
   const metadata: TransitFeedMetadata = {
     ...provenance, quality: provenance.quality ?? 'confirmed', version: info[0]?.feed_version || null,
     validFrom: info[0]?.feed_start_date || starts[0] || fail('no service dates'),
     validUntil: info[0]?.feed_end_date || ends.at(-1) || fail('no service dates'), agencies, timezone,
+    ...(info[0] ? { publisher: { name: info[0].feed_publisher_name!, url: info[0].feed_publisher_url!, language: info[0].feed_lang! } } : {}),
+    attributions: attributionRows.map((r) => ({ organizationName: r.organization_name!, url: r.attribution_url || null,
+      isProducer: r.is_producer === '1', isOperator: r.is_operator === '1', isAuthority: r.is_authority === '1' })),
     license: 'SMTT public GTFS Schedule; redistribution license not independently verified. No official endorsement.',
     validation: { warnings, files: Object.keys(tables).sort(), counts: { stops: stops.length, routes: routes.length, trips: trips.length, stopTimes: stopTimes.length } },
   };
   if (!info.length) warnings.push('feed_info.txt absent; validity derived from service calendars, version unknown.');
+  if (provenance.acquisition === 'user_supplied_archive') warnings.push('User-supplied archive; original download timestamp and direct publisher retrieval are not independently verified.');
   if (trips.some((t) => !t.headsign || t.directionId === null)) warnings.push('Some trip directions/headsigns are unknown; destination relevance is not inferred.');
   warnings.push('Static published schedule only; live service, disruptions and boarding are unknown.');
   return validateDigest({ schemaVersion: 1, metadata, stops, routes, trips, stopTimes, calendars, exceptions });
