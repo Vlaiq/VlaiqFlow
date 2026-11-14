@@ -1355,3 +1355,91 @@ html[data-theme='dark'] .flow-app .maplibregl-ctrl-icon {
     );
   }
 }
+
+
+/* CORE planner: one intentional choice, one visible result surface. */
+.flow-planner-switch {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 5px;
+  margin: 16px 0 18px;
+  padding: 5px;
+  background: rgb(var(--surface-2));
+  border: 1px solid rgb(var(--border));
+  border-radius: 15px;
+}
+.flow-planner-switch > button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 9px;
+  min-width: 0;
+  min-height: 46px;
+  border: 1px solid transparent;
+  border-radius: 11px;
+  background: transparent;
+  color: rgb(var(--text-muted));
+  font: 650 13px/1.3 var(--app-font-body);
+  cursor: pointer;
+}
+.flow-planner-switch > button.active {
+  background: rgb(var(--surface));
+  border-color: rgb(var(--border));
+  color: rgb(var(--text));
+  box-shadow: 0 3px 12px #00000012;
+}
+.flow-planner-switch > button:hover:not(.active) {
+  color: rgb(var(--text));
+}
+.flow-planner-switch > button:focus-visible {
+  outline: 3px solid rgb(var(--primary));
+  outline-offset: 2px;
+}
+@media (max-width: 800px) {
+  .flow-planner-switch {
+    margin: 13px 0 16px;
+  }
+  .flow-planner-switch > button {
+    min-height: 48px;
+  }
+}
+@media (prefers-reduced-motion: no-preference) {
+  .flow-planner-switch > button {
+    transition: color 160ms ease, background 160ms ease, box-shadow 160ms ease;
+  }
+}
+
+
+.flow-parking-options {
+  margin: 14px 0 18px;
+  padding: 0 13px;
+  border: 1px solid rgb(var(--border));
+  border-radius: 13px;
+  background: rgb(var(--surface-2) / 0.55);
+}
+.flow-parking-options > summary {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  min-height: 48px;
+  font-size: 13px;
+  font-weight: 650;
+  color: rgb(var(--text));
+  cursor: pointer;
+  list-style: none;
+}
+.flow-parking-options > summary::-webkit-details-marker { display: none; }
+.flow-parking-options > summary > span {
+  margin-left: auto;
+  font-size: 11px;
+  font-weight: 500;
+  color: rgb(var(--text-muted));
+}
+.flow-parking-options > summary:focus-visible {
+  outline: 3px solid rgb(var(--primary));
+  outline-offset: 3px;
+  border-radius: 8px;
+}
+.flow-parking-options[open] {
+  padding-bottom: 14px;
+}

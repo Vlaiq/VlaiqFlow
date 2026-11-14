@@ -290,6 +290,8 @@ function Explore({
   const [arrivalRoute, setArrivalRoute] = useState<Coordinate[] | null>(null);
   const car = useParkedCar();
   const [expanded, setExpanded] = useState(false);
+  const [plannerView, setPlannerView] = useState<'parking' | 'journey'>('parking');
+  const [pendingParkingId, setPendingParkingId] = useState<string | null>(null);
   const [layers, setLayers] = useState(false);
   const [origin, setOrigin] = useState<Origin | null>(null);
   const [pickingOrigin, setPickingOrigin] = useState(false);
@@ -337,13 +339,19 @@ function Explore({
     setDriveRoute(null);
     setWalkRoute(null);
   }, []);
-  /** From a Smart Journey car option: open the same parking's preview when the SmartMatch list has it. */
-  const openParkingFromJourney = useCallback(
-    (id: string) => {
-      if (options.some((o) => o.id === id)) openDetail(id);
-    },
-    [options, openDetail],
-  );
+  /** Open the requested parking after SmartMatch remounts and delivers fresh results. */
+  const openParkingFromJourney = useCallback((id: string) => {
+    setPendingParkingId(id);
+    setJourneySelection(null);
+    setPlannerView('parking');
+  }, []);
+  useEffect(() => {
+    if (!pendingParkingId || !reco) return;
+    if (reco.options.some((option) => option.id === pendingParkingId)) {
+      openDetail(pendingParkingId);
+    }
+    setPendingParkingId(null);
+  }, [pendingParkingId, reco, openDetail]);
   const selectDestination = useCallback((value: Destination) => {
     // A new destination replaces the walking leg from the last navigation.
     if (new URLSearchParams(window.location.search).has('walkFrom')) navigate('/', true);
@@ -352,6 +360,8 @@ function Explore({
     setDetailId(null);
     setDriveRoute(null);
     setJourneySelection(null);
+    setPlannerView('parking');
+    setPendingParkingId(null);
     setExpanded(true);
     panelRef.current?.scrollTo({ top: 0 });
   }, [navigate]);
@@ -618,27 +628,6 @@ function Explore({
                 )}
                 {destination.location && (
                   <div hidden={!!detail}>
-                    <ParkingRecommendations
-                      key={destination.id}
-                      destination={destination}
-                      origin={origin?.coordinate ?? null}
-                      settings={parkingSettings}
-                      onSettings={setParkingSettings}
-                      selectedId={selectedId}
-                      onSelect={setSelectedId}
-                      onPick={pickOption}
-                      onOpen={openDetail}
-                      onResult={onResult}
-                      stops={stops}
-                      stopsSlot={
-                        <StopPicker
-                          destination={[destination.location.lng, destination.location.lat]}
-                          places={knownPlaces}
-                          stops={stops}
-                          onChange={setStops}
-                        />
-                      }
-                    />
                     <div className="explore-origin">
                       <div className="explore-origin-label">
                         <LocateFixed size={13} /> PUNCTUL DE PLECARE
@@ -675,7 +664,36 @@ function Explore({
                         </p>
                       )}
                     </div>
-                    <GreenSwitch
+                    <div className="flow-planner-switch" role="group" aria-label="Compară parcări sau trasee">
+                      <button type="button" aria-pressed={plannerView === 'parking'} className={plannerView === 'parking' ? 'active' : ''} onClick={() => { setPlannerView('parking'); setJourneySelection(null); }}>
+                        <ParkingSquare size={17} aria-hidden="true" /> Parcări
+                      </button>
+                      <button type="button" aria-pressed={plannerView === 'journey'} className={plannerView === 'journey' ? 'active' : ''} onClick={() => { setPlannerView('journey'); setSelectedId(null); }}>
+                        <Navigation2 size={17} aria-hidden="true" /> Trasee
+                      </button>
+                    </div>
+                    {plannerView === 'parking' && <ParkingRecommendations
+                      key={destination.id}
+                      destination={destination}
+                      origin={origin?.coordinate ?? null}
+                      settings={parkingSettings}
+                      onSettings={setParkingSettings}
+                      selectedId={selectedId}
+                      onSelect={setSelectedId}
+                      onPick={pickOption}
+                      onOpen={openDetail}
+                      onResult={onResult}
+                      stops={stops}
+                      stopsSlot={
+                        <StopPicker
+                          destination={[destination.location.lng, destination.location.lat]}
+                          places={knownPlaces}
+                          stops={stops}
+                          onChange={setStops}
+                        />
+                      }
+                    />}
+                    {plannerView === 'journey' && <GreenSwitch
                       origin={origin?.coordinate ?? null}
                       destination={destination}
                       parkingSettings={parkingSettings}
@@ -683,7 +701,7 @@ function Explore({
                       onInspectRoute={() => setExpanded(false)}
                       onOpenParking={openParkingFromJourney}
                       onStartActivity={onStartActivity}
-                    />
+                    />}
                   </div>
                 )}
                 <a href="/data" className="explore-data-link">
