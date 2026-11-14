@@ -37,6 +37,7 @@ export function departuresForStop(index: TransitIndex, input: z.input<typeof Que
         serviceId: trip.serviceId, serviceDate: date, stopSequence: st[2], departureSeconds: st[4]!, scheduledAt,
         routeShortName: route.shortName, headsign: st[7] ?? trip.headsign, directionId: trip.directionId,
         quality: meta.quality, source: meta.source, feedVersion: meta.version,
+        timepoint: st[8] ?? 1,
       });
       // Sorted stop-time index makes further matches on this service day unnecessary.
       if (++foundOnDate === limit) break;

@@ -20,7 +20,7 @@ MAX_EXPANDED = 256 * 1024 * 1024
 MAX_FILE = 128 * 1024 * 1024
 MAX_FILES = 128
 KNOWN = {'agency.txt', 'stops.txt', 'routes.txt', 'trips.txt', 'stop_times.txt',
-         'calendar.txt', 'calendar_dates.txt', 'feed_info.txt', 'shapes.txt', 'frequencies.txt'}
+         'calendar.txt', 'calendar_dates.txt', 'feed_info.txt', 'shapes.txt', 'frequencies.txt', 'attributions.txt'}
 
 
 def read_csv(text, name):

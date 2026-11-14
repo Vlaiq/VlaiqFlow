@@ -13,6 +13,7 @@ export interface WalkingDependency {
 }
 const limitations = [
   'Plecare programată, fără informații live despre întârzieri, anulări sau prezența vehiculului.',
+  'Orele marcate GTFS timepoint=0 sunt aproximative chiar în orarul publicat.',
   'Durata mersului și fezabilitatea sunt estimări; îmbarcarea nu este garantată.',
   'Accesibilitatea, trecerile și intrarea pe peron nu sunt verificate; păstrează timp suplimentar.',
   'Geometria pietonală poate avea ajustări de până la 50 m la capete; accesul exact nu este certificat.',
