@@ -1408,3 +1408,38 @@ html[data-theme='dark'] .flow-app .maplibregl-ctrl-icon {
     transition: color 160ms ease, background 160ms ease, box-shadow 160ms ease;
   }
 }
+
+
+.flow-parking-options {
+  margin: 14px 0 18px;
+  padding: 0 13px;
+  border: 1px solid rgb(var(--border));
+  border-radius: 13px;
+  background: rgb(var(--surface-2) / 0.55);
+}
+.flow-parking-options > summary {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  min-height: 48px;
+  font-size: 13px;
+  font-weight: 650;
+  color: rgb(var(--text));
+  cursor: pointer;
+  list-style: none;
+}
+.flow-parking-options > summary::-webkit-details-marker { display: none; }
+.flow-parking-options > summary > span {
+  margin-left: auto;
+  font-size: 11px;
+  font-weight: 500;
+  color: rgb(var(--text-muted));
+}
+.flow-parking-options > summary:focus-visible {
+  outline: 3px solid rgb(var(--primary));
+  outline-offset: 3px;
+  border-radius: 8px;
+}
+.flow-parking-options[open] {
+  padding-bottom: 14px;
+}
