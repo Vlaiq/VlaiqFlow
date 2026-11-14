@@ -46,6 +46,8 @@ export interface MotionScreenProps {
   onActivityChange?: (active: boolean) => void;
   onWalletChange?: (balance: number) => void;
   initialMode?: MotionMode;
+  initialModeRequest?: number;
+  onModeChange?: (mode: MotionMode) => void;
 }
 const tabs = [
   { id: 'home', name: 'Mișcare', Icon: Leaf },
@@ -114,6 +116,8 @@ export function MotionScreen({
   onActivityChange,
   onWalletChange,
   initialMode,
+  initialModeRequest = 0,
+  onModeChange,
 }: MotionScreenProps = {}) {
   const [localTab, setLocalTab] = useState<Tab>('home');
   const tab = controlledTab ?? localTab;
@@ -129,7 +133,7 @@ export function MotionScreen({
   activityChange.current = onActivityChange;
   const walletChange = useRef(onWalletChange);
   walletChange.current = onWalletChange;
-  const appliedInitialMode = useRef<MotionMode>();
+  const appliedInitialMode = useRef<string>();
   const [wallet, setWallet] = useState<MotionWallet | null>(null);
   const [walletError, setWalletError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
@@ -166,11 +170,12 @@ export function MotionScreen({
     activityChange.current?.(recording);
   }, [recording]);
   useEffect(() => {
-    if (initialMode && initialMode !== appliedInitialMode.current && activity.state === 'idle') {
+    const intent = `${initialMode}:${initialModeRequest}`;
+    if (initialMode && intent !== appliedInitialMode.current && activity.state === 'idle') {
       activity.setMode(initialMode);
-      appliedInitialMode.current = initialMode;
+      appliedInitialMode.current = intent;
     }
-  }, [initialMode, activity.state, activity.setMode]);
+  }, [initialMode, initialModeRequest, activity.state, activity.setMode]);
   useEffect(() => {
     if (wallet == null) return;
     walletChange.current?.(wallet.balance);
@@ -540,7 +545,10 @@ export function MotionScreen({
                       return (
                         <button
                           key={mode}
-                          onClick={() => activity.setMode(mode)}
+                          onClick={() => {
+                            activity.setMode(mode);
+                            onModeChange?.(mode);
+                          }}
                           aria-pressed={activity.mode === mode}
                           className={activity.mode === mode ? 'selected' : ''}
                         >

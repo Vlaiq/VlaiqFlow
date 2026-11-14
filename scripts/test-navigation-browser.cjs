@@ -244,6 +244,8 @@ const base = process.env.NAV_TEST_URL || 'http://localhost:5173';
     assert.equal(await page.locator('.nav-vehicle').count(), 0);
     await page.getByRole('button', { name: /Încearcă experiența DEMO/ }).click();
     await page.getByRole('button', { name: 'Repornește demonstrația' }).click();
+    // Let React commit the restart effect before advancing the browser clock.
+    await page.waitForTimeout(250);
     await page.clock.runFor(22000);
     await page.getByText('Ai ajuns', { exact: true }).waitFor();
     assert.equal(

@@ -10,7 +10,7 @@
   overflow: hidden;
   background: #202832;
   color: #f5f8fc;
-  font-family: Inter, system-ui, sans-serif;
+  font-family: var(--app-font-body);
   isolation: isolate;
 }
 .navigation-screen * {

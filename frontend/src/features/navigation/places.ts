@@ -23,7 +23,12 @@ const inArea = ([lng, lat]: Coordinate) => lng >= 21 && lng <= 21.5 && lat >= 45
 
 const fromDestination = (d: Destination): NavPlace | null =>
   d.location
-    ? { id: d.id, name: d.name, area: d.detail ? `${d.detail} · Timișoara` : 'Timișoara', coordinate: [d.location.lng, d.location.lat] }
+    ? {
+        id: d.id,
+        name: d.name,
+        area: d.detail ? `${d.detail} · Timișoara` : 'Timișoara',
+        coordinate: [d.location.lng, d.location.lat],
+      }
     : null;
 
 const fromParking = (p: Parking): NavPlace => ({
@@ -41,10 +46,16 @@ export function placeFromUrl(search: string): NavPlace | null {
   const q = new URLSearchParams(search);
   const [lng, lat] = (q.get('to') ?? '').split(',').map(Number);
   const name = q.get('name')?.trim();
-  if (lng == null || lat == null || !Number.isFinite(lng) || !Number.isFinite(lat) || !name) return null;
+  if (lng == null || lat == null || !Number.isFinite(lng) || !Number.isFinite(lat) || !name)
+    return null;
   const coordinate: Coordinate = [lng, lat];
   if (!inArea(coordinate)) return null;
-  return { id: `url-${lng},${lat}`, name: name.slice(0, 120), area: (q.get('area') ?? 'Timișoara').slice(0, 120), coordinate };
+  return {
+    id: `url-${lng},${lat}`,
+    name: name.slice(0, 120),
+    area: (q.get('area') ?? 'Timișoara').slice(0, 120),
+    coordinate,
+  };
 }
 
 /** Link from any destination on the Explore screen to the navigation screen. */
@@ -70,18 +81,31 @@ export async function loadNavPlaces(search: string): Promise<NavPlaces> {
   const parkingById = new Map(parks.parkings.map((p) => [p.id, p]));
 
   const presets = [
-    ...PRESET_PARKING_IDS.map((id) => parkingById.get(id)).filter((p): p is Parking => !!p).map(fromParking),
+    ...PRESET_PARKING_IDS.map((id) => parkingById.get(id))
+      .filter((p): p is Parking => !!p)
+      .map(fromParking),
     ...PRESET_DESTINATION_IDS.map((id) => byId.get(id))
       .filter((d): d is Destination => !!d)
       .map(fromDestination)
       .filter((p): p is NavPlace => !!p),
   ];
   const originDest = byId.get(DEMO_ORIGIN_ID);
-  const origin = originDest ? fromDestination(originDest) : null;
-  if (!origin || presets.length === 0) throw new Error('Destinațiile pentru navigație nu sunt disponibile.');
+  const fallbackOrigin = originDest ? fromDestination(originDest) : null;
+  const params = new URLSearchParams(search);
+  const chosenOrigin = placeFromUrl(
+    `?${new URLSearchParams({ to: params.get('from') ?? '', name: params.get('fromName') ?? '' })}`,
+  );
+  const origin = chosenOrigin ?? fallbackOrigin;
+  if (!origin || presets.length === 0)
+    throw new Error('Destinațiile pentru navigație nu sunt disponibile.');
 
   const fromUrl = placeFromUrl(search);
-  const destinations = fromUrl ? [fromUrl, ...presets.filter((p) => p.name !== fromUrl.name)] : presets;
+  const destinations = fromUrl
+    ? [fromUrl, ...presets.filter((p) => p.name !== fromUrl.name)]
+    : presets;
   // Never start with origin = destination.
-  return { destinations: destinations.filter((p) => p.id !== origin.id || destinations.length === 1), origin };
+  return {
+    destinations: destinations.filter((p) => p.id !== origin.id || destinations.length === 1),
+    origin,
+  };
 }

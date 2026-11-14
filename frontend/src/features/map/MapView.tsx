@@ -19,6 +19,8 @@ import {
 import { osmParkingPopupContent } from './osmParkingPopup';
 import { addCountyScope, CountyControl, isInTimisCounty, TIMIS_COUNTY_BOUNDS } from './countyScope';
 import { localFallbackStyle } from './localStyle';
+import type { JourneyMapSelection } from '../journey/GreenSwitch';
+import { journeyFeatures, JOURNEY_SOURCE } from './journeyLayers';
 
 const TAP_TOLERANCE_PX = 8;
 
@@ -57,6 +59,7 @@ interface Props {
   pickingOrigin?: boolean;
   onPickOrigin?: (coordinate: Coordinate) => void;
   origin?: Coordinate | null;
+  journey?: JourneyMapSelection | null;
 }
 
 const FLY_ZOOM: Record<Destination['precision'], number> = {
@@ -73,7 +76,15 @@ const FLY_ZOOM: Record<Destination['precision'], number> = {
 function visibleMapPadding(): maplibregl.PaddingOptions {
   if (window.matchMedia('(min-width: 1024px)').matches)
     return { left: 460, top: 20, right: 60, bottom: 20 };
-  return { left: 0, top: 90, right: 0, bottom: Math.round(window.innerHeight * 0.42) };
+  const sheet = document.querySelector('.explore-panel')?.getBoundingClientRect();
+  const canvas = document.querySelector('.explore-screen')?.getBoundingClientRect();
+  const bottom = sheet && canvas ? canvas.bottom - sheet.top + 16 : window.innerHeight * 0.42;
+  return {
+    left: 22,
+    top: 100,
+    right: 55,
+    bottom: Math.round(Math.min(bottom, (canvas?.height ?? window.innerHeight) - 160)),
+  };
 }
 
 function recommendationMarkerElement(
@@ -131,6 +142,7 @@ export function MapView({
   pickingOrigin = false,
   onPickOrigin,
   origin = null,
+  journey = null,
 }: Props) {
   const [mapError, setMapError] = useState<string | null>(null);
   const [attempt, setAttempt] = useState(0);
@@ -451,7 +463,7 @@ export function MapView({
   // Show the destination and every option together when a new list arrives.
   useEffect(() => {
     const map = mapRef.current;
-    if (!map || !destination?.location || recommendations.length === 0) return;
+    if (!map || journey || !destination?.location || recommendations.length === 0) return;
     const bounds = new maplibregl.LngLatBounds(
       [destination.location.lng, destination.location.lat],
       [destination.location.lng, destination.location.lat],
@@ -507,6 +519,99 @@ export function MapView({
       marker.remove();
     };
   }, [origin, attempt, styleRevision]);
+
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map?.getStyle()?.sources?.[PARKINGS_SOURCE]) return;
+    const data = journeyFeatures(journey?.value ?? null, journey?.legId ?? null);
+    const existing = map.getSource(JOURNEY_SOURCE) as GeoJSONSource | undefined;
+    if (existing) existing.setData(data);
+    else {
+      map.addSource(JOURNEY_SOURCE, {
+        type: 'geojson',
+        data,
+        attribution: '© OpenStreetMap contributors',
+      });
+      map.addLayer({
+        id: 'flow-journey-casing',
+        type: 'line',
+        source: JOURNEY_SOURCE,
+        layout: { 'line-cap': 'round', 'line-join': 'round' },
+        paint: {
+          'line-color': theme === 'light' ? '#ffffff' : '#0b2015',
+          'line-width': 10,
+          'line-opacity': ['case', ['get', 'emphasized'], 0.9, 0.35],
+        },
+      });
+      for (const mode of ['drive', 'walk', 'cycle']) {
+        map.addLayer({
+          id: `flow-journey-${mode}`,
+          type: 'line',
+          source: JOURNEY_SOURCE,
+          filter: ['==', ['get', 'mode'], mode],
+          layout: { 'line-cap': 'round', 'line-join': 'round' },
+          paint: {
+            'line-color':
+              mode === 'drive'
+                ? '#2194ec'
+                : mode === 'cycle'
+                  ? '#19ad75'
+                  : theme === 'light'
+                    ? '#567d31'
+                    : '#c5e7af',
+            'line-width': ['case', ['get', 'emphasized'], 5, 3],
+            'line-opacity': ['case', ['get', 'emphasized'], 1, 0.4],
+            ...(mode === 'walk' ? { 'line-dasharray': [1.4, 1.4] } : {}),
+          },
+        });
+      }
+    }
+    const parking = journey?.value.parking;
+    let marker: maplibregl.Marker | undefined;
+    if (parking) {
+      const element = document.createElement('div');
+      element.className = 'journey-map-parking';
+      element.textContent = 'P';
+      element.setAttribute('aria-label', `Parchează: ${parking.name}`);
+      marker = new maplibregl.Marker({ element }).setLngLat(parking.coordinate).addTo(map);
+    }
+    const selected = journey?.value.legs.find((l) => l.id === journey.legId);
+    const points = selected
+      ? selected.type === 'parking'
+        ? [selected.from]
+        : selected.route.geometry
+      : (data.features.flatMap((f) => f.geometry.coordinates) as Coordinate[]);
+    let frame = 0;
+    const fit = () => {
+      cancelAnimationFrame(frame);
+      if (!points.length) return;
+      frame = requestAnimationFrame(() => {
+        const bounds = new maplibregl.LngLatBounds(
+          points[0] as Coordinate,
+          points[0] as Coordinate,
+        );
+        points.forEach((p) => bounds.extend(p as Coordinate));
+        map.stop();
+        map.fitBounds(bounds, {
+          padding: visibleMapPadding(),
+          maxZoom: selected ? 17 : 16,
+          duration: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 0 : 650,
+          essential: false,
+        });
+      });
+    };
+    fit();
+    window.addEventListener('resize', fit);
+    const observer = new ResizeObserver(fit);
+    const sheet = document.querySelector('.explore-panel');
+    if (sheet) observer.observe(sheet);
+    return () => {
+      cancelAnimationFrame(frame);
+      observer.disconnect();
+      window.removeEventListener('resize', fit);
+      marker?.remove();
+    };
+  }, [journey, attempt, styleRevision]);
 
   return (
     <div className={`absolute inset-0 ${pickingOrigin ? 'picking-origin' : ''}`}>

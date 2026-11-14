@@ -24,7 +24,7 @@ export default {
         'q-simulated': token('q-simulated'),
       },
       borderRadius: { card: '16px' },
-      fontFamily: { sans: ['Inter', 'system-ui', 'sans-serif'] },
+      fontFamily: { sans: ['Inter Variable', 'system-ui', 'sans-serif'] },
     },
   },
   plugins: [],

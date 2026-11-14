@@ -86,8 +86,8 @@
   --app-duration-normal: 280ms;
   --app-duration-slow: 480ms;
   --app-ease: cubic-bezier(0.2, 0.7, 0.2, 1);
-  --app-font-display: 'Manrope', 'Inter', ui-sans-serif, system-ui, sans-serif;
-  --app-font-body: 'Inter', ui-sans-serif, system-ui, sans-serif;
+  --app-font-display: 'Manrope Variable', 'Inter Variable', ui-sans-serif, system-ui, sans-serif;
+  --app-font-body: 'Inter Variable', ui-sans-serif, system-ui, sans-serif;
   font-variant-numeric: tabular-nums;
 }
 
@@ -134,5 +134,24 @@
     --app-duration-fast: 0ms;
     --app-duration-normal: 0ms;
     --app-duration-slow: 0ms;
+  }
+}
+
+:root {
+  --journey-drive: #76b9ff;
+  --journey-cycle: #70d5a4;
+  --journey-walk: #c5e7af;
+  --journey-parking: #e7bd7b;
+  --journey-map-ms: 650;
+}
+:root[data-theme='light'] {
+  --journey-drive: #175c9d;
+  --journey-cycle: #126e4a;
+  --journey-walk: #486b30;
+  --journey-parking: #805017;
+}
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --journey-map-ms: 0;
   }
 }

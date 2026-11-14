@@ -1,6 +1,7 @@
 // Integrated product QA. Active routes below are explicit synthetic test fixtures.
 const { chromium } = require(process.env.PLAYWRIGHT_MODULE || 'playwright');
 const assert = require('node:assert/strict');
+const { completeFixture } = require('./lib/smart-journey-fixture.cjs');
 const fs = require('node:fs');
 const base = process.env.NAV_TEST_URL || 'http://localhost:5173';
 const output = process.env.PREMIUM_TEST_OUTPUT || '/tmp/vlaiq-premium-tests';
@@ -90,37 +91,10 @@ const route = {
     assert.equal(await page.evaluate(() => window.__locationRequests), 0);
     await page.screenshot({ path: `${output}/parking-real-data-mobile.png` });
     let journeyRequests = 0;
-    await page.route('**/api/journeys/compare', async (intercepted) => {
+    await page.route('**/api/journeys/complete', async (intercepted) => {
       journeyRequests++;
       await intercepted.fulfill({
-        json: {
-          options: [
-            {
-              id: 'drive',
-              mode: 'drive',
-              route,
-              practical: true,
-              note: 'Test direct driving route.',
-            },
-            {
-              id: 'cycle',
-              mode: 'cycle',
-              route: { ...route, id: 'cycle-test', duration: 420 },
-              practical: true,
-              note: 'SYNTHETIC TEST FIXTURE active route.',
-            },
-          ],
-          unavailable: [{ mode: 'walk', reason: 'Unavailable in test fixture' }],
-          opportunity: {
-            optionId: 'cycle',
-            mode: 'cycle',
-            extraSeconds: -60,
-            activeMeters: 1400,
-            explanation: 'Synthetic UI test only',
-          },
-          fetchedAt: new Date().toISOString(),
-          coverage: 'Test fixture; not provider access validation.',
-        },
+        json: completeFixture(JSON.parse(intercepted.request().postData())),
       });
     });
     await page.getByRole('button', { name: 'Alege pe hartă', exact: true }).click();
@@ -138,7 +112,7 @@ const route = {
         'body:after{content:"TEST GREEN SWITCH · DATE DE RUTARE SINTETICE";position:fixed;bottom:75px;left:15px;z-index:9999;font:8px sans-serif;background:#59411e;color:#ffe3a1;padding:5px;pointer-events:none}',
     });
     await page.screenshot({ path: `${output}/green-switch-test-fixture.png` });
-    await page.getByRole('button', { name: 'Pornește activitatea', exact: true }).click();
+    await page.getByRole('button', { name: 'Pornește această călătorie', exact: true }).click();
     await page.waitForURL('**/motion?mode=cycle');
     await page.getByRole('button', { name: 'Bicicletă', exact: true }).waitFor();
     assert.equal(

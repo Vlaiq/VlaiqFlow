@@ -14,6 +14,7 @@ import {
   X,
 } from 'lucide-react';
 import {
+  ActiveJourneyContext,
   type Destination,
   type DestinationsResponse,
   type ParkingsResponse,
@@ -27,7 +28,7 @@ import { TariffLegend } from '../features/parking/TariffLegend';
 import { ParkingRecommendations } from '../features/parking/ParkingRecommendations';
 import { ParkingDetail, type Origin } from '../features/parking/ParkingDetail';
 import { DestinationSearch } from '../features/search/DestinationSearch';
-import { GreenSwitch, type ActiveJourneyContext } from '../features/journey/GreenSwitch';
+import { GreenSwitch, type JourneyMapSelection } from '../features/journey/GreenSwitch';
 import { InstallPrompt } from '../components/InstallPrompt';
 import { motionApi } from '../features/motion/motionApi';
 import { api } from '../services/api';
@@ -36,9 +37,7 @@ import { useAppRouter } from './router';
 import { useTheme } from './theme';
 
 type Load<T> =
-  | { state: 'loading' }
-  | { state: 'ok'; data: T }
-  | { state: 'error'; message: string };
+  { state: 'loading' } | { state: 'ok'; data: T } | { state: 'error'; message: string };
 function useLoad<T>(fn: () => Promise<T>): Load<T> {
   const [value, setValue] = useState<Load<T>>({ state: 'loading' });
   useEffect(() => {
@@ -80,6 +79,7 @@ export function App() {
   const [balance, setBalance] = useState<number | null>(null);
   const [activityActive, setActivityActive] = useState(false);
   const [journey, setJourney] = useState<ActiveJourneyContext | null>(null);
+  const [journeyIntent, setJourneyIntent] = useState(0);
   useEffect(() => {
     if (motionVisible) setMotionVisited(true);
   }, [motionVisible]);
@@ -97,10 +97,15 @@ export function App() {
   }, []);
   const startActivity = useCallback(
     (mode: 'walk' | 'cycle', context?: ActiveJourneyContext) => {
-      setJourney(context ?? null);
+      if (activityActive) {
+        navigate('/motion');
+        return;
+      }
+      setJourney(context ? ActiveJourneyContext.parse(context) : null);
+      setJourneyIntent((current) => current + 1);
       navigate(`/motion?mode=${mode}`);
     },
-    [navigate],
+    [navigate, activityActive],
   );
   const tab =
     path === '/wallet'
@@ -152,6 +157,10 @@ export function App() {
               }
               onWalletChange={setBalance}
               onActivityChange={setActivityActive}
+              initialModeRequest={journeyIntent}
+              onModeChange={(mode) =>
+                setJourney((current) => (current?.mode === mode ? current : null))
+              }
               initialMode={
                 initialMode === 'walk' || initialMode === 'cycle' || initialMode === 'run'
                   ? initialMode
@@ -208,7 +217,7 @@ function Explore({
   const [reco, setReco] = useState<RecommendationResponse | null>(null);
   const [detailId, setDetailId] = useState<string | null>(null);
   const [driveRoute, setDriveRoute] = useState<Coordinate[] | null>(null);
-  const [greenRoute, setGreenRoute] = useState<Coordinate[] | null>(null);
+  const [journeySelection, setJourneySelection] = useState<JourneyMapSelection | null>(null);
   const [expanded, setExpanded] = useState(false);
   const [layers, setLayers] = useState(false);
   const [origin, setOrigin] = useState<Origin | null>(null);
@@ -255,7 +264,7 @@ function Explore({
     setDestination(value);
     setDetailId(null);
     setDriveRoute(null);
-    setGreenRoute(null);
+    setJourneySelection(null);
     setExpanded(true);
     panelRef.current?.scrollTo({ top: 0 });
   }, []);
@@ -321,7 +330,8 @@ function Explore({
         timpark={timparkData}
         destination={destination}
         recommendations={options}
-        route={detail ? driveRoute : greenRoute}
+        route={detail ? driveRoute : null}
+        journey={detail ? null : journeySelection}
         selectedRecommendationId={selectedId}
         focusRecommendation={focus}
         onSelectRecommendation={openDetail}
@@ -431,7 +441,7 @@ function Explore({
                       <h1>{destination.name}</h1>
                       <p>
                         {destination.location
-                          ? 'Destinație localizată din datele orașului.'
+                          ? `${destination.precision === 'exact' ? 'Poziție exactă în sursă.' : destination.precision === 'street' ? 'Poziție la nivel de stradă, nu de număr poștal.' : 'Poziție aproximativă la nivel de cartier.'} Sursa: ${destination.locationSource ?? 'date locale'}.`
                           : 'Poziția exactă nu este cunoscută. Nu calculăm rute pentru o locație inventată.'}
                       </p>
                       <button
@@ -439,7 +449,7 @@ function Explore({
                           setDestination(null);
                           setReco(null);
                           setDriveRoute(null);
-                          setGreenRoute(null);
+                          setJourneySelection(null);
                           setDetailId(null);
                         }}
                       >
@@ -471,7 +481,8 @@ function Explore({
                         <GreenSwitch
                           origin={origin?.coordinate ?? null}
                           destination={destination}
-                          onRoute={setGreenRoute}
+                          onJourney={setJourneySelection}
+                          onInspectRoute={() => setExpanded(false)}
                           onStartActivity={onStartActivity}
                         />
                       </>
@@ -498,16 +509,19 @@ function Explore({
                 )}
                 {destination.location && (
                   <div hidden={!!detail}>
-                    <ParkingRecommendations
-                      key={destination.id}
-                      destination={destination}
-                      origin={origin?.coordinate ?? null}
-                      selectedId={selectedId}
-                      onSelect={setSelectedId}
-                      onPick={pickOption}
-                      onOpen={openDetail}
-                      onResult={onResult}
-                    />
+                    <details className="explore-other-parkings" open={!origin || undefined}>
+                      <summary>Explorează și alte parcări din apropiere</summary>
+                      <ParkingRecommendations
+                        key={destination.id}
+                        destination={destination}
+                        origin={origin?.coordinate ?? null}
+                        selectedId={selectedId}
+                        onSelect={setSelectedId}
+                        onPick={pickOption}
+                        onOpen={openDetail}
+                        onResult={onResult}
+                      />
+                    </details>
                   </div>
                 )}
                 <a href="/data" className="explore-data-link">
