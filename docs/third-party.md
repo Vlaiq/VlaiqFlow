@@ -17,6 +17,8 @@ Add a row before using any third-party code, data or service. A repository witho
 | [Primăria Timișoara](https://ghid-pmt.vercel.app/unihack) — Timpark endpoint `cont.primariatm.ro/api/mobile/parking` | Paid parking zones, lots, streets, tariffs, SMS codes | Public City Hall endpoint, GET only, no uptime guarantee | Snapshot via `pnpm data:city`, User-Agent naming the team, show source and date in the UI |
 | Primăria Timișoara — street register `servicii.primariatm.ro/api/nomenclator/strazi`, landmarks `/api/mobile/pois`, neighbourhoods `/api/zones` | Destination search | Public City Hall endpoints, GET only | Snapshot via `pnpm data:city`; landmark descriptions and images are not copied |
 | React, Vite, Tailwind CSS, Express, zod, lucide-react | App framework and libraries | MIT / ISC | Keep license notices (npm packages) |
+| [SMTT GTFS Schedule](https://smtt.ro/transit/gtfs/maps/smtt-timisoara-ro.zip) | Optional build/backend transit schedule snapshot | Official public source; redistribution terms not independently verified | Source/version/date/checksum retained; static schedules only; no endorsement. Access blocked in this mission, so no source dataset was committed. See `bio-pacer-stpt.md` |
+| [Python standard library](https://docs.python.org/3/license.html) — `zipfile`, `csv`, `urllib` | Bounded operator-only GTFS ingestion | PSF License Agreement; existing Python runtime, no vendored library code | Python 3.10+ required for ingestion/security tests; no pip/npm dependency added; preserve runtime notices if distributing Python |
 
 | Name | Used for | License / terms | Obligations |
 |---|---|---|---|
