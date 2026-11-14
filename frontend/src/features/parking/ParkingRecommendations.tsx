@@ -273,7 +273,8 @@ export function ParkingRecommendations({
               ))}
             </ol>
             <p className="parking-considered">
-              Am analizat {result.data.considered} parcări la cel mult {maxWalk} min de mers.
+              Am analizat {result.data.considered} parcări la cel mult {maxWalk} min de mers. Șansele
+              sunt estimate, nu locuri confirmate; durata nu include căutarea unui loc.
             </p>
             <HowWeRank data={result.data} />
           </>
@@ -373,9 +374,6 @@ function OptionCard({
           <dd>{o.capacity.value != null ? `~${o.capacity.value} locuri` : 'Necunoscută'}</dd>
         </div>
       </dl>
-      <p className="parking-card-quality">
-        Estimare, nu loc confirmat. Durata nu include căutarea unui loc.
-      </p>
 
       {o.flags.length > 0 && (
         <ul className="mt-2 list-disc pl-4 text-xs text-warning">

@@ -219,10 +219,6 @@ export function DataTrustScreen() {
             </span>
             <div>
               <h3>{source.name}</h3>
-              <p>
-                Sursă folosită pentru căutarea locală de străzi și destinații. Precizia punctului
-                este arătată separat în rezultate.
-              </p>
               <p className="flowdata-caption">Preluat: {formatSourceDate(source.fetchedAt)}</p>
               <SourceLink source={source.source} />
             </div>

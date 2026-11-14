@@ -435,8 +435,7 @@ export function ParkingDetail({
           params={params}
         />
         <p className="text-xs text-muted">
-          Mai puțin = mai bine. Șansele de loc vin din: {o.pFree.factors.join('; ')}. Nu sunt o
-          măsurătoare în timp real.
+          Mai puțin = mai bine. Șansele de loc vin din: {o.pFree.factors.join('; ')}.
         </p>
       </section>
 

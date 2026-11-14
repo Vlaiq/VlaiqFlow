@@ -144,13 +144,9 @@ export function GreenSwitch({
         </span>
         <div>
           <span className="green-switch-eyebrow">FLOW SMART JOURNEY</span>
-          <h2 id="green-switch-title">Un drum. Mai multe posibilități.</h2>
+          <h2 id="green-switch-title">Compară drumul complet</h2>
         </div>
       </div>
-      <p className="green-switch-description">
-        De la plecare până la destinație. Compară rutele, parcarea și mersul final într-o singură
-        alegere.
-      </p>
       <div
         className="journey-preferences"
         role="group"
@@ -349,10 +345,6 @@ export function GreenSwitch({
                       </div>
                     )}
                   </dl>
-                  <p className="journey-uncertainty">
-                    Timpul de căutare și manevrare a parcării este necunoscut și nu este inclus.
-                    Ocupare live: necunoscută.
-                  </p>
                   {onOpenParking && (
                     <button
                       className="journey-parking-open"
@@ -462,11 +454,10 @@ export function GreenSwitch({
               <div className="flow-opportunity-badge">
                 <Leaf size={14} /> FLOW OPPORTUNITY
               </div>
-              <h3>Un drum bun și pentru mișcare.</h3>
-              <p>
+              <h3>
                 {names[alternative.category]} · {journeyMinutes(alternative.travelSeconds.value!)}{' '}
-                min · {journeyDistance(alternative.distance.value!)}.
-              </p>
+                min · {journeyDistance(alternative.distance.value!)}
+              </h3>
               <p>
                 {opportunity.extraSeconds <= 0
                   ? `${Math.abs(Math.round(opportunity.extraSeconds / 60))} min mai puțin pe trasee`

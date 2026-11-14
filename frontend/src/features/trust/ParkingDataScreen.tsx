@@ -175,7 +175,7 @@ function registerItems(reg: ParkingRegisterResponse | null): Item[] {
       source: 'Regulă VLAIQ pe poligoanele Timpark și locurile majore din OSM',
       qualities: ['estimated'],
       verifiable: 'public',
-      verify: <a href="#sanse" className="flowdata-source-link">Regulile sunt scrise mai jos</a>,
+      verify: <a href="/sanse-parcare" className="flowdata-source-link">Regulile, pe pagina despre șanse</a>,
       coverage: 'Fiecare parcare din listă are profilul afișat.',
       limits: 'O zonă mixtă primește un singur profil.',
     },
@@ -373,55 +373,18 @@ function ModelSection({ model }: { model: AvailabilityModelResponse | null }) {
         <p className="flowdata-caption">Parametrii modelului nu au putut fi citiți de la server.</p>
       </section>
     );
-  const p = model.params;
   const profile = model.profiles.find((x) => x.id === profileId) ?? model.profiles[0]!;
   return (
     <section id="sanse" className="flowdata-panel pdata-model" aria-labelledby="pdata-model-title">
       <p className="flowdata-eyebrow">
         <Gauge size={14} /> ȘANSELE DE LOC LIBER
       </p>
-      <h2 id="pdata-model-title">Cum calculăm șansa, pas cu pas.</h2>
+      <h2 id="pdata-model-title">Ocuparea tipică, pe ore.</h2>
       <p className="pdata-lead">
         {model.name}. Calitate: <QualityBadge quality={model.quality} />{' '}
         {model.calibrated ? 'calibrat pe observații.' : 'necalibrat: curbele sunt ipoteze scrise, nu măsurători.'}{' '}
-        <a href="/sanse-parcare" className="pdata-inline-link">Explicația pe larg, cu calculator</a>
+        <a href="/sanse-parcare" className="pdata-inline-link">Cum calculăm șansele, pas cu pas</a>
       </p>
-      <ol className="pdata-steps">
-        <li>
-          <strong>Profilul zonei.</strong> Fiecare parcare primește un profil după reguli fixe (prima regulă
-          potrivită câștigă):
-          <ul>
-            {model.profiles.map((x) => (
-              <li key={x.id}>
-                <b>{x.label}</b>: {x.rule}
-              </li>
-            ))}
-          </ul>
-        </li>
-        <li>
-          <strong>Ocuparea tipică la sosire.</strong> Ora de sosire este ora aleasă de tine sau, dacă pleci
-          acum, ora curentă plus durata de condus dată de router. Între ore interpolăm liniar, ca 09:55 și
-          10:05 să nu difere brusc. Sărbătorile legale folosesc curba de duminică.
-        </li>
-        <li>
-          <strong>Capacitatea.</strong> Din OSM, din conturul Timpark (÷ {p.m2PerLotSpace} m² pe loc) sau din
-          lungimea străzii (÷ {p.mPerKerbSpace} m pe loc, o parte, maxim {p.maxKerbCountedM} m). Necunoscută ⇒{' '}
-          {p.defaultCapacity} locuri și incertitudine mai mare.
-        </li>
-        <li>
-          <strong>Probabilitatea.</strong> Ocuparea reală variază de la o zi la alta în jurul celei tipice
-          (distribuție Beta, κ = {p.kappaKnown}; {p.kappaUnknown} dacă nu știm capacitatea). Numărul de locuri
-          ocupate urmează atunci o lege beta-binomială, calculată exact. Cerem cel puțin max(1, ⌈
-          {Math.round(p.findableShare * 100)}% · C⌉) locuri libere: într-o parcare mare, ultimele locuri sunt
-          greu de găsit.
-        </li>
-        <li>
-          <strong>Limite și interval.</strong> Rezultatul rămâne între {Math.round(p.pMin * 100)}% și{' '}
-          {Math.round(p.pMax * 100)}%, pentru că modelul nu e calibrat. Intervalul arătat la fiecare parcare
-          spune cât s-ar schimba șansa dacă ocuparea tipică ar fi greșită cu ±{Math.round(p.curveError * 100)}{' '}
-          puncte.
-        </li>
-      </ol>
       <div className="pdata-curves">
         <div className="pdata-curves-head">
           <h3>Curbele de ocupare tipică</h3>
@@ -437,21 +400,6 @@ function ModelSection({ model }: { model: AvailabilityModelResponse | null }) {
           </label>
         </div>
         <CurveChart profile={profile} />
-      </div>
-      <div className="pdata-accuracy">
-        <h3>Cât de corect este?</h3>
-        <p>
-          <strong>Precizia nu a fost măsurată.</strong> Pentru Timișoara nu există date publice de ocupare, așa
-          că nu avem cu ce compara. Nu afișăm un procent de acuratețe inventat.
-        </p>
-        <ul className="data-trust-list">
-          <li>Ce este verificat automat: formula exactă, monotonia (mai aglomerat ⇒ șanse mai mici, mai mare ⇒ șanse mai mari), sărbătorile, interpolarea.</li>
-          <li>Ce lipsește: observații reale (parcare, oră, „am găsit loc / nu”).</li>
-          <li>
-            Cum îl vom măsura: cu ≥ 20–30 de observații pe zonă și oră, calculăm scorul Brier față de două
-            repere simple (50% și „aceeași oră săptămâna trecută”) și înlocuim curba doar dacă modelul le bate.
-          </li>
-        </ul>
       </div>
     </section>
   );

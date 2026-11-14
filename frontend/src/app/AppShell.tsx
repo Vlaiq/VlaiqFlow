@@ -158,10 +158,7 @@ export function AppShell({
         }}
       >
         <div className="flow-menu-heading">
-          <div>
-            <span className="flow-eyebrow">TOTUL ÎN ACELAȘI LOC</span>
-            <h2>Drumul tău, în FLOW.</h2>
-          </div>
+          <h2>Meniu</h2>
           <button
             className="flow-icon-button"
             aria-label="Închide meniul"

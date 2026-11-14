@@ -297,23 +297,15 @@ export function MotionScreen({
           </header>
         )}
         {!showActivity && !showCompletion && (
-          <div className="motion-intro">
-            <div>
-              <p>UN ORAȘ MAI VERDE ÎNCEPE CU TINE</p>
-              <h1>
-                {tab === 'wallet'
-                  ? 'Pași mici. Valoare adunată.'
-                  : tab === 'missions'
-                    ? 'Un motiv în plus să pornești.'
-                    : tab === 'league'
-                      ? 'Împreună, în mișcare.'
-                      : 'Fiecare pas contează.'}
-              </h1>
-            </div>
-            <a href="/" className="motion-explore">
-              <Map size={17} /> Explorează orașul <ArrowRight size={16} />
-            </a>
-          </div>
+          <h1 className="sr-only">
+            {tab === 'wallet'
+              ? 'Portofel FLOW'
+              : tab === 'missions'
+                ? 'Provocările tale'
+                : tab === 'league'
+                  ? brand.league
+                  : 'FLOW Motion'}
+          </h1>
         )}
         {embedded && (recording || completed) && tab !== 'home' && (
           <div className="motion-session-return" role="status">
@@ -519,14 +511,11 @@ export function MotionScreen({
                   </div>
                   <div className="motion-hero-content">
                     <div>
-                      <span className="motion-eyebrow">MAI PUȚIN TRAFIC. MAI MULTĂ VIAȚĂ.</span>
                       <h2>
                         Ieși la o<br />
                         <em>gură de verde.</em>
                       </h2>
                       <p>
-                        Un drum scurt, făcut în ritmul tău.
-                        <br />
                         Începe cu 150 m de mers pe jos.
                       </p>
                       <div className="mission-reward">
@@ -545,7 +534,7 @@ export function MotionScreen({
                       {todayComplete ? <Check size={14} /> : <Leaf size={14} />}{' '}
                       {todayComplete
                         ? 'Ai încheiat o activitate eligibilă astăzi.'
-                        : 'Fără serii obligatorii. În ritmul tău.'}
+                        : 'Fără serii obligatorii.'}
                     </span>
                     <button onClick={() => setTab('missions')} aria-label="Vezi regulile misiunii">
                       <ArrowRight size={17} />
@@ -553,10 +542,6 @@ export function MotionScreen({
                   </div>
                 </section>
                 <section className="motion-start-card motion-panel">
-                  <div className="motion-section-label">
-                    <span>O ALEGERE BUNĂ PENTRU AZI</span>
-                    <span>01</span>
-                  </div>
                   <h2>Cum te miști?</h2>
                   <div className="activity-mode-options">
                     {(['walk', 'run', 'cycle'] as MotionMode[]).map((mode) => {
@@ -632,19 +617,13 @@ export function MotionScreen({
                 <section className="motion-league-teaser motion-panel">
                   <div>
                     <span className="motion-eyebrow">{brand.league}</span>
-                    <h2>Un oraș. Același sens.</h2>
-                    <p>
-                      Progresul începe cu tine.
-                      <br />
-                      Competiția începe cu acordul tău.
-                    </p>
+                    <h2>Participi doar dacă vrei.</h2>
                     <button className="motion-text-button" onClick={() => setTab('league')}>
                       Descoperă comunitatea <ArrowRight size={15} />
                     </button>
                   </div>
                   <div className="league-emblem">
                     <Trophy size={43} />
-                    <span>ÎMPREUNĂ</span>
                   </div>
                 </section>
               </div>
@@ -657,7 +636,6 @@ export function MotionScreen({
                     <span>FLOW</span>
                   </div>
                   <FlowCoin size={235} animated interactive />
-                  <span className="motion-eyebrow">MIȘCARE TRANSFORMATĂ ÎN PROGRES</span>
                   <h2>
                     {loading ? '—' : (wallet?.balance ?? 0)}
                     <span>{brand.currency}</span>
@@ -692,10 +670,9 @@ export function MotionScreen({
                 </section>
                 <section className="wallet-history motion-panel">
                   <div className="motion-section-label">
-                    <span>ISTORICUL MIȘCĂRII</span>
                     <span>{wallet?.transactions.length ?? 0} ACTIVITĂȚI</span>
                   </div>
-                  <h2>Fiecare coin are un drum.</h2>
+                  <h2>Istoricul mișcării</h2>
                   {!wallet?.transactions.length ? (
                     <div className="motion-empty">
                       <Footprints size={30} />
@@ -891,9 +868,6 @@ export function MotionScreen({
         )}
         {!showActivity && !showCompletion && (
           <footer className="motion-footer">
-            <span>
-              <Leaf size={13} /> Mai multă mișcare. Mai mult loc pentru oraș.
-            </span>
             <span>GPS evaluat, nu atestat hardware.</span>
           </footer>
         )}

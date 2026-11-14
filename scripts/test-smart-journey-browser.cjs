@@ -43,7 +43,7 @@ fs.mkdirSync(output, { recursive: true });
     await page.screenshot({ path: `${output}/01-empty-real-data-mobile.png` });
     await page.getByRole('combobox').fill('Victoriei');
     await page.getByRole('option').first().click();
-    await page.getByRole('heading', { name: 'Un drum. Mai multe posibilități.' }).waitFor();
+    await page.getByRole('heading', { name: 'Compară drumul complet' }).waitFor();
     // Parking first: the SmartMatch list comes before Smart Journey and needs no origin.
     await page.getByRole('heading', { name: 'Unde parchezi', exact: true }).waitFor();
     assert(

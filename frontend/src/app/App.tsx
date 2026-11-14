@@ -2,14 +2,11 @@ import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } fro
 import {
   ArrowLeft,
   ArrowRight,
-  Bike,
   ChevronDown,
   Layers,
   Leaf,
   LocateFixed,
   MapPin,
-  Navigation2,
-  ParkingSquare,
   Play,
   ShieldCheck,
   X,
@@ -501,43 +498,6 @@ function Explore({
                   bicicleta.
                 </p>
                 <FavouriteShortcuts places={knownPlaces} verb="Mergi la" onPick={selectDestination} />
-                <div className="explore-steps">
-                  <div>
-                    <span className="explore-step-icon">
-                      <MapPin size={18} />
-                    </span>
-                    <span>
-                      <strong>Alege unde vrei să ajungi</strong>
-                      <p>Străzi și locuri din surse verificate.</p>
-                    </span>
-                  </div>
-                  <div>
-                    <span className="explore-step-icon">
-                      <ParkingSquare size={18} />
-                    </span>
-                    <span>
-                      <strong>Compară drumul complet</strong>
-                      <p>Parcare, cost și mers pe jos, într-un singur loc.</p>
-                    </span>
-                  </div>
-                  <div>
-                    <span className="explore-step-icon">
-                      <Leaf size={18} />
-                    </span>
-                    <span>
-                      <strong>Alege o variantă mai verde</strong>
-                      <p>Rute reale când sunt disponibile, cu limite explicite.</p>
-                    </span>
-                  </div>
-                </div>
-                <button
-                  className="explore-primary"
-                  onClick={() => {
-                    document.querySelector<HTMLInputElement>('.explore-search input')?.focus();
-                  }}
-                >
-                  <MapPin size={16} /> Unde vrei să ajungi? <ArrowRight size={17} />
-                </button>
                 {demoOrigin && demoDestination && (
                   <button className="explore-demo" onClick={startDemo}>
                     <Play size={15} aria-hidden="true" />

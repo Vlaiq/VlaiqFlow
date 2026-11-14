@@ -96,12 +96,11 @@ export function BestTime({ option: o, arriveAt, schedule, onPick }: Props) {
         </div>
       )}
       <small>
-        Model pe reguli, necalibrat: nu există senzori de ocupare în Timișoara.
         {tariff
-          ? ' „Plătit/gratuit” vine din programul Timpark publicat de Primărie.'
+          ? '„Plătit/gratuit” vine din programul Timpark publicat de Primărie.'
           : o.price.total === 0
-            ? ' Parcarea nu e Timpark și e marcată gratuită (neverificat), deci nu are program plătit.'
-            : ' Parcarea nu e Timpark: prețul și programul ei nu le cunoaștem.'}
+            ? 'Parcarea nu e Timpark și e marcată gratuită (neverificat), deci nu are program plătit.'
+            : 'Parcarea nu e Timpark: prețul și programul ei nu le cunoaștem.'}
       </small>
     </section>
   );
