@@ -1,0 +1,27 @@
+{
+  "type": "FeatureCollection",
+  "metadata": {
+    "snapshotVersion": "bega-osm-v1",
+    "extractedAt": "2026-11-14T16:24:16.963Z",
+    "osmBaseTimestamp": null,
+    "source": "https://overpass-api.de/api/interpreter",
+    "license": "ODbL-1.0",
+    "attribution": "© OpenStreetMap contributors",
+    "bbox": [
+      21.175,
+      45.735,
+      21.255,
+      45.765
+    ],
+    "limitations": [
+      "BLOCKED: real corridor extraction failed on 2026-11-14; environment proxy denied Overpass and OSM main API requests with HTTP/CONNECT 403.",
+      "No production infrastructure is verified in this empty snapshot. Features must remain empty until legitimate source extraction succeeds.",
+      "extractedAt records the failed research attempt; osmBaseTimestamp is unknown, not an acquired OSM snapshot date.",
+      "OpenStreetMap is contributor mapping, not municipal verification; no safety, pollution, lighting or universal-accessibility claim is supported.",
+      "Intended coverage is Iosefin through central Bega to Regina Maria. Geographic coverage and connectivity remain unverified."
+    ],
+    "status": "blocked",
+    "querySha256": "10872d762f1276f6b9002d95f0c967ac4bedfdba5f2ea3de0a8a3871845b7213"
+  },
+  "features": []
+}
