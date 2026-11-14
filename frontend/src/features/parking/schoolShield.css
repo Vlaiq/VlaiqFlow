@@ -64,7 +64,16 @@
 }
 .school-shield .school-shield-note { margin: 0.875rem 0; padding-inline-start: 0.75rem; border-inline-start: 2px solid var(--app-accent-border); }
 .school-shield details { border-top: 1px solid rgb(var(--border)); padding-block: 0.25rem; }
-.school-shield summary { min-height: 44px; padding-block: 0.625rem; cursor: pointer; font-weight: 600; }
+.school-shield .school-shield-sources > summary,
+.school-shield .school-shield-proposal > summary {
+  display: list-item;
+  min-height: 44px;
+  padding-block: 0.625rem;
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: rgb(var(--text));
+  cursor: pointer;
+}
 .school-shield details p { margin: 0.5rem 0; }
 .school-shield ul { margin: 0.5rem 0; padding-inline-start: 1.25rem; }
 .school-shield li { margin-block: 0.5rem; }
