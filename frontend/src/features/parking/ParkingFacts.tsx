@@ -7,10 +7,13 @@ import './parking.css';
 export function FreeChance({
   value,
   quality,
+  range,
   compact = false,
 }: {
   value: number;
   quality: DataQuality;
+  /** Sensitivity band [pessimistic, optimistic] from the model, when it gave one. */
+  range?: [number, number];
   compact?: boolean;
 }) {
   const level = chanceLevel(value);
@@ -37,7 +40,11 @@ export function FreeChance({
       </div>
       {!compact && (
         <p className="free-chance-note">
-          Model după zonă, zi și oră, nu senzori. Ocuparea live este necunoscută.
+          {range && range[0] !== range[1]
+            ? `Interval plauzibil ${pct(range[0])}–${pct(range[1])}. `
+            : ''}
+          Model după zonă, zi, ora sosirii și capacitate, nu senzori. Ocuparea live este
+          necunoscută. <a href="/date-parcari#sanse">Cum calculăm</a>
         </p>
       )}
     </div>

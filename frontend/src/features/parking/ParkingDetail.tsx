@@ -319,7 +319,7 @@ export function ParkingDetail({
       </header>
 
       {/* Key facts */}
-      <FreeChance value={o.pFree.value} quality={o.pFree.quality} />
+      <FreeChance value={o.pFree.value} quality={o.pFree.quality} range={o.pFree.range} />
       <dl className="parking-detail-facts mt-2 grid grid-cols-2 gap-2 text-xs">
         <div className="rounded-xl bg-surface-2 p-2">
           <dt className="text-muted">Pe jos până la {destinationName}</dt>

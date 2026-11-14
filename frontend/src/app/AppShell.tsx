@@ -9,6 +9,7 @@ import {
   Map,
   Menu,
   Navigation2,
+  ParkingSquare,
   ShieldCheck,
   Sparkles,
   Trophy,
@@ -56,6 +57,8 @@ export function AppShell({
     '/wallet': 'Portofel FLOW',
     '/city': 'Pentru Primărie',
     '/data': 'FLOW Data Trust',
+    '/date-parcari': 'Datele de parcare',
+    '/parking-data': 'Datele de parcare',
     '/help': 'Bine ai venit în FLOW',
     '/confidentialitate': 'Confidențialitate',
     '/privacy': 'Confidențialitate',
@@ -183,6 +186,13 @@ export function AppShell({
             <ShieldCheck />
             <span>
               De unde provin datele?<small>Surse, actualizări și limite</small>
+            </span>
+            <ArrowRight size={17} />
+          </a>
+          <a href="/date-parcari">
+            <ParkingSquare />
+            <span>
+              Datele de parcare<small>Fiecare valoare, sursa și cât de sigură e</small>
             </span>
             <ArrowRight size={17} />
           </a>

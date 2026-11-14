@@ -50,6 +50,8 @@ export const RecommendationOption = z.object({
     source: z.string(),
     profile: AreaProfile,
     expectedOccupancy: z.number().min(0).max(1),
+    /** Sensitivity band [pessimistic, optimistic] if the typical occupancy is off by ±10 points. */
+    range: z.tuple([z.number().min(0).max(1), z.number().min(0).max(1)]).optional(),
     factors: z.array(z.string()),
   }),
   price: z.object({
@@ -77,3 +79,34 @@ export const RecommendationResponse = z.object({
   model: z.object({ name: z.string(), quality: DataQuality, note: z.string() }),
 });
 export type RecommendationResponse = z.infer<typeof RecommendationResponse>;
+
+const DayCurve = z.array(z.number().min(0).max(1)).length(24);
+
+/** The availability rule model exactly as the backend runs it, published for the "Date parcări" page. */
+export const AvailabilityModelResponse = z.object({
+  name: z.string(),
+  version: z.string(),
+  quality: z.literal('estimated'),
+  calibrated: z.boolean(),
+  params: z.object({
+    kappaKnown: z.number(),
+    kappaUnknown: z.number(),
+    defaultCapacity: z.number(),
+    findableShare: z.number(),
+    pMin: z.number(),
+    pMax: z.number(),
+    curveError: z.number(),
+    m2PerLotSpace: z.number(),
+    mPerKerbSpace: z.number(),
+    maxKerbCountedM: z.number(),
+  }),
+  profiles: z.array(
+    z.object({
+      id: AreaProfile,
+      label: z.string(),
+      rule: z.string(),
+      curves: z.object({ weekday: DayCurve, saturday: DayCurve, sunday: DayCurve }),
+    }),
+  ),
+});
+export type AvailabilityModelResponse = z.infer<typeof AvailabilityModelResponse>;

@@ -1,9 +1,15 @@
 import { Router } from 'express';
 import { RecommendationRequest } from '@vlaiq/shared';
 import { recommendParkings } from '../services/parkingRecommendations';
+import { availabilityModel } from '../engines/smartmatch';
 export const recommendationsRouter = Router();
 const inArea = ([lng, lat]: [number, number]) =>
   lng >= 21 && lng <= 21.5 && lat >= 45.6 && lat <= 45.9;
+// The availability rule model and its parameters, for the public 'Date parcări' page.
+recommendationsRouter.get('/model', (_req, res) => {
+  res.set('Cache-Control', 'no-cache');
+  res.json(availabilityModel());
+});
 recommendationsRouter.post('/', async (req, res) => {
   const input = RecommendationRequest.safeParse(req.body);
   if (!input.success)

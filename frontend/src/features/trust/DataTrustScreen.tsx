@@ -72,6 +72,9 @@ export function DataTrustCard({ data }: { data: CityData }) {
         <a href="/data" className="flowdata-link">
           Toate sursele și limitările <ArrowUpRight size={16} />
         </a>
+        <a href="/date-parcari" className="flowdata-link">
+          Datele de parcare, una câte una <ArrowUpRight size={16} />
+        </a>
       </div>
     </details>
   );

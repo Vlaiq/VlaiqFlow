@@ -1,4 +1,4 @@
-import { DestinationsResponse, HealthResponse, ParkingsResponse, TimparkSnapshot, RoutesResponse, RecommendationResponse, type Coordinate, type RecommendationRequest } from '@vlaiq/shared';
+import { DestinationsResponse, HealthResponse, ParkingsResponse, TimparkSnapshot, RoutesResponse, RecommendationResponse, AvailabilityModelResponse, ParkingRegisterResponse, type Coordinate, type RecommendationRequest } from '@vlaiq/shared';
 import type { z } from 'zod';
 
 // In dev the base is empty and Vite proxies /api to the backend.
@@ -45,4 +45,6 @@ export const api = {
   parkings: () => get('/api/parkings', ParkingsResponse),
   timpark: () => get('/api/city/parking-zones', TimparkSnapshot),
   destinations: () => get('/api/destinations', DestinationsResponse),
+  parkingRegister: () => get('/api/parkings/register', ParkingRegisterResponse),
+  availabilityModel: () => get('/api/recommendations/model', AvailabilityModelResponse),
 };

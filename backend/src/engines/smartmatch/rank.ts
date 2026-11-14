@@ -5,7 +5,7 @@ import { MAX_OPTIONS, MODE_PARAMS } from './weights';
 
 export type WalkTime = RecommendationOption['walk'];
 
-export const MODEL_SOURCE = 'Model VLAIQ pe reguli (tip de zonă × oră × zi × capacitate), necalibrat';
+export const MODEL_SOURCE = 'Model VLAIQ v2 pe reguli (tip de zonă × oră de sosire × zi × capacitate, beta-binomial), necalibrat';
 
 export interface RankInput {
   candidates: Candidate[];

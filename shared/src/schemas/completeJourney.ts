@@ -78,6 +78,7 @@ export const ParkingMatch = z.object({
     quality: z.enum(['estimated', 'simulated']),
     source: z.string().min(1),
     factors: z.array(z.string()),
+    range: z.tuple([z.number().min(0).max(1), z.number().min(0).max(1)]).optional(),
   }),
   /** Ranking cost in minute-equivalents; lower is better. `drive` is null when no driving time is known. */
   score: z.object({

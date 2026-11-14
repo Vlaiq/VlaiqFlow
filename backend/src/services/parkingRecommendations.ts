@@ -9,7 +9,9 @@ import {
   MAX_MATRIX_CANDIDATES,
   MODE_PARAMS,
   MODEL_SOURCE,
+  pFree,
   rank,
+  type Candidate,
 } from '../engines/smartmatch';
 import { cityData } from './cityData';
 import { parkingStore } from './parkingStore';
@@ -53,7 +55,20 @@ export async function recommendParkings(
         tariffs.progressive[0]?.eur ?? 0,
       ) * Math.ceil(stayMinutes / 60)
     : 0;
-  const ranked = rank({ candidates, walks, at, mode, maxWalkMinutes, unknownPriceFloor });
+  // Without an explicit arrival time the driver arrives after the drive, not now: when the router gave a
+  // real driving time to a parking, its chance is computed for now + that time (spec §7.3).
+  const driveMinutesOf = new Map(candidates.map((c, i) => [c.id, drives[i]?.minutes ?? null]));
+  const pFreeOf = input.arriveAt
+    ? undefined
+    : (c: Candidate, now: Date) => {
+        const minutes = driveMinutesOf.get(c.id);
+        if (minutes == null) return pFree(c.profile, now, c.capacity.value);
+        const arrival = new Date(now.getTime() + minutes * 60_000);
+        return pFree(c.profile, arrival, c.capacity.value, {
+          arrivalNote: `acum + ${Math.round(minutes)} min de condus`,
+        });
+      };
+  const ranked = rank({ candidates, walks, at, mode, maxWalkMinutes, unknownPriceFloor, pFreeOf });
   const considered = ranked.considered;
   const byId = new Map(candidates.map((candidate, i) => [candidate.id, drives[i]]));
   const options = ranked.options.map((option) => ({

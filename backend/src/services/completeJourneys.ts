@@ -174,6 +174,7 @@ function parkingInfo(
         quality: p.pFree.quality === 'simulated' ? 'simulated' : 'estimated',
         source: p.pFree.source,
         factors: p.pFree.factors,
+        ...(p.pFree.range ? { range: p.pFree.range } : {}),
       },
       score: {
         total: c.score,
