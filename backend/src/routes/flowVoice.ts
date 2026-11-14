@@ -29,7 +29,12 @@ export function createFlowVoiceRouter(
     if (!origin || !deps.origins.includes(origin) || req.get('x-flow-voice') !== '1')
       return res
         .status(403)
-        .json({ error: { code: 'FORBIDDEN', message: 'Pornește vocea din aplicația FLOW.' } });
+        .json({
+          error: {
+            code: 'FORBIDDEN',
+            message: 'Deschide FLOW de la adresa configurată pe server ca să pornești vocea.',
+          },
+        });
     next();
   });
   router.use(
@@ -60,16 +65,21 @@ export function createFlowVoiceRouter(
           .status(400)
           .json({ error: { code: 'INVALID_INPUT', message: 'Cerere vocală invalidă.' } });
       const key = deps.key();
-      if (!key || pending >= 4)
-        return res
-          .status(503)
-          .json({
-            error: {
-              code: 'SERVICE_UNAVAILABLE',
-              message:
-                'FLOW Voice nu este disponibil acum. Planificarea manuală funcționează în continuare.',
-            },
-          });
+      if (!key)
+        return res.status(503).json({
+          error: {
+            code: 'NOT_CONFIGURED',
+            message:
+              'FLOW Voice nu este configurat pe server (lipsește cheia ElevenLabs). Planificarea manuală funcționează în continuare.',
+          },
+        });
+      if (pending >= 4)
+        return res.status(503).json({
+          error: {
+            code: 'BUSY',
+            message: 'FLOW Voice este ocupat acum. Reîncearcă în câteva secunde.',
+          },
+        });
       pending++;
       const ctrl = new AbortController();
       const abort = () => {
@@ -86,7 +96,23 @@ export function createFlowVoiceRouter(
           headers: { 'xi-api-key': key },
           signal: ctrl.signal,
         });
-        if (!upstream.ok) throw new Error('provider');
+        if (!upstream.ok) {
+          // Status only: the key and the provider body never reach logs or clients.
+          console.warn(`[voice] ElevenLabs refused the conversation token: HTTP ${upstream.status}`);
+          const rejected = [401, 403, 404].includes(upstream.status);
+          return res.status(503).json({
+            error: rejected
+              ? {
+                  code: 'PROVIDER_REJECTED',
+                  message:
+                    'ElevenLabs a refuzat conexiunea: cheia de pe server nu are acces la agentul FLOW.',
+                }
+              : {
+                  code: 'SERVICE_UNAVAILABLE',
+                  message: 'ElevenLabs nu răspunde acum. Reîncearcă.',
+                },
+          });
+        }
         const data = Token.parse(await upstream.json());
         if (!ctrl.signal.aborted)
           res.json({ conversationToken: data.token, agentVersion: FLOW_AGENT.version });

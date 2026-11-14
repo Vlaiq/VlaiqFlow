@@ -26,6 +26,12 @@ interface ToolSession {
   end(): void;
 }
 type State = 'idle' | 'connecting' | 'listening' | 'speaking' | 'disconnecting' | 'error';
+/** The session endpoint refused; `reason` is the server's user-facing message, if it sent one. */
+class VoiceUnavailable extends Error {
+  constructor(readonly reason: string | null) {
+    super('SERVICE_UNAVAILABLE');
+  }
+}
 interface VoiceContextValue {
   state: State;
   error: string | null;
@@ -124,9 +130,11 @@ function VoiceRuntime({ children }: { children: ReactNode }) {
       }),
     [stop],
   );
+  // Leaving the page ends the session; a query change on the same page (the arrival walk link,
+  // clearing it when a new destination is picked) must not cut the user off mid-sentence.
   useEffect(() => {
     stop();
-  }, [location.pathname, location.search, stop]);
+  }, [location.pathname, stop]);
   useEffect(() => {
     mounted.current = true;
     return () => {
@@ -173,7 +181,14 @@ function VoiceRuntime({ children }: { children: ReactNode }) {
         body: '{}',
         signal: AbortSignal.any([controller.signal, AbortSignal.timeout(8000)]),
       });
-      if (!response.ok) throw new Error('SERVICE_UNAVAILABLE');
+      if (!response.ok) {
+        // Show the server's own reason (missing key, wrong address, provider refused, busy).
+        const reason = await response
+          .json()
+          .then((body) => z.object({ error: z.object({ message: z.string().max(200) }) }).parse(body))
+          .catch(() => null);
+        throw new VoiceUnavailable(reason?.error.message ?? null);
+      }
       const token = z
         .object({
           conversationToken: z.string().min(1),
@@ -220,10 +235,15 @@ function VoiceRuntime({ children }: { children: ReactNode }) {
       const denied =
         e instanceof DOMException &&
         (e.name === 'NotAllowedError' || e.name === 'PermissionDeniedError');
+      const missingMic = e instanceof DOMException && e.name === 'NotFoundError';
       fail(
         denied
           ? 'Accesul la microfon a fost refuzat. Permite microfonul din setările site-ului, apoi reîncearcă.'
-          : 'FLOW Voice nu este disponibil acum. Poți continua manual și reîncerca.',
+          : missingMic
+            ? 'Nu am găsit niciun microfon. Conectează unul, apoi reîncearcă.'
+            : e instanceof VoiceUnavailable && e.reason
+              ? e.reason
+              : 'FLOW Voice nu este disponibil acum. Poți continua manual și reîncerca.',
       );
     }
   }, [controls.startSession, stop]);

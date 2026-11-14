@@ -39,7 +39,18 @@ describe('private FLOW Voice provider proxy', () => {
     const response = await post('session', {});
     expect(response.status).toBe(503);
     expect(response.headers.get('cache-control')).toBe('no-store');
+    expect((await response.json()).error.code).toBe('NOT_CONFIGURED');
     expect(upstream).not.toHaveBeenCalled();
+  });
+  it('says when ElevenLabs refuses the server key, without exposing the provider body', async () => {
+    key = 'synthetic-secret-for-test';
+    upstream.mockResolvedValueOnce(new Response('{"detail":"invalid_api_key secret"}', { status: 401 }));
+    const response = await post('session', {});
+    expect(response.status).toBe(503);
+    const text = await response.text();
+    expect(JSON.parse(text).error.code).toBe('PROVIDER_REJECTED');
+    expect(text).not.toContain('invalid_api_key');
+    key = undefined;
   });
   it('pins the immutable tested version server-side and returns no credentials', async () => {
     key = 'synthetic-secret-for-test';
