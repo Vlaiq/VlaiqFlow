@@ -65,6 +65,7 @@ interface Props {
   onPickOrigin?: (coordinate: Coordinate) => void;
   origin?: Coordinate | null;
   journey?: JourneyMapSelection | null;
+  onJourneyRendered?: (comparisonId: string, journeyId: string, rendered: boolean) => void;
 }
 
 const FLY_ZOOM: Record<Destination['precision'], number> = {
@@ -154,6 +155,7 @@ export function MapView({
   onPickOrigin,
   origin = null,
   journey = null,
+  onJourneyRendered,
 }: Props) {
   const [mapError, setMapError] = useState<string | null>(null);
   const [attempt, setAttempt] = useState(0);
@@ -632,6 +634,30 @@ export function MapView({
     const map = mapRef.current;
     if (!map?.getStyle()?.sources?.[PARKINGS_SOURCE]) return;
     const data = journeyFeatures(journey?.value ?? null, journey?.legId ?? null);
+    const comparisonId = journey?.comparisonId;
+    const journeyId = journey?.value.id;
+    for (const feature of data.features)
+      feature.properties = { ...feature.properties, comparisonId, journeyId };
+    if (comparisonId && journeyId) onJourneyRendered?.(comparisonId, journeyId, false);
+    const acknowledge = () => {
+      if (
+        !comparisonId ||
+        !journeyId ||
+        !map.getSource(JOURNEY_SOURCE) ||
+        !map.isSourceLoaded(JOURNEY_SOURCE)
+      )
+        return;
+      const features = map.querySourceFeatures(JOURNEY_SOURCE);
+      const present = features.some(
+        (f) => f.properties?.comparisonId === comparisonId && f.properties?.journeyId === journeyId,
+      );
+      const layers = journey?.value.legs
+        .filter((l) => l.type !== 'parking')
+        .every((l) => !!map.getLayer(`flow-journey-${l.type}`));
+      if (present && layers) onJourneyRendered?.(comparisonId, journeyId, true);
+    };
+    map.on('idle', acknowledge);
+    map.on('sourcedata', acknowledge);
     const existing = map.getSource(JOURNEY_SOURCE) as GeoJSONSource | undefined;
     if (existing) existing.setData(data);
     else {
@@ -718,8 +744,11 @@ export function MapView({
       observer.disconnect();
       window.removeEventListener('resize', fit);
       marker?.remove();
+      map.off('idle', acknowledge);
+      map.off('sourcedata', acknowledge);
+      if (comparisonId && journeyId) onJourneyRendered?.(comparisonId, journeyId, false);
     };
-  }, [journey, attempt, styleRevision]);
+  }, [journey, attempt, styleRevision, onJourneyRendered]);
 
   return (
     <div className={`absolute inset-0 ${pickingOrigin ? 'picking-origin' : ''}`}>

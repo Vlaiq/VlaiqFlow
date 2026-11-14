@@ -174,7 +174,7 @@ export const CompleteJourneyRequest = z
     destination: Coordinate,
     arriveAt: z.string().datetime({ offset: true }).optional(),
     stayMinutes: z.number().int().min(15).max(600).default(120),
-    maxWalkMinutes: z.number().int().min(2).max(20).default(12),
+    maxWalkMinutes: z.number().int().min(0).max(180).default(12),
     parkingPreference: z.enum(['balanced', 'cheap', 'less_walk']).default('balanced'),
     preference: JourneyPreference.default('balanced'),
     modes: z

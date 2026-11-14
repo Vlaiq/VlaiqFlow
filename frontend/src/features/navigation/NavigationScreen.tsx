@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import {
   ArrowDown,
   ArrowLeft,
@@ -29,6 +29,7 @@ import {
 import type { NavigationRoute } from '@vlaiq/shared';
 import { brand } from '@vlaiq/shared';
 import { useNavigation } from './useNavigation';
+import { VoiceCard } from '../voice/FlowVoice';
 import { loadNavPlaces, type NavPlaces } from './places';
 import { handoffFromUrl } from './scenario';
 import { formatDistance, instruction } from './geometry';
@@ -106,6 +107,21 @@ function NavigationView({ places }: { places: NavPlaces }) {
   const [expanded, setExpanded] = useState(false);
   const [recenter, setRecenter] = useState(0);
   const active = nav.mode === 'live' || nav.mode === 'demo';
+  const screenRef = useRef<HTMLElement>(null);
+  const tripRef = useRef<HTMLElement>(null);
+  useEffect(() => {
+    const panel = tripRef.current;
+    if (!panel) return;
+    const resize = () =>
+      screenRef.current?.style.setProperty(
+        '--nav-trip-height',
+        `${panel.getBoundingClientRect().height}px`,
+      );
+    const observer = new ResizeObserver(resize);
+    observer.observe(panel);
+    resize();
+    return () => observer.disconnect();
+  }, [active]);
   const demo = nav.mode === 'demo';
   const handoff = useMemo(() => handoffFromUrl(window.location.search), []);
   const backup = handoff.backup;
@@ -131,14 +147,9 @@ function NavigationView({ places }: { places: NavPlaces }) {
     if (!backup) return;
     setFullName(nav.destination.name);
     setOffer(OFFER_SECONDS);
-    if (!nav.muted && 'speechSynthesis' in window) {
-      const text = new SpeechSynthesisUtterance(
-        `Simulare: ${nav.destination.name} s-a umplut. ${backup.place.name} are șanse estimate de ${percent(backup.chance)}. Schimbi?`,
-      );
-      text.lang = 'ro-RO';
-      window.speechSynthesis.cancel();
-      window.speechSynthesis.speak(text);
-    }
+    nav.announceStatus(
+      `Simulare: ${nav.destination.name} s-a umplut. ${backup.place.name} are șanse estimate de ${percent(backup.chance)}. Schimbi?`,
+    );
   };
   const acceptSwitch = () => {
     if (!backup) return;
@@ -163,7 +174,10 @@ function NavigationView({ places }: { places: NavPlaces }) {
         : null;
 
   return (
-    <main className={`navigation-screen ${active ? 'is-navigating' : 'is-preview'}`}>
+    <main
+      ref={screenRef}
+      className={`navigation-screen ${active ? 'is-navigating' : 'is-preview'}`}
+    >
       <NavigationMap
         theme={theme}
         route={nav.route}
@@ -221,6 +235,7 @@ function NavigationView({ places }: { places: NavPlaces }) {
             <span>Mai simplu.</span>
           </h1>
           <p className="preview-description">Alege destinația. Noi îți arătăm drumul.</p>
+          <VoiceCard compact />
           <div className="journey-inputs">
             <div className="journey-line">
               <span className="origin-dot" />
@@ -375,9 +390,7 @@ function NavigationView({ places }: { places: NavPlaces }) {
               <span>SIMULARE PE TRASEU REAL</span>
               <button
                 className="icon-button demo-speed-toggle"
-                onClick={() =>
-                  nav.setPlayback(nav.playback === 1 ? 2 : nav.playback === 2 ? 4 : 1)
-                }
+                onClick={() => nav.setPlayback(nav.playback === 1 ? 2 : nav.playback === 2 ? 4 : 1)}
                 aria-label={`Viteza simulării: ${nav.playback}×. Apasă pentru a schimba`}
               >
                 {nav.playback}×
@@ -417,9 +430,10 @@ function NavigationView({ places }: { places: NavPlaces }) {
               <span className="full-offer-tag">SIMULARE</span>
               <h2>{fullName} s-a umplut.</h2>
               <p>
-                <strong>{backup.place.name}</strong>: ~{percent(backup.chance)} șanse estimate de loc
-                {handoff.current.chance != null && ` (față de ~${percent(handoff.current.chance)})`},{' '}
-                {walkLabel(backup.walkMinutes)} pe jos
+                <strong>{backup.place.name}</strong>: ~{percent(backup.chance)} șanse estimate de
+                loc
+                {handoff.current.chance != null && ` (față de ~${percent(handoff.current.chance)})`}
+                , {walkLabel(backup.walkMinutes)} pe jos
                 {handoff.final ? ` până la ${handoff.final.name}` : ''}
                 {handoff.current.walkMinutes != null &&
                   ` (acum ${walkLabel(handoff.current.walkMinutes)})`}
@@ -437,9 +451,7 @@ function NavigationView({ places }: { places: NavPlaces }) {
             <section className="walk-handoff panel" aria-label="Continuă pe jos">
               <strong>Ai parcat. Continuă pe jos până la {handoff.final.name}.</strong>
               <p>
-                {finalWalk != null
-                  ? `Aproximativ ${walkLabel(finalWalk)} pe jos (estimat). `
-                  : ''}
+                {finalWalk != null ? `Aproximativ ${walkLabel(finalWalk)} pe jos (estimat). ` : ''}
                 {nav.switched && backup
                   ? `În planificator, deschide „${backup.place.name}” ca să vezi ruta pe jos pe hartă.`
                   : 'În planificator vezi ruta pe jos de la parcare, desenată pe hartă.'}
@@ -450,9 +462,20 @@ function NavigationView({ places }: { places: NavPlaces }) {
             </section>
           )}
           <section
+            ref={tripRef}
             className={`trip-bar panel ${expanded ? 'expanded' : ''}`}
             aria-label="Detalii călătorie"
           >
+            <VoiceCard compact environment={demo ? 'demo' : 'live'} />
+            {!nav.muted && (
+              <button
+                className="nav-repeat"
+                onClick={nav.repeatInstruction}
+                aria-label="Repetă ultima indicație validă"
+              >
+                Repetă indicația
+              </button>
+            )}
             <button
               className="trip-expand"
               aria-expanded={expanded}

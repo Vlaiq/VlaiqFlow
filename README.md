@@ -56,7 +56,8 @@ Also in the app:
 | Chance of a free space | **Estimated**: a rule model by area type, day and hour; not a measurement | `backend/src/engines/smartmatch/occupancy.ts` |
 | DEMO origin, arrival time, "parking full" event and car movement | **Simulated**, labelled DEMO, per browser session | Never changes what other users see |
 | Live occupancy, live traffic, transit arrivals, measured CO₂ savings | **Not available** | No open source exists; shown as unknown |
-| AI assistant (Gemini), voice (ElevenLabs), analytics DB | **Not implemented** | Planned in `docs/spec.md` §6.11–6.14 |
+| FLOW Voice (ElevenLabs) | **Implemented; live voice verification pending** | Pinned agent/version, four real planner tools, map acknowledgement, deterministic navigation audio/fallback; [setup, tests and demo](docs/flow-voice.md) |
+| AI assistant (Gemini), analytics DB | **Not implemented** | Planned in `docs/spec.md` §6.11–6.14 |
 
 Every price, availability and duration in the API carries a `quality` (`confirmed | estimated | unknown | simulated`) and a `source`.
 

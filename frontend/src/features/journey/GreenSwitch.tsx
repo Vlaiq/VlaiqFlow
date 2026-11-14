@@ -15,7 +15,6 @@ import {
   SlidersHorizontal,
 } from 'lucide-react';
 import {
-  CompleteJourneyRequest,
   type CompleteJourney,
   type Coordinate,
   type Destination,
@@ -24,7 +23,7 @@ import {
   type ActiveJourneyContext,
   formatAmountRo,
 } from '@vlaiq/shared';
-import { useCompleteJourneys } from './useCompleteJourneys';
+import type { CompleteLoad } from './useCompleteJourneys';
 import { JourneyTimeline } from './JourneyTimeline';
 import {
   carNavigationHref,
@@ -41,8 +40,16 @@ export type { ActiveJourneyContext } from '@vlaiq/shared';
 export interface JourneyMapSelection {
   value: CompleteJourney;
   legId: string | null;
+  comparisonId?: string;
 }
 interface Props {
+  result: CompleteLoad;
+  preference: JourneyPreference;
+  onPreference: (value: JourneyPreference) => void;
+  selectedId: string | null;
+  onSelect: (id: string) => void;
+  onRetry: () => void;
+  comparisonId?: string;
   origin: Coordinate | null;
   destination: Destination;
   /** Same settings as the "Unde parchezi" list, so both show the same SmartMatch parkings. */
@@ -78,6 +85,13 @@ const preferences: { id: JourneyPreference; label: string; icon: typeof Leaf }[]
   { id: 'green', label: 'Mai ecologică', icon: Leaf },
 ];
 export function GreenSwitch({
+  result,
+  preference,
+  onPreference,
+  selectedId,
+  onSelect,
+  onRetry,
+  comparisonId,
   origin,
   destination,
   parkingSettings,
@@ -86,43 +100,23 @@ export function GreenSwitch({
   onInspectRoute,
   onOpenParking,
 }: Props) {
-  const [preference, setPreference] = useState<JourneyPreference>('balanced');
-  const [manualId, setManualId] = useState<string | null>(null);
   const [legId, setLegId] = useState<string | null>(null);
-  const [attempt, setAttempt] = useState(0);
   const [parkingOpen, setParkingOpen] = useState(false);
   const callback = useRef(onJourney);
   callback.current = onJourney;
-  const loc = destination.location;
   const arriveAt = arriveIso(parkingSettings);
-  const result = useCompleteJourneys(
-    origin && loc
-      ? CompleteJourneyRequest.parse({
-          origin,
-          destination: [loc.lng, loc.lat],
-          stayMinutes: parkingSettings.stayMinutes,
-          maxWalkMinutes: parkingSettings.maxWalkMinutes,
-          parkingPreference: parkingSettings.mode,
-          ...(arriveAt ? { arriveAt } : {}),
-        })
-      : null,
-    attempt,
-  );
   const value = result.state === 'ok' ? result.value : null;
-  const selected = value?.journeys.find(
-    (j) => j.id === (manualId ?? value.rankings[preference].recommendedId),
-  );
+  const selected = value?.journeys.find((j) => j.id === selectedId);
   useEffect(() => {
-    setManualId(null);
     setLegId(null);
     setParkingOpen(false);
   }, [value]);
   useEffect(() => {
-    callback.current(selected ? { value: selected, legId } : null);
-  }, [selected, legId]);
+    callback.current(selected ? { value: selected, legId, comparisonId } : null);
+  }, [selected, legId, comparisonId]);
   useEffect(() => () => callback.current(null), []);
   function select(j: CompleteJourney) {
-    setManualId(j.id);
+    onSelect(j.id);
     setLegId(null);
     setParkingOpen(false);
   }
@@ -167,8 +161,7 @@ export function GreenSwitch({
             key={p.id}
             aria-pressed={preference === p.id}
             onClick={() => {
-              setPreference(p.id);
-              setManualId(null);
+              onPreference(p.id);
               setLegId(null);
             }}
           >
@@ -180,10 +173,9 @@ export function GreenSwitch({
       <p className="journey-parking-settings">
         <SlidersHorizontal size={14} aria-hidden />
         <span>
-          Parcare: {stayLabel(parkingSettings.stayMinutes)} · maximum {parkingSettings.maxWalkMinutes}{' '}
-          min pe jos · {PARKING_MODE_LABEL[parkingSettings.mode]}
-          {arriveAt ? ` · sosire ${when(arriveAt)}` : ' · acum'}. Se
-          schimbă din „Unde parchezi”.
+          Parcare: {stayLabel(parkingSettings.stayMinutes)} · maximum{' '}
+          {parkingSettings.maxWalkMinutes} min pe jos · {PARKING_MODE_LABEL[parkingSettings.mode]}
+          {arriveAt ? ` · sosire ${when(arriveAt)}` : ' · acum'}. Se schimbă din „Unde parchezi”.
         </span>
       </p>
       {!origin && (
@@ -210,7 +202,7 @@ export function GreenSwitch({
           <CircleHelp size={19} />
           <div>
             <p>{result.message}</p>
-            <button onClick={() => setAttempt(attempt + 1)}>
+            <button onClick={onRetry}>
               <RotateCcw size={14} /> Încearcă din nou
             </button>
           </div>
@@ -376,7 +368,7 @@ export function GreenSwitch({
                     onClick={() => {
                       setLegId(null);
                       onInspectRoute?.();
-                      callback.current({ value: selected, legId: null });
+                      callback.current({ value: selected, legId: null, comparisonId });
                     }}
                   >
                     Vezi traseul
@@ -405,9 +397,8 @@ export function GreenSwitch({
                   </p>
                   <p>{selected.parking.fee.note}</p>
                   <small>
-                    {selected.parking.fee.source} · tarif pentru{' '}
-                    {when(selected.parking.tariffAt)}. Combustibilul nu
-                    este inclus.
+                    {selected.parking.fee.source} · tarif pentru {when(selected.parking.tariffAt)}.
+                    Combustibilul nu este inclus.
                   </small>
                   {selected.parking.warnings.map((w) => (
                     <p key={w}>{w}</p>
@@ -474,7 +465,7 @@ export function GreenSwitch({
               </p>
               <button
                 onClick={() => {
-                  setPreference('green');
+                  onPreference('green');
                   select(alternative);
                 }}
               >
@@ -495,7 +486,7 @@ export function GreenSwitch({
             </div>
           )}
           {!value.journeys.length && (
-            <button className="journey-retry" onClick={() => setAttempt(attempt + 1)}>
+            <button className="journey-retry" onClick={onRetry}>
               <RotateCcw size={14} /> Reîncearcă planificarea
             </button>
           )}

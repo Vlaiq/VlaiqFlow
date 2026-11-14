@@ -23,8 +23,14 @@ export async function fetchCompleteJourneys(
   if (!parsed.success) throw new Error('Nu putem verifica rutele primite. Reîncearcă.');
   return parsed.data;
 }
-export function useCompleteJourneys(input: CompleteJourneyRequest | null, attempt: number) {
+export type PublishedComparison = { input: CompleteJourneyRequest; value: CompleteJourneyResponse };
+export function useCompleteJourneys(
+  input: CompleteJourneyRequest | null,
+  attempt: number,
+  published?: PublishedComparison | null,
+) {
   const key = input ? JSON.stringify(input) : null;
+  const supplied = published && JSON.stringify(published.input) === key ? published.value : null;
   const [snapshot, setSnapshot] = useState<{
     key: string | null;
     attempt: number;
@@ -34,6 +40,10 @@ export function useCompleteJourneys(input: CompleteJourneyRequest | null, attemp
     const setResult = (result: CompleteLoad) => setSnapshot({ key, attempt, result });
     if (!key) {
       setResult({ state: 'idle' });
+      return;
+    }
+    if (supplied) {
+      setResult({ state: 'ok', value: supplied });
       return;
     }
     const ctrl = new AbortController();
@@ -64,7 +74,8 @@ export function useCompleteJourneys(input: CompleteJourneyRequest | null, attemp
       ctrl.abort();
       clearTimeout(timer);
     };
-  }, [key, attempt]);
+  }, [key, attempt, supplied]);
+  if (supplied) return { state: 'ok', value: supplied } as const;
   return snapshot.key === key && snapshot.attempt === attempt
     ? snapshot.result
     : ({ state: key ? 'loading' : 'idle' } as CompleteLoad);

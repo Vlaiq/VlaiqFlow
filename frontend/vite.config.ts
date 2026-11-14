@@ -8,10 +8,19 @@ export default defineConfig({
       output: {
         // Keep the large, stable map engine cached when the application UI changes.
         manualChunks(id) {
+          if (
+            id.includes('node_modules') &&
+            (id.includes('/@elevenlabs/') ||
+              id.includes('/livekit-client/') ||
+              id.includes('/@livekit/'))
+          )
+            return 'voice-engine';
           if (id.includes('node_modules') && id.includes('maplibre-gl')) return 'map-engine';
           if (
             id.includes('node_modules') &&
-            (id.includes('/react/') || id.includes('/react-dom/') || id.includes('/scheduler/'))
+            (id.includes('/node_modules/react/') ||
+              id.includes('/node_modules/react-dom/') ||
+              id.includes('/node_modules/scheduler/'))
           )
             return 'react-vendor';
           if (id.includes('node_modules') && id.includes('/zod/')) return 'contracts';

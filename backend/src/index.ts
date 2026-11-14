@@ -11,6 +11,7 @@ import { destinationsRouter } from './routes/destinations';
 import { recommendationsRouter } from './routes/recommendations';
 import { motionRouter } from './routes/motion';
 import { journeyRouter } from './routes/journeys';
+import { createFlowVoiceRouter } from './routes/flowVoice';
 import { existsSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 
@@ -49,6 +50,7 @@ app.use('/api/destinations', destinationsRouter);
 app.use('/api/recommendations', recommendationsRouter);
 app.use('/api/motion', motionRouter);
 app.use('/api/journeys', journeyRouter);
+app.use('/api/flow-voice', createFlowVoiceRouter());
 
 app.use('/api', (_req, res) => {
   const body: ApiError = { error: { code: 'NOT_FOUND', message: 'Unknown endpoint' } };

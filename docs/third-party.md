@@ -30,3 +30,8 @@ with original copyright/license files in `docs/data-sources/{inter,manrope}-OFL.
 System fallbacks remain available; no proprietary font or copied interface artwork is included.
 
 | Inter / Manrope variable fonts | Body / display typography and Romanian diacritics | SIL OFL 1.1 | Preserve original copyright and OFL, distributed at `/licenses/inter-OFL.txt` and `/licenses/manrope-OFL.txt`; no font modification or standalone sale |
+
+| Name | Used for | License / terms | Obligations |
+|---|---|---|---|
+| [ElevenLabs React/client SDK](https://github.com/elevenlabs/packages) | Authenticated FLOW Voice conversations and client tool transport | MIT (npm packages include license) | Preserve package notices; backend-only API key, user-initiated microphone, provider terms apply to the connected workspace |
+| [LiveKit client](https://github.com/livekit/client-sdk-js) | WebRTC transport used by the official ElevenLabs SDK | Apache-2.0 | Preserve package license/NOTICE; verify WebRTC connectivity on target devices |

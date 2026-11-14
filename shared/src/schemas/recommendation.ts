@@ -20,7 +20,7 @@ export const RecommendationRequest = z.object({
   arriveAt: z.string().datetime({ offset: true }).optional(),
   stayMinutes: z.number().int().min(15).max(600).default(120),
   mode: RecommendationMode.default('balanced'),
-  maxWalkMinutes: z.number().int().min(2).max(20).default(12),
+  maxWalkMinutes: z.number().int().min(0).max(180).default(12),
 });
 export type RecommendationRequest = z.infer<typeof RecommendationRequest>;
 
