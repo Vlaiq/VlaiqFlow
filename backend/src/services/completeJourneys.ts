@@ -35,6 +35,9 @@ const metric = <T extends 'm' | 's'>(value: number | null, unit: T, source: stri
   source,
   quality: value === null ? ('unknown' as const) : ('estimated' as const),
 });
+/** Shown when ORS_API_KEY is missing on the server; the fix is configuration, not retrying. */
+export const NOT_CONFIGURED =
+  'Furnizorul de rute (openrouteservice) nu este configurat pe acest server.';
 const unknownSearch =
   'Timp de căutare și manevrare a parcării indisponibil; exclus din timpul calculat.';
 const limitations = [
@@ -212,9 +215,13 @@ export async function calculateCompleteJourneys(
   deps: Dependencies = completeDependencies,
 ): Promise<CompleteJourneyResponse> {
   const at = new Date().toISOString();
+  // Without ORS there is no real pedestrian or cycling geometry, so no journey can be built. Say so
+  // plainly instead of a generic "try again": retrying never helps until the server is configured.
+  const configured = deps.activeConfigured();
   const settled = await Promise.allSettled(
     req.modes.map(async (category) => {
       if (category === 'car_park_walk') return carJourneys(req, at, deps);
+      if (!configured) return [];
       const option = await deps.active(category, req.origin, req.destination);
       if (option.mode !== category) throw new Error('WRONG_ROUTING_MODE');
       return [
@@ -236,8 +243,11 @@ export async function calculateCompleteJourneys(
     else
       unavailable.push({
         category,
-        reason:
-          category === 'car_park_walk'
+        reason: !configured
+          ? category === 'car_park_walk'
+            ? `${NOT_CONFIGURED} Fără el nu putem calcula mersul de la parcare la destinație. Parcările din apropiere rămân disponibile separat.`
+            : `${NOT_CONFIGURED} Fără el nu există o rută ${category === 'walk' ? 'pietonală' : 'velo'} reală și nu desenăm una aproximată.`
+          : category === 'car_park_walk'
             ? 'Nu putem calcula acum ambele trasee către o parcare eligibilă și apoi la destinație. Verifică limita de mers și furnizorul de rutare; parcările rămân disponibile separat.'
             : `Ruta ${category === 'walk' ? 'pietonală' : 'velo'} nu este disponibilă. Este necesar un furnizor ORS configurat și un răspuns valid; nu desenăm o rută aproximată.`,
       });
