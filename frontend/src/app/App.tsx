@@ -563,7 +563,8 @@ function Explore({
                 onWalkRoute={setCarWalk}
               />
             )}
-            <VoiceCard environment={demo ? 'demo' : 'live'} />
+            {/* Without a destination the card sits under DEMO, so the collapsed phone sheet still shows it. */}
+            {destination && <VoiceCard environment={demo ? 'demo' : 'live'} />}
             {!destination && (
               <div className="explore-welcome">
                 <span className="explore-welcome-eyebrow">
@@ -588,6 +589,7 @@ function Explore({
                     </span>
                   </button>
                 )}
+                <VoiceCard environment={demo ? 'demo' : 'live'} />
                 <div className="explore-coverage">
                   <ShieldCheck size={14} />
                   <span>
