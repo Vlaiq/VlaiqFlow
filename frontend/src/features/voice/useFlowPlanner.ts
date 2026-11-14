@@ -30,6 +30,8 @@ import {
 import { navigationState } from './navigationState';
 import { navigationSpeech } from './speech';
 
+const placeLabel = (d: Destination) => `${d.name}${d.detail ? ` · ${d.detail}` : ''}`;
+
 interface Inputs {
   origin: Origin | null;
   destination: Destination | null;
@@ -57,6 +59,10 @@ export function useFlowPlanner(props: Inputs) {
   const [attempt, setAttempt] = useState(0);
   const [published, setPublished] = useState<PublishedComparison | null>(null);
   const [, refreshSession] = useState(0);
+  /** Places the user can tap when a spoken destination matched several (cleared once one is chosen). */
+  const [choices, setChoices] = useState<Destination[]>([]);
+  const destinationId = props.destination?.id;
+  useEffect(() => setChoices([]), [destinationId]);
   const revision = useRef(0);
   const sessionId = useRef(0);
   const changed = useCallback(() => {
@@ -234,14 +240,43 @@ export function useFlowPlanner(props: Inputs) {
         const origin: Origin | null = o?.location
           ? { name: o.name, coordinate: [o.location.lng, o.location.lat] }
           : s.props.origin;
-        const destination = patch.destination_text
-          ? resolvePlace(patch.destination_text, s.props.places ?? [])
-          : s.props.destination;
-        if (!origin)
+        let destination: Destination | null;
+        try {
+          destination = patch.destination_text
+            ? resolvePlace(patch.destination_text, s.props.places ?? [])
+            : s.props.destination;
+        } catch (e) {
+          // Several places match: offer them on screen as well as to the agent.
+          if (e instanceof FlowError && e.code === 'AMBIGUOUS_LOCATION' && e.candidates)
+            setChoices(
+              e.candidates.flatMap((c) => {
+                const d = (s.props.places ?? []).find((p) => placeLabel(p) === c.label);
+                return d?.location ? [d] : [];
+              }),
+            );
+          throw e;
+        }
+        setChoices([]);
+        // A spoken destination is shown at once (map, parkings), even before a route can be compared.
+        // This runs before any await, so it acts on the state the tool call was validated against.
+        const showDestination = () => {
+          if (
+            destination?.location &&
+            destination.id !== latest.current.props.destination?.id &&
+            String(revision.current) === ticket
+          )
+            latest.current.props.setDestination(destination);
+        };
+        const ticket = String(revision.current);
+        if (!origin) {
+          showDestination();
           throw new FlowError(
             'MISSING_ORIGIN',
-            'Alege punctul de plecare în aplicație sau spune de unde pornești.',
+            destination?.location
+              ? `Am pus ${destination.name} pe hartă, cu parcările din jur. Pentru trasee, alege punctul de plecare în aplicație sau spune de unde pornești.`
+              : 'Alege punctul de plecare în aplicație sau spune de unde pornești.',
           );
+        }
         if (!destination)
           throw new FlowError('MISSING_DESTINATION', 'Spune destinația călătoriei.');
         if (!destination.location)
@@ -262,9 +297,14 @@ export function useFlowPlanner(props: Inputs) {
           ...(arriveIso(s.props.settings) ? { arriveAt: arriveIso(s.props.settings) } : {}),
           ...(mode ? { modes: [modeCategory[mode]] } : {}),
         });
-        const raw = await fetchCompleteJourneys(input, signal);
+        const raw = await fetchCompleteJourneys(input, signal).catch((e: unknown) => {
+          // No route right now: still show the place the user asked for.
+          if (!signal.aborted) showDestination();
+          throw e;
+        });
         const value = constrainComparison(raw, input.maxWalkMinutes);
         if (!value.journeys.length) {
+          if (!signal.aborted) showDestination();
           const excluded = raw.journeys.length > 0;
           throw new FlowError(
             excluded ? 'NO_MATCH' : 'NO_ROUTE',
@@ -361,6 +401,7 @@ export function useFlowPlanner(props: Inputs) {
   useEffect(() => () => tools.end(), [tools]);
   const begin = useCallback(() => {
     tools.begin();
+    setChoices([]);
     sessionId.current++;
     revision.current++;
     mapAck.current = null;
@@ -392,6 +433,12 @@ export function useFlowPlanner(props: Inputs) {
   return {
     tools,
     begin,
+    choices,
+    /** The user tapped one of the ambiguous places. */
+    choose: (d: Destination) => {
+      setChoices([]);
+      props.setDestination(d);
+    },
     result,
     preference,
     selectedId,

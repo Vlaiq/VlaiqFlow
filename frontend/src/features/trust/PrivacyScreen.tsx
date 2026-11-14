@@ -11,7 +11,7 @@ const flows: { what: string; where: string; kept: string }[] = [
     what: 'FLOW Voice: microfonul și contextul minim al călătoriei',
     where:
       'Numai după pornire explicită: vocea ajunge prin WebRTC la ElevenLabs. Instrumentele trimit etichete de locații, preferințe și rezumate ale rutelor, fără coordonate sau istoric GPS. Textul indicațiilor deterministe poate ajunge la ElevenLabs pentru sinteză.',
-    kept: 'Aplicația nu salvează audio, transcripturi sau tokenuri. Agentul este configurat cu înregistrarea audio dezactivată și retenție 0 zile; procesarea furnizorului rămâne supusă setărilor contului. Clipurile de navigație sunt păstrate în memoria serverului cel mult 15 minute; browserul le eliberează după redare. Oprește FLOW Voice ca să închizi microfonul.',
+    kept: 'Aplicația nu salvează audio, transcripturi sau tokenuri. Ce spui și ce răspunde FLOW apare doar pe ecran, în memoria paginii, și dispare la următoarea pornire sau când părăsești pagina. Agentul este configurat cu înregistrarea audio dezactivată și retenție 0 zile; procesarea furnizorului rămâne supusă setărilor contului. Clipurile de navigație sunt păstrate în memoria serverului cel mult 15 minute; browserul le eliberează după redare. Oprește FLOW Voice ca să închizi microfonul.',
   },
   {
     what: 'Destinația aleasă și punctul de plecare (GPS sau ales pe hartă)',

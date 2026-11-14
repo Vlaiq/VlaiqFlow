@@ -78,6 +78,35 @@ describe('voice summaries preserve verified mobility facts', () => {
     }
     expect(resolvePlace('Biblioteca · B', places)).toEqual(places[1]);
   });
+  it('picks the one place whose name holds every spoken word, after dropping spoken filler', () => {
+    const place = (id: string, name: string, kind: Destination['kind'], lng: number): Destination => ({
+      id,
+      name,
+      detail: null,
+      nameEn: null,
+      aliases: [],
+      kind,
+      category: null,
+      precision: 'exact',
+      location: { lng, lat: 45.75 },
+      locationSource: 'SYNTHETIC',
+    });
+    const places = [
+      place('square', 'Piața Victoriei', 'landmark', 21.225),
+      place('street', 'Strada Victor Babeș', 'street', 21.23),
+      place('mall', 'Iulius Mall', 'place', 21.226),
+      place('gardens', 'Iulius Gardens', 'place', 21.227),
+    ];
+    expect(resolvePlace('până la piata victoriei din Timișoara', places).id).toBe('square');
+    expect(resolvePlace('vreau sa merg la Iulius Mall', places).id).toBe('mall');
+    try {
+      resolvePlace('spre Iulius', places);
+      throw new Error('Expected ambiguity');
+    } catch (error) {
+      expect((error as FlowError).code).toBe('AMBIGUOUS_LOCATION');
+      expect((error as FlowError).candidates?.map((c) => c.label)).toEqual(['Iulius Mall', 'Iulius Gardens']);
+    }
+  });
   it('allows a walking handoff only for a matching parking with a verified walking geometry', () => {
     const walking = activeJourney('walk', 240);
     const journey = {

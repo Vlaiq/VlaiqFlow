@@ -25,15 +25,30 @@ export const modeCategory = {
   walking: 'walk',
   cycling: 'cycle',
 } as const;
+/** Spoken words around a place name ("până la", "spre", "din Timișoara") that are not part of it. */
+const SPOKEN_LEAD = /^(?:(?:vreau sa merg|vreau sa ajung|du ma|mergem|merg)\s+)?(?:pana la|catre|spre|la|in|pe)\s+/;
+const SPOKEN_TAIL = /\s+(?:din |in )?timisoara$/;
+export function spokenPlace(text: string): string {
+  const cleaned = normalize(text).replace(SPOKEN_LEAD, '').replace(SPOKEN_TAIL, '').trim();
+  return cleaned || normalize(text);
+}
 export function resolvePlace(text: string, destinations: Destination[]): Destination {
+  const query = spokenPlace(text);
   const exact = destinations.filter((d) =>
     [d.name, `${d.name}${d.detail ? ` · ${d.detail}` : ''}`, ...(d.aliases ?? [])].some(
-      (label) => normalize(label) === normalize(text),
+      (label) => normalize(label) === normalize(text) || normalize(label) === query,
     ),
   );
-  const matches = exact.length
-    ? exact
-    : searchDestinations(buildSearchIndex(destinations), text, 6);
+  const found = exact.length ? exact : searchDestinations(buildSearchIndex(destinations), query, 6);
+  // One result that holds every spoken word as a whole word of its name is the place that was meant
+  // ("piata victoriei" → Piața Victoriei, not "Strada Victoriei…"). Ties still go back to the user.
+  const words = query.split(' ').filter(Boolean);
+  const whole = found.filter((d) => {
+    const tokens = normalize(d.name).split(' ');
+    return words.every((w) => tokens.includes(w));
+  });
+  // With several such names, only those are real options; partial hits would just be noise.
+  const matches = !exact.length && whole.length >= 1 ? whole : found;
   // Identical municipal/OSM records at the same point represent one place; distinct candidates need consent.
   const unique = matches.filter(
     (d, i) =>

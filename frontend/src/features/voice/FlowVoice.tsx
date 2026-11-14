@@ -16,6 +16,7 @@ import {
 } from '@elevenlabs/react';
 import { Mic, MicOff, Volume2, VolumeX, Square, AudioLines, RotateCcw } from 'lucide-react';
 import { z } from 'zod';
+import type { Destination } from '@vlaiq/shared';
 import { FLOW_AGENT } from '../../../../shared/src/flowVoice';
 import { useAppRouter } from '../../app/router';
 import { registerConversationStop } from './speech';
@@ -32,8 +33,16 @@ class VoiceUnavailable extends Error {
     super('SERVICE_UNAVAILABLE');
   }
 }
+/** One line of the conversation, kept in memory only and cleared on the next start or page change. */
+export interface TranscriptLine {
+  id: number;
+  who: 'user' | 'agent';
+  text: string;
+}
+const TRANSCRIPT_LINES = 8;
 interface VoiceContextValue {
   state: State;
+  transcript: TranscriptLine[];
   error: string | null;
   muted: boolean;
   outputMuted: boolean;
@@ -42,6 +51,8 @@ interface VoiceContextValue {
   stop(): void;
   toggleMic(): void;
   toggleOutput(): void;
+  /** Tells a connected agent about something the user did on screen; no-op when not connected. */
+  tell(text: string): void;
   register(tools: ToolSession, begin: () => void): () => void;
 }
 const Context = createContext<VoiceContextValue | null>(null);
@@ -66,6 +77,7 @@ function VoiceRuntime({ children }: { children: ReactNode }) {
   const [error, setError] = useState<string | null>(null);
   const [outputMuted, setOutputMuted] = useState(false);
   const [activity, setActivity] = useState(0);
+  const [transcript, setTranscript] = useState<TranscriptLine[]>([]);
   const registration = useRef<{ tools: ToolSession; begin: () => void } | null>(null);
   const active = useRef<{ id: number; controller: AbortController; tools: ToolSession } | null>(
     null,
@@ -134,6 +146,7 @@ function VoiceRuntime({ children }: { children: ReactNode }) {
   // clearing it when a new destination is picked) must not cut the user off mid-sentence.
   useEffect(() => {
     stop();
+    setTranscript([]);
   }, [location.pathname, stop]);
   useEffect(() => {
     mounted.current = true;
@@ -157,6 +170,7 @@ function VoiceRuntime({ children }: { children: ReactNode }) {
     failure.current = null;
     setState('connecting');
     setError(null);
+    setTranscript([]);
     setOutputMuted(false);
     const fail = (message: string) => {
       if (!valid()) return;
@@ -218,6 +232,16 @@ function VoiceRuntime({ children }: { children: ReactNode }) {
         onModeChange: ({ mode }) => {
           if (valid()) setState(mode === 'speaking' ? 'speaking' : 'listening');
         },
+        onMessage: ({ message, role, event_id }) => {
+          const text = message.trim();
+          if (!valid() || !text) return;
+          const line: TranscriptLine = { id: event_id, who: role === 'user' ? 'user' : 'agent', text };
+          setTranscript((lines) =>
+            lines.some((l) => l.id === line.id && l.who === line.who)
+              ? lines
+              : [...lines, line].slice(-TRANSCRIPT_LINES),
+          );
+        },
         onVadScore: ({ vadScore }) => {
           if (valid()) setActivity(Math.max(0, Math.min(1, vadScore)));
         },
@@ -256,6 +280,7 @@ function VoiceRuntime({ children }: { children: ReactNode }) {
     <RegistrationContext.Provider value={register}>
       <Context.Provider
         value={{
+          transcript,
           state:
             state === 'speaking' || state === 'listening'
               ? isSpeaking
@@ -270,6 +295,9 @@ function VoiceRuntime({ children }: { children: ReactNode }) {
           stop,
           toggleMic: () => input.setMuted(!input.isMuted),
           toggleOutput,
+          tell: (text: string) => {
+            if (state === 'listening' || state === 'speaking') controls.sendContextualUpdate(text);
+          },
           register,
         }}
       >
@@ -285,9 +313,14 @@ export function useVoiceRegistration(tools: ToolSession, begin: () => void) {
 export function VoiceCard({
   compact = false,
   environment = 'live',
+  choices = [],
+  onChoose,
 }: {
   compact?: boolean;
   environment?: 'live' | 'demo';
+  /** Places to tap when a spoken destination matched several. */
+  choices?: { id: string; label: string; place: Destination }[];
+  onChoose?: (place: Destination) => void;
 }) {
   const voice = useContext(Context);
   if (!voice) return null;
@@ -363,6 +396,33 @@ export function VoiceCard({
           >
             {voice.outputMuted ? <VolumeX size={17} /> : <Volume2 size={17} />} Redare
           </button>
+        </div>
+      )}
+      {voice.transcript.length > 0 && (
+        <ol className="flow-voice-transcript" aria-label="Conversația cu FLOW Voice" aria-live="polite">
+          {voice.transcript.map((line) => (
+            <li key={`${line.who}-${line.id}`} data-who={line.who}>
+              <span>{line.who === 'user' ? 'Tu' : 'FLOW'}</span>
+              {line.text}
+            </li>
+          ))}
+        </ol>
+      )}
+      {choices.length > 0 && onChoose && (
+        <div className="flow-voice-choices" role="group" aria-label="Alege locația">
+          <p>Am găsit mai multe locuri. Atinge-l pe cel corect:</p>
+          {choices.map((c) => (
+            <button
+              key={c.id}
+              type="button"
+              onClick={() => {
+                onChoose(c.place);
+                voice.tell(`Utilizatorul a ales pe ecran destinația: ${c.label}.`);
+              }}
+            >
+              {c.label}
+            </button>
+          ))}
         </div>
       )}
       {voice.error && (

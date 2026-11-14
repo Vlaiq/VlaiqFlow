@@ -564,7 +564,15 @@ function Explore({
               />
             )}
             {/* Without a destination the card sits under DEMO, so the collapsed phone sheet still shows it. */}
-            {destination && <VoiceCard environment={demo ? 'demo' : 'live'} />}
+            {destination && <VoiceCard
+                  environment={demo ? 'demo' : 'live'}
+                  choices={planner.choices.map((d) => ({
+                    id: d.id,
+                    label: `${d.name}${d.detail ? ` · ${d.detail}` : ''}`,
+                    place: d,
+                  }))}
+                  onChoose={planner.choose}
+                />}
             {!destination && (
               <div className="explore-welcome">
                 <span className="explore-welcome-eyebrow">
@@ -589,7 +597,15 @@ function Explore({
                     </span>
                   </button>
                 )}
-                <VoiceCard environment={demo ? 'demo' : 'live'} />
+                <VoiceCard
+                  environment={demo ? 'demo' : 'live'}
+                  choices={planner.choices.map((d) => ({
+                    id: d.id,
+                    label: `${d.name}${d.detail ? ` · ${d.detail}` : ''}`,
+                    place: d,
+                  }))}
+                  onChoose={planner.choose}
+                />
                 <div className="explore-coverage">
                   <ShieldCheck size={14} />
                   <span>
