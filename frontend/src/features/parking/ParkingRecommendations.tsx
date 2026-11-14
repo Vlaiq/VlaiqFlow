@@ -144,6 +144,8 @@ export function ParkingRecommendations({
         estimate de loc și costul pentru {stayLabel(stay)}.
       </p>
 
+      <details className="flow-parking-options">
+        <summary><SlidersHorizontal size={16} aria-hidden="true" /> Ajustează recomandările <span>Opțional</span></summary>
       <div
         role="radiogroup"
         aria-label="Preferințe pentru parcare"
@@ -205,6 +207,7 @@ export function ParkingRecommendations({
       </div>
 
       {stopsSlot}
+      </details>
 
       <div className="mt-3" aria-live="polite">
         {result.state === 'ok' && result.data.protectedZone && (
