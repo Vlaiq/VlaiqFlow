@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import { FIX_THE_MAP } from '../map/attribution';
 import maplibregl, { type GeoJSONSource } from 'maplibre-gl';
 import type { Coordinate, NavigationRoute } from '@vlaiq/shared';
 import type { Fix, Mode } from './useNavigation';
@@ -79,7 +80,7 @@ export function NavigationMap(props: Props) {
         center: [21.22, 45.755],
         zoom: 13.5,
         pitch: 0,
-        attributionControl: { compact: true },
+        attributionControl: { compact: true, customAttribution: FIX_THE_MAP },
         maxPitch: 60,
         antialias: window.devicePixelRatio <= 2,
         maxZoom: 19,

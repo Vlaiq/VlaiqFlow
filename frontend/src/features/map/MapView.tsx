@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import { FIX_THE_MAP } from './attribution';
 import maplibregl, { type GeoJSONSource } from 'maplibre-gl';
 import {
   TIMISOARA_CENTER,
@@ -224,7 +225,10 @@ export function MapView({
       }),
       'top-right',
     );
-    map.addControl(new maplibregl.AttributionControl({ compact: true }), 'top-right');
+    map.addControl(
+      new maplibregl.AttributionControl({ compact: true, customAttribution: FIX_THE_MAP }),
+      'top-right',
+    );
     map.once('idle', () => {
       const attribution = map
         .getContainer()

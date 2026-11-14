@@ -41,16 +41,25 @@ afterEach(() => {
   vi.resetModules();
 });
 describe('real-profile journey comparison', () => {
-  it('does not query or manufacture active routes when the ORS binding is absent', async () => {
+  it('uses the keyless FOSSGIS foot/bike routes without ORS and never calls ORS', async () => {
     vi.doMock('../config', () => ({ config: { orsApiKey: undefined } }));
     vi.doMock('./routing', () => ({ getRoutes: vi.fn().mockResolvedValue({ routes: [route] }) }));
+    const fossgisRoute = vi.fn(async (mode: 'walk' | 'cycle') => ({
+      ...route,
+      id: `fossgis-${mode}-0`,
+      duration: mode === 'walk' ? 900 : 500,
+      source: `TEST FIXTURE fossgis ${mode}`,
+    }));
+    vi.doMock('./fossgis', () => ({ fossgisRoute }));
     const fetcher = vi.fn();
     vi.stubGlobal('fetch', fetcher);
     const { compareJourneys } = await import('./journeys');
     const result = await compareJourneys(origin, destination);
-    expect(result.options.map((o) => o.mode)).toEqual(['drive']);
-    expect(result.opportunity).toBeNull();
-    expect(result.unavailable.map((o) => o.mode)).toEqual(['walk', 'cycle']);
+    expect(result.options.map((o) => o.mode)).toEqual(['drive', 'walk', 'cycle']);
+    expect(result.unavailable).toEqual([]);
+    expect(fossgisRoute).toHaveBeenCalledWith('walk', origin, destination);
+    expect(fossgisRoute).toHaveBeenCalledWith('cycle', origin, destination);
+    expect(result.options.find((o) => o.mode === 'walk')?.route.geometry).toEqual(geometry);
     expect(fetcher).not.toHaveBeenCalled();
   });
   it('uses distinct foot and bicycle profiles with backend-only authorization and preserves road geometry', async () => {
@@ -98,6 +107,9 @@ describe('real-profile journey comparison', () => {
     vi.doMock('../config', () => ({ config: { orsApiKey: undefined } }));
     vi.doMock('./routing', () => ({
       getRoutes: vi.fn().mockRejectedValue(new Error('upstream unavailable')),
+    }));
+    vi.doMock('./fossgis', () => ({
+      fossgisRoute: vi.fn().mockRejectedValue(new Error('upstream unavailable')),
     }));
     const { compareJourneys } = await import('./journeys');
     const result = await compareJourneys(origin, destination);

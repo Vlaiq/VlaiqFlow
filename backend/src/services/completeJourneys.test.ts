@@ -12,14 +12,13 @@ import {
   route,
   activeJourney,
 } from '../../../shared/test-fixtures/completeJourney';
-import { calculateCompleteJourneys, COMPLETE_POLICY, NOT_CONFIGURED } from './completeJourneys';
+import { calculateCompleteJourneys, COMPLETE_POLICY } from './completeJourneys';
 import { rankCompleteJourneys } from '../engines/completeRanking';
 import { validateEndpoints } from './activeRouting';
 const req = (extra: Partial<Request> = {}) =>
   CompleteJourneyRequest.parse({ origin, destination, ...extra });
 function deps(options = [parking()]) {
   return {
-    activeConfigured: () => true,
     recommend: vi.fn(async () => recommendations(options)),
     drive: vi.fn(async (from, to) => ({ routes: [route(from, to, 300, 800)] })),
     active: vi.fn(async (mode, from, to): Promise<JourneyOption> => ({
@@ -73,15 +72,6 @@ describe('complete journey orchestration', () => {
     expect(result.unavailable[0]?.category).toBe('cycle');
     d.active.mockRejectedValue(new Error('No pedestrian route'));
     expect((await calculateCompleteJourneys(req(), d)).journeys).toEqual([]);
-  });
-  it('names the missing routing provider instead of a generic retry when ORS is not configured', async () => {
-    const d = { ...deps(), activeConfigured: () => false };
-    const result = await calculateCompleteJourneys(req(), d);
-    expect(result.journeys).toEqual([]);
-    expect(result.unavailable.map((u) => u.category)).toEqual(['car_park_walk', 'walk', 'cycle']);
-    for (const u of result.unavailable) expect(u.reason).toContain(NOT_CONFIGURED);
-    expect(d.active).not.toHaveBeenCalled();
-    expect(d.drive).not.toHaveBeenCalled();
   });
   it('excludes restricted parking and respects actual walking limit', async () => {
     const restricted = parking();

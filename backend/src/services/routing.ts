@@ -102,9 +102,19 @@ async function requestRoutes(origin: Coordinate, destination: Coordinate): Promi
   const url = `https://router.project-osrm.org/route/v1/driving/${origin.join(',')};${destination.join(',')}?overview=full&geometries=geojson&steps=true&alternatives=true`;
   const res = await fetch(url, { signal: AbortSignal.timeout(15000) });
   if (!res.ok) throw new Error('Routing provider unavailable');
-  const body = osrmResponse.parse(await res.json());
-  const routes: NavigationRoute[] = body.routes.slice(0, 3).map((r, i) => ({
-    id: `osrm-${i}`,
+  const routes = parseOsrmRoutes(
+    await res.json(),
+    'osrm',
+    'OSRM · OpenStreetMap (serviciu demonstrativ)',
+  );
+  return RoutesResponse.parse({ routes });
+}
+
+/** Turns an OSRM `route` response into our routes, keeping the provider geometry untouched. */
+export function parseOsrmRoutes(json: unknown, idPrefix: string, source: string): NavigationRoute[] {
+  const body = osrmResponse.parse(json);
+  return body.routes.slice(0, 3).map((r, i) => ({
+    id: `${idPrefix}-${i}`,
     distance: r.distance,
     duration: r.duration,
     geometry: r.geometry.coordinates,
@@ -122,10 +132,9 @@ async function requestRoutes(origin: Coordinate, destination: Coordinate): Promi
         return { index, type: s.maneuver.type, modifier: s.maneuver.modifier, road: s.name };
       }),
     ),
-    source: 'OSRM · OpenStreetMap (serviciu demonstrativ)',
-    quality: 'estimated',
+    source,
+    quality: 'estimated' as const,
   }));
-  return RoutesResponse.parse({ routes });
 }
 
 export async function getRoutes(

@@ -9,6 +9,7 @@ import {
 } from '../../../shared/src/schemas/journey';
 import { config } from '../config';
 import { getRoutes } from './routing';
+import { fossgisRoute } from './fossgis';
 
 const orsResponse = z.object({
   features: z
@@ -75,7 +76,17 @@ export async function requestActiveRoute(
   origin: Coordinate,
   destination: Coordinate,
 ) {
-  if (!config.orsApiKey) throw new Error('ACTIVE_PROVIDER_NOT_CONFIGURED');
+  if (!config.orsApiKey) {
+    // Keyless fallback with real geometry (rate-limited public server), so the app works out of the box.
+    const route = await fossgisRoute(mode, origin, destination);
+    return JourneyOption.parse({
+      id: `journey-${mode}`,
+      mode,
+      route,
+      practical: journeyPractical(mode, route.duration),
+      note: notes[mode],
+    });
+  }
   const response = await fetch(
     `https://api.openrouteservice.org/v2/directions/${profile[mode]}/geojson`,
     {
@@ -145,9 +156,7 @@ async function calculate(
       unavailable.push({
         mode,
         reason:
-          mode !== 'drive' && !config.orsApiKey
-            ? 'Furnizorul de rute pietonale și velo nu este configurat. Nu înlocuim ruta cu o linie dreaptă.'
-            : 'Furnizorul nu a returnat o rută validă. Această variantă nu poate fi comparată acum.',
+          'Furnizorul nu a returnat o rută validă. Această variantă nu poate fi comparată acum.',
       });
   });
   return JourneyComparisonResponse.parse({

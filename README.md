@@ -48,11 +48,11 @@ Frontend: port **5173**. Backend: **8787**, proxied through `/api` during develo
 |---|---|---|
 | `API_PORT` | backend | API port, default 8787 |
 | `CORS_ORIGINS` | backend | Allowed frontend origins; comma-separated |
-| `ORS_API_KEY` | backend secret | Preferred driving routes/matrix and genuine foot/cycle routes |
+| `ORS_API_KEY` | backend secret, optional | Preferred driving routes/matrix and foot/cycle routes. Without it the app still routes (see below) |
 | `VITE_API_URL` | frontend, public | Empty for same-origin `/api`; no secrets here |
 | `GEMINI_API_KEY`, `ELEVENLABS_API_KEY`, `DATABASE_URL` | backend, optional | Reserved optional integrations; core features do not require them |
 
-Without ORS, the existing OSRM public demo is a low-volume driving fallback. It is not used to fake cycling or walking. Motion itself requires no external provider key. GPS on a physical phone requires **HTTPS**. Browser sensors and Wake Lock are optional; keep activity recording in the foreground.
+Without ORS the app still works with real street geometry: driving uses the OSRM public demo, walking and cycling use the FOSSGIS OSRM server (`routing.openstreetmap.de`, profiles `routed-foot` / `routed-bike`). Both are low-volume public services: the backend sends at most one FOSSGIS request per second with a User-Agent naming the team, caches results, fails fast when its queue is full, and the map shows the OSM "fix the map" link their policy asks for ([usage policy](https://routing.openstreetmap.de/about.html)). Set `ORS_API_KEY` for anything beyond a demo. No route is ever drawn as a straight line. Motion itself requires no external provider key. GPS on a physical phone requires **HTTPS**. Browser sensors and Wake Lock are optional; keep activity recording in the foreground.
 
 ## Map scope and data coverage
 

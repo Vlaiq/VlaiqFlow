@@ -33,7 +33,6 @@ const post = (body: unknown) =>
   });
 describe('POST /api/journeys/complete', () => {
   it('returns validated complete routes and deduplicates simultaneous judges/provider requests', async () => {
-    vi.spyOn(completeDependencies, 'activeConfigured').mockReturnValue(true);
     const screen = vi.spyOn(completeDependencies, 'recommend').mockImplementation(async () => {
       await new Promise((r) => setTimeout(r, 10));
       return recommendations();
