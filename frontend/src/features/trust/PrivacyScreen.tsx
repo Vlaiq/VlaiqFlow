@@ -34,6 +34,23 @@ const flows: { what: string; where: string; kept: string }[] = [
     kept: 'Doar în memorie, timp de un minut. Nu ținem jurnale de acces cu adrese IP.',
   },
   {
+    what: 'Locul mașinii parcate, ora plății introdusă de tine și locurile salvate (Acasă, Serviciu, Facultate)',
+    where:
+      'Salvate doar în browserul tău (localStorage). Pentru drumul înapoi la mașină, poziția ta (dacă o permiți) și locul mașinii ajung la furnizorul de rute, ca orice rută.',
+    kept: 'Nu ajung la server ca date salvate. Locul mașinii se șterge când apeși „Am plecat cu mașina” sau după 48 de ore; favoritele, când le debifezi.',
+  },
+  {
+    what: 'Deschiderea în Google Maps sau Waze',
+    where:
+      'Doar când apeși butonul, poziția parcării alese se deschide în aplicația sau site-ul Google Maps / Waze. Poziția ta nu este pusă în link.',
+    kept: 'FLOW nu trimite nimic în fundal. Google și Waze tratează datele după propriile reguli.',
+  },
+  {
+    what: 'Memento-uri (fișier de calendar și notificări)',
+    where: 'Fișierul .ics este creat pe dispozitivul tău și descărcat de tine. Notificările sunt locale, din browser.',
+    kept: 'Nu ajung la server.',
+  },
+  {
     what: 'Tema aleasă (luminoasă sau întunecată)',
     where: 'Salvată doar în browserul tău (localStorage).',
     kept: 'Nu ajunge la server.',
@@ -146,7 +163,11 @@ export function PrivacyScreen() {
           discarded; we keep only summaries (mode, start time, distance, duration, coins) linked to
           a random cookie whose hash we store. Inactive wallets are deleted after{' '}
           {MOTION_RULES.retentionDays} days, and you can delete yours at any time from the Wallet.
-          IP addresses are held in memory for one minute for rate limiting. You can complain to
+          IP addresses are held in memory for one minute for rate limiting. Your parked car, the
+          payment time you enter and your saved places stay in this browser only (the car is
+          forgotten after 48 hours). Google Maps and Waze receive only the parking position, and
+          only when you tap their button. Calendar files and notifications are created on your
+          device. You can complain to
           the Romanian data protection authority (ANSPDCP).
         </p>
       </details>

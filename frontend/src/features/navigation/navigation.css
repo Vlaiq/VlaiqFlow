@@ -1436,6 +1436,26 @@ html[data-theme='light'] .navigation-screen .mode-chip > span {
 .walk-handoff strong {
   font-size: 15px;
 }
+.walk-handoff-actions {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 8px;
+}
+.walk-handoff-actions button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 46px;
+  padding: 0 14px;
+  border: 1px solid #46c985;
+  border-radius: 13px;
+  color: inherit;
+  font-weight: 700;
+}
+.walk-handoff-actions button:disabled {
+  opacity: 0.75;
+}
 .walk-handoff a {
   display: inline-flex;
   align-items: center;

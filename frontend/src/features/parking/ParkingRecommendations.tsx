@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, type ReactNode } from 'react';
 import { ChevronRight, Info, ParkingSquare, RotateCcw, SlidersHorizontal } from 'lucide-react';
 import {
   TARIFF_LABEL_RO,
@@ -13,6 +13,7 @@ import { KIND_LABEL, pct, priceText, stayLabel } from './recommendationLabels';
 import { FreeChance, ScoreBreakdown } from './ParkingFacts';
 import { PARKING_MODE_LABEL, arriveIso, localInputValue, type ParkingSettings } from './settings';
 import { SchoolZoneCard } from './SchoolZoneCard';
+import '../car/car.css';
 
 const MODES: { id: ParkingSettings['mode']; hint: string }[] = [
   { id: 'balanced', hint: 'mersul, șansele de loc și prețul, la fel de important' },
@@ -38,7 +39,17 @@ interface Props {
   /** Opens the presentation of one parking (details + directions). */
   onOpen: (id: string) => void;
   onResult: (data: RecommendationResponse | null) => void;
+  /** "Parchează o dată" (§6.19): places visited on foot after the destination, in order. */
+  stops?: TourStop[];
+  /** Slot under the settings where the Explore screen puts the stop picker. */
+  stopsSlot?: ReactNode;
 }
+export interface TourStop {
+  id: string;
+  name: string;
+  coordinate: Coordinate;
+}
+const NO_STOPS: TourStop[] = [];
 
 /** SmartMatch results for the chosen destination (spec §6.5–6.6). Every number comes from the backend engine. */
 export function ParkingRecommendations({
@@ -51,7 +62,10 @@ export function ParkingRecommendations({
   onPick,
   onOpen,
   onResult,
+  stops = NO_STOPS,
+  stopsSlot,
 }: Props) {
+  const stopsKey = stops.map((s) => s.id).join('|');
   const { mode, stayMinutes: stay, maxWalkMinutes: maxWalk, arrive } = settings;
   const set = (patch: Partial<ParkingSettings>) => onSettings({ ...settings, ...patch });
   const [attempt, setAttempt] = useState(0);
@@ -78,6 +92,9 @@ export function ParkingRecommendations({
           maxWalkMinutes: maxWalk,
           schoolZone: settings.schoolZone ? 'auto' : 'off',
           ...(arriveAt ? { arriveAt } : {}),
+          ...(stops.length
+            ? { destinationName: destination.name, stops: stops.map(({ name, coordinate }) => ({ name, coordinate })) }
+            : {}),
         },
         ctrl.signal,
       )
@@ -105,7 +122,7 @@ export function ParkingRecommendations({
       ctrl.abort();
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [loc?.lng, loc?.lat, origin?.[0], origin?.[1], mode, stay, arriveAt, maxWalk, settings.schoolZone, attempt]);
+  }, [loc?.lng, loc?.lat, origin?.[0], origin?.[1], mode, stay, arriveAt, maxWalk, settings.schoolZone, attempt, stopsKey]);
 
   useEffect(() => () => onResult(null), [onResult]);
 
@@ -187,6 +204,8 @@ export function ParkingRecommendations({
         </label>
       </div>
 
+      {stopsSlot}
+
       <div className="mt-3" aria-live="polite">
         {result.state === 'ok' && result.data.protectedZone && (
           <SchoolZoneCard
@@ -249,6 +268,7 @@ export function ParkingRecommendations({
                   stayMinutes={result.data.stayMinutes}
                   params={result.data.params}
                   hasOrigin={!!origin}
+                  destinationName={destination.name}
                 />
               ))}
             </ol>
@@ -272,7 +292,9 @@ function OptionCard({
   stayMinutes,
   params,
   hasOrigin,
+  destinationName,
 }: {
+  destinationName: string;
   option: RecommendationOption;
   rank: number;
   selected: boolean;
@@ -316,11 +338,20 @@ function OptionCard({
 
       <dl className="parking-card-facts">
         <div>
-          <dt>Pe jos până la destinație</dt>
+          <dt>Pe jos până la {o.tour ? destinationName : 'destinație'}</dt>
           <dd>
             ~{Math.max(1, Math.round(o.walk.minutes))} min · {o.walk.meters} m
           </dd>
         </div>
+        {o.tour && (
+          <div className="parking-card-tour">
+            <dt>Cu toate opririle, înapoi la mașină</dt>
+            <dd>
+              ~{Math.max(1, Math.round(o.tour.minutes))} min pe jos · {(o.tour.meters / 1000).toLocaleString('ro-RO', { maximumFractionDigits: 1 })} km{' '}
+              <QualityBadge quality={o.tour.quality} />
+            </dd>
+          </div>
+        )}
         <div>
           <dt>Cost pentru {stayLabel(stayMinutes)}</dt>
           <dd>
@@ -363,6 +394,13 @@ function OptionCard({
           params={params}
         />
         <p>{o.walk.source}</p>
+        {o.tour && (
+          <p>
+            Traseu: {o.tour.legs.map((l) => `${l.to} (${Math.max(1, Math.round(l.minutes))} min)`).join(' → ')}. Mersul
+            dintre opriri e același pentru orice parcare; clasamentul compară doar drumul până la prima oprire și
+            înapoi de la ultima.
+          </p>
+        )}
         <p>
           {o.price.source} · {o.price.note}
         </p>

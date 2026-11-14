@@ -72,6 +72,8 @@ interface Props {
   journey?: JourneyMapSelection | null;
   /** School drop-off zone next to the destination (§6.16), drawn while it is active. */
   protectedZone?: ProtectedZone | null;
+  /** Where the user saved their parked car (this device only). */
+  car?: Coordinate | null;
 }
 
 const FLY_ZOOM: Record<Destination['precision'], number> = {
@@ -162,6 +164,7 @@ export function MapView({
   origin = null,
   journey = null,
   protectedZone = null,
+  car = null,
 }: Props) {
   const [mapError, setMapError] = useState<string | null>(null);
   const [attempt, setAttempt] = useState(0);
@@ -690,6 +693,20 @@ export function MapView({
       marker.remove();
     };
   }, [origin, attempt, styleRevision]);
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map || !car || !isInTimisCounty(car)) return;
+    const element = document.createElement('div');
+    element.setAttribute('role', 'img');
+    element.setAttribute('aria-label', 'Mașina ta (locul salvat pe acest dispozitiv)');
+    element.textContent = 'P';
+    element.style.cssText =
+      'width:26px;height:26px;display:flex;align-items:center;justify-content:center;font:700 13px/1 system-ui;color:#0b1410;border:3px solid white;border-radius:8px;background:#7ee2a8;box-shadow:0 2px 8px #0008';
+    const marker = new maplibregl.Marker({ element }).setLngLat(car).addTo(map);
+    return () => {
+      marker.remove();
+    };
+  }, [car, attempt, styleRevision]);
 
   useEffect(() => {
     const map = mapRef.current;

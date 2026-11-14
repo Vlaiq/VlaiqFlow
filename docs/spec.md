@@ -205,7 +205,7 @@ The best option is visually highlighted.
 - Marker interpolated along the geometry with `requestAnimationFrame`; bearing follows the road; ETA and distance update live.
 - A permanent "SIMULATION" label.
 - **Offline fallback:** the demo route geometry and its matrix results are bundled as JSON. The demo runs even if openrouteservice is down.
-- **Implemented (14 Nov):** an **Încearcă DEMO** button on Explore sets the origin to Timișoara Nord station and the destination to Piața Victoriei (both from the snapshots), and the arrival to the next weekday at 10:00 so Timpark tariffs apply even on a weekend; a DEMO note explains this, and picking a real origin leaves the DEMO. Navigation DEMO has 1× / 2× / 4× playback. Not done: the bundled offline route JSON.
+- **Implemented (14 Nov):** an **Încearcă DEMO** button on Explore sets the origin to Timișoara Nord station and the destination to Piața Victoriei (both from the snapshots), and the arrival to the next weekday at 10:00 so Timpark tariffs apply even on a weekend; a DEMO note explains this, and picking a real origin leaves the DEMO. Navigation DEMO has 1× / 2× / 4× playback. **Offline (14 Nov):** saved real routes for the DEMO scenario, served only when the provider fails (§6.23).
 
 ### 6.9 Smart rerouting (polished showcase)
 1. A scenario event marks the selected parking as full (simulated).
@@ -299,6 +299,31 @@ Added 14 Nov 2026 (team idea "Scutul Școlilor"). The opposite of "fastest to th
 - **Opt-out:** "Am nevoie să ajung cu mașina până la intrare" (disability, sick child, heavy bags) turns it off for the trip. It is never a ban.
 - **Stradă școlară:** a text built only from the zone's data, copied by the user into decidem.primariatm.ro. Decidem has no API: the app sends nothing, and it claims nothing about other parents (no aggregated user data exists yet).
 - **Labels:** the zone is `estimated`, "a rule of the app, not an official City Hall zone".
+
+### 6.17 "Mașina ta": parked car, walk back, payment reminder
+Added 14 Nov 2026. Covers the part of the trip after parking.
+- **Save:** "Am parcat aici" in the parking preview and on arrival in navigation. Kept **only in localStorage** (`shared/src/parkedCar.ts` schema, `frontend/src/features/car/carStore.ts`), forgotten after 48 h or with "Am plecat cu mașina". In DEMO the spot is the simulated arrival.
+- **Walk back:** a real walking route (provider geometry) from the GPS fix (≤ ±300 m) or, without GPS, from the saved destination, drawn on the map with a car marker.
+- **Payment:** we do not know whether the user paid. They tap "Am plătit 1/2/3 h"; one SMS hour runs from the moment it is sent. `reminderPlan` (deterministic, tested) compares it with the published Timpark schedule: free now / unpaid / covered past the end of the paid hours / running / expired. "Leave by" = end of payment − walk − 5 min. Public holidays are not in the Timpark data yet.
+- **Reminder:** a calendar file (.ics with an alarm, made on the device) is the reliable one; an in-app notification works only while the page is open, and the UI says so. OSM parkings have no reminder (price unknown).
+
+### 6.18 "Când trebuie să plec?"
+When the user sets "Când ajungi?", the preview shows the latest departure = arrival − provider driving time − walking time − 5 min margin (no live traffic, no search time), or how late they are. It can be added to the calendar (.ics).
+
+### 6.19 "Parchează o dată" (several stops, one parking)
+Up to 2 more places walked to after the destination, each within 1.5 km of it, taken only from the snapshot search. SmartMatch then builds candidates around the centre of the places and ranks by the walk that depends on the parking (parking → destination + last stop → parking, each leg ≤ the walk limit); the leg between stops is the same for every parking and is shown, not ranked. Each option carries `tour` (legs, total minutes, quality). Deterministic: `backend/src/engines/smartmatch/tour.ts`, tested.
+
+### 6.20 Hand-off to Google Maps / Waze
+The preview links to Google Maps and Waze with **only the parking position** (never the user's). FLOW chooses the parking; a certified navigation app drives. Opened only on tap, listed on the privacy page.
+
+### 6.21 "Cel mai bun moment"
+The preview shows the same parking at every hour 07–21 of the chosen day: chance from the rule model (`dayCurve` of `/api/recommendations/model/explain`, `estimated`) and paid / free from the published Timpark schedule. Tapping an hour re-runs SmartMatch for that arrival.
+
+### 6.22 Saved places
+Acasă / Serviciu / Facultate: one tap as destination (Explore) or as start ("Plec de la"). Only the id and name of a snapshot place are stored, in localStorage; the position is always read back from the snapshot.
+
+### 6.23 Offline DEMO routes (§6.8)
+`pnpm data:demo-routes` (backend running) saves the real driving routes Timișoara Nord → every DEMO parking and the walking routes parking → Piața Victoriei into `shared/src/data/demo-routes.json`. When the provider fails, the backend serves the saved route only if both endpoints are within 40 m of a saved pair, with "copie salvată pe <date>" in its source and `offline.savedAt` in the response. A DEMO switch from a mid-route position has no saved route.
 
 ## 7. SmartMatch algorithm
 

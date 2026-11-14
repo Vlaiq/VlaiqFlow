@@ -8,6 +8,7 @@ import {
   type NavigationRoute,
 } from '@vlaiq/shared';
 import { config } from '../config';
+import { offlineDriving } from './offlineRoutes';
 
 // No arbitrary upstream URL is accepted from clients. Keys never leave the server.
 const coord = z.tuple([z.number(), z.number()]);
@@ -191,6 +192,15 @@ export async function getRoutes(
     .then((result) => {
       if (cache.size >= 100) cache.delete(cache.keys().next().value!);
       cache.set(key, { result, expires: Date.now() + 300000 });
+      return result;
+    })
+    .catch((e: unknown) => {
+      // Provider down: the saved DEMO route for this exact pair, labelled as a saved copy (spec §6.8).
+      const saved = offlineDriving(origin, destination);
+      if (!saved) throw e;
+      console.warn('[routing] provider failed, serving the saved DEMO route:', String(e));
+      const result: RoutesResponse = avoid.length ? { ...saved, avoidance: 'not_supported' } : saved;
+      cache.set(key, { result, expires: Date.now() + 15000 });
       return result;
     })
     .finally(() => pending.delete(key));

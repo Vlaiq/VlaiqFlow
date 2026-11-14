@@ -37,5 +37,26 @@ export const RoutesResponse = z.object({
   routes: z.array(NavigationRoute).min(1).max(3),
   /** Requested zones: 'applied' (openrouteservice kept out), 'not_supported' (keyless fallback), 'failed' (no such route). */
   avoidance: z.enum(['applied', 'not_supported', 'failed']).optional(),
+  /** Set when the provider was down and the route came from the saved DEMO snapshot (spec §6.8). */
+  offline: z.object({ savedAt: z.string() }).optional(),
 });
 export type RoutesResponse = z.infer<typeof RoutesResponse>;
+
+/**
+ * Routes saved from the real providers for the DEMO scenario (spec §6.8), written by
+ * `pnpm data:demo-routes`. Used only when the provider fails and both endpoints match a saved pair.
+ */
+export const OfflineRoutesSnapshot = z.object({
+  version: z.literal(1),
+  savedAt: z.string(),
+  note: z.string(),
+  scenario: z.object({
+    origin: z.object({ name: z.string(), coordinate: Coordinate }),
+    destination: z.object({ name: z.string(), coordinate: Coordinate }),
+  }),
+  driving: z.array(
+    z.object({ origin: Coordinate, destination: Coordinate, routes: z.array(NavigationRoute).min(1).max(3) }),
+  ),
+  walking: z.array(z.object({ origin: Coordinate, destination: Coordinate, route: NavigationRoute })),
+});
+export type OfflineRoutesSnapshot = z.infer<typeof OfflineRoutesSnapshot>;

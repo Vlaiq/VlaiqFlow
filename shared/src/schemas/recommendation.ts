@@ -10,6 +10,10 @@ import { ProtectedZone, SchoolZoneMode } from './protectedZone';
  */
 
 /** balanced = default; cheap = money weighs more; sure = a full parking costs more (risk-averse). */
+/** Extra stops after the destination, and how far apart they may be for one parking to serve them. */
+export const MAX_EXTRA_STOPS = 2;
+export const MAX_STOP_SPREAD_M = 1500;
+
 export const RecommendationMode = z.enum(['balanced', 'cheap', 'sure', 'less_walk']);
 export type RecommendationMode = z.infer<typeof RecommendationMode>;
 
@@ -24,6 +28,16 @@ export const RecommendationRequest = z.object({
   maxWalkMinutes: z.number().int().min(2).max(20).default(12),
   /** School drop-off zones (§6.16): 'auto' applies them at school times, 'off' for this trip. */
   schoolZone: SchoolZoneMode.default('auto'),
+  /**
+   * "Parchează o dată" (spec §6.19): up to 2 more places visited on foot after the destination, in order.
+   * SmartMatch then ranks parkings by the whole walk parking → destination → stops → parking.
+   */
+  /** Destination name, only to label the legs of a tour. */
+  destinationName: z.string().max(120).optional(),
+  stops: z
+    .array(z.object({ name: z.string().min(1).max(120), coordinate: Coordinate }))
+    .max(MAX_EXTRA_STOPS)
+    .default([]),
 });
 export type RecommendationRequest = z.infer<typeof RecommendationRequest>;
 
@@ -47,6 +61,16 @@ export const RecommendationOption = z.object({
   walk: z.object({ minutes: z.number().nonnegative(), meters: z.number().nonnegative(), quality: DataQuality, source: z.string() }),
   drive: z.object({ minutes: z.number().nonnegative().nullable(), meters: z.number().nonnegative().nullable(), quality: DataQuality, source: z.string() }).optional(),
   journeyMinutes: z.number().nonnegative().nullable().optional(),
+  /** Present when the request has stops: the whole walk parking → destination → stops → parking. */
+  tour: z
+    .object({
+      minutes: z.number().nonnegative(),
+      meters: z.number().nonnegative(),
+      quality: DataQuality,
+      source: z.string(),
+      legs: z.array(z.object({ from: z.string(), to: z.string(), minutes: z.number().nonnegative(), meters: z.number().nonnegative() })),
+    })
+    .optional(),
   pFree: z.object({
     value: z.number().min(0).max(1),
     quality: DataQuality, // 'estimated' for the rule model; never 'confirmed' without a live source

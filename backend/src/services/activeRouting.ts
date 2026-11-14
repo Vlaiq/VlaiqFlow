@@ -1,5 +1,6 @@
 import { distanceM, type Coordinate, type JourneyOption } from '@vlaiq/shared';
-import { requestActiveRoute } from './journeys';
+import { requestActiveRoute, walkOption } from './journeys';
+import { offlineWalking } from './offlineRoutes';
 const cache = new Map<string, { expires: number; value: JourneyOption }>();
 const pending = new Map<string, Promise<JourneyOption>>();
 /** Reject misrouted endpoints; allow at most 250 m of provider snapping, disclosed in the UI. */
@@ -14,6 +15,13 @@ export async function activeDirections(mode: 'walk' | 'cycle', from: Coordinate,
   const running = pending.get(key);
   if (running) return running;
   const job = requestActiveRoute(mode, from, to)
+    .catch((e: unknown) => {
+      // Provider down: the saved DEMO walk for this exact pair, labelled as a saved copy (spec §6.8).
+      const saved = mode === 'walk' ? offlineWalking(from, to) : null;
+      if (!saved) throw e;
+      console.warn('[active] provider failed, serving the saved DEMO walk:', String(e));
+      return walkOption(saved);
+    })
     .then((value) => {
       validateEndpoints(value.route.geometry, from, to);
       if (cache.size >= 100) cache.delete(cache.keys().next().value!);

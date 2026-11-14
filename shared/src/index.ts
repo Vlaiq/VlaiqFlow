@@ -20,3 +20,4 @@ export const TIMISOARA_CENTER = { lat: 45.7537, lng: 21.2257 } as const;
 export * from './schemas/recommendation';
 export * from './schemas/protectedZone';
 export * from './protectedZones';
+export * from './parkedCar';

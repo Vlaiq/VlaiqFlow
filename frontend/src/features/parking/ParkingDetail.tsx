@@ -6,6 +6,7 @@ import {
   ArrowUp,
   Car,
   CornerUpLeft,
+  ExternalLink,
   CornerUpRight,
   Flag,
   Footprints,
@@ -21,13 +22,20 @@ import {
   type AvoidCircle,
   type Coordinate,
   type NavigationRoute,
+  type ParkedCarInput,
   type RecommendationOption,
   type RecommendationResponse,
+  type TimparkTariffs,
 } from '@vlaiq/shared';
 import { QualityBadge } from '../../components/QualityBadge';
 import { api } from '../../services/api';
 import { cumulative, formatDistance, instruction } from '../navigation/geometry';
 import { fetchCompleteJourneys } from '../journey/useCompleteJourneys';
+import { saveCar } from '../car/carStore';
+import { externalNavigation } from '../car/handoff';
+import { LeaveBy } from '../car/LeaveBy';
+import { BestTime } from '../car/BestTime';
+import '../car/car.css';
 import { ACCESS_LABEL, KIND_LABEL, priceText, stayLabel } from './recommendationLabels';
 import { FreeChance, ScoreBreakdown } from './ParkingFacts';
 
@@ -86,6 +94,13 @@ interface Props {
   backup?: RecommendationOption | null;
   /** Active school drop-off zone circles the driving route should keep out of (§6.16). */
   avoidZones?: AvoidCircle[];
+  /** Arrival the user chose (ISO), or null for "now": for "when do I leave" (§6.18). */
+  arriveTarget?: string | null;
+  /** Arrival SmartMatch used (ISO), for the hourly chances. */
+  arriveUsed?: string;
+  schedule?: TimparkTariffs['schedule'] | null;
+  /** Pick another arrival time from "Cel mai bun moment" (§6.21). */
+  onArrive?: (at: Date) => void;
 }
 
 function StepIcon({ step }: { step: NavigationRoute['steps'][number] }) {
@@ -142,6 +157,10 @@ export function ParkingDetail({
   onWalkRoute,
   backup = null,
   avoidZones = NO_ZONES,
+  arriveTarget = null,
+  arriveUsed,
+  schedule = null,
+  onArrive,
 }: Props) {
   const [choice, setChoice] = useState<OriginChoice>({ kind: 'pending' });
   const [locating, setLocating] = useState(false);
@@ -149,6 +168,7 @@ export function ParkingDetail({
   const [routeState, setRouteState] = useState<RouteState>({ state: 'loading' });
   const zonesKey = JSON.stringify(avoidZones);
   const [attempt, setAttempt] = useState(0);
+  const [saved, setSaved] = useState<'ok' | 'blocked' | null>(null);
 
   const origin: Origin | null =
     selectedOrigin ??
@@ -308,8 +328,23 @@ export function ParkingDetail({
           }
         : null,
       final: destination ? { name: destinationName, coordinate: destination } : null,
+      parking:
+        o.kind === 'osm' ? undefined : { tariff: o.tariff, smsCode: o.smsCode, stayMinutes },
     }),
   }).toString()}`;
+  const links = externalNavigation(o.coordinate);
+  const carInput = (): ParkedCarInput => ({
+    version: 1,
+    name: o.name.slice(0, 120),
+    coordinate: o.coordinate,
+    parkedAt: new Date().toISOString(),
+    tariff: o.kind === 'osm' ? null : o.tariff,
+    smsCode: o.kind === 'osm' ? null : o.smsCode,
+    paidUntil: null,
+    destination: destination ? { name: destinationName.slice(0, 120), coordinate: destination } : null,
+    walkMinutes: Math.min(120, walkRoute ? walkRoute.duration / 60 : o.walk.minutes),
+    stayMinutes,
+  });
   const walkMin = Math.max(1, Math.round(walkRoute ? walkRoute.duration / 60 : o.walk.minutes));
   const walkMeters = walkRoute ? walkRoute.distance : o.walk.meters;
 
@@ -487,6 +522,13 @@ export function ParkingDetail({
                 Sursa traseului: {routeState.route.source}. Traseul este desenat pe hartă.
               </p>
               {avoidZones.length > 0 && <ZoneRouteNote insideM={routeState.insideM} avoidance={routeState.avoidance} />}
+              <LeaveBy
+                arriveAt={arriveTarget ? new Date(arriveTarget) : null}
+                driveMinutes={routeState.route.duration / 60}
+                walkMinutes={walkRoute ? walkRoute.duration / 60 : o.walk.minutes}
+                parkingName={o.name}
+                destinationName={destinationName}
+              />
               <ol className="mt-2 divide-y divide-border rounded-xl border border-border text-xs">
                 {turns.map((t, i) => (
                   <li key={`${t.step.index}-${i}`} className="flex items-center gap-2 px-3 py-2">
@@ -556,6 +598,10 @@ export function ParkingDetail({
         </div>
       </section>
 
+      {arriveUsed && onArrive && (
+        <BestTime option={o} arriveAt={arriveUsed} schedule={schedule} onPick={onArrive} />
+      )}
+
       <div className="mt-4 flex flex-wrap gap-2">
         <a
           href={navHref}
@@ -571,6 +617,30 @@ export function ParkingDetail({
           Alege altă parcare
         </button>
       </div>
+      <div className="handoff-links" aria-label="Condu cu aplicația ta de navigație">
+        <a href={links.google} target="_blank" rel="noopener noreferrer">
+          <ExternalLink className="h-4 w-4" aria-hidden /> Google Maps
+          <span className="sr-only"> (se deschide în altă aplicație)</span>
+        </a>
+        <a href={links.waze} target="_blank" rel="noopener noreferrer">
+          <ExternalLink className="h-4 w-4" aria-hidden /> Waze
+          <span className="sr-only"> (se deschide în altă aplicație)</span>
+        </a>
+        <button
+          type="button"
+          onClick={() => setSaved(saveCar(carInput()) ? 'ok' : 'blocked')}
+          className="inline-flex min-h-11 items-center gap-2 rounded-xl border border-primary/60 px-3 text-xs font-semibold text-primary"
+        >
+          <Car className="h-4 w-4" aria-hidden /> Am parcat aici
+        </button>
+      </div>
+      <p className="mt-1 text-xs text-muted" role={saved ? 'status' : undefined}>
+        {saved === 'ok'
+          ? 'Locul e salvat pe acest dispozitiv. Pe ecranul principal găsești drumul înapoi și ora la care expiră plata.'
+          : saved === 'blocked'
+            ? 'Browserul nu permite salvarea (mod privat?). Locul nu a fost salvat.'
+            : 'Google Maps și Waze primesc doar poziția parcării. FLOW alege parcarea, aplicația ta conduce până acolo.'}
+      </p>
     </article>
   );
 }

@@ -31,12 +31,18 @@ import { ParkingRecommendations } from '../features/parking/ParkingRecommendatio
 import { ParkingDetail, type Origin } from '../features/parking/ParkingDetail';
 import {
   DEFAULT_PARKING_SETTINGS,
+  localInputValue,
   nextWeekdayAt10,
   type ParkingSettings,
 } from '../features/parking/settings';
 import { DestinationSearch } from '../features/search/DestinationSearch';
 import { GreenSwitch, type JourneyMapSelection } from '../features/journey/GreenSwitch';
 import { InstallPrompt } from '../components/InstallPrompt';
+import { ParkedCarCard } from '../features/car/ParkedCarCard';
+import { useParkedCar } from '../features/car/carStore';
+import { FavouriteShortcuts, SaveFavourite, SLOTS } from '../features/car/favourites';
+import { StopPicker } from '../features/parking/StopPicker';
+import type { TourStop } from '../features/parking/ParkingRecommendations';
 import { motionApi } from '../features/motion/motionApi';
 import { api } from '../services/api';
 import { AppShell } from './AppShell';
@@ -274,6 +280,9 @@ function Explore({
   const [walkRoute, setWalkRoute] = useState<Coordinate[] | null>(null);
   const [parkingSettings, setParkingSettings] = useState<ParkingSettings>(DEFAULT_PARKING_SETTINGS);
   const [journeySelection, setJourneySelection] = useState<JourneyMapSelection | null>(null);
+  const [stops, setStops] = useState<TourStop[]>([]);
+  const [carWalk, setCarWalk] = useState<Coordinate[] | null>(null);
+  const car = useParkedCar();
   const [expanded, setExpanded] = useState(false);
   const [layers, setLayers] = useState(false);
   const [origin, setOrigin] = useState<Origin | null>(null);
@@ -331,6 +340,7 @@ function Explore({
   );
   const selectDestination = useCallback((value: Destination) => {
     setDestination(value);
+    setStops([]);
     setDetailId(null);
     setDriveRoute(null);
     setJourneySelection(null);
@@ -428,7 +438,8 @@ function Explore({
         destination={destination}
         recommendations={options}
         route={detail ? driveRoute : null}
-        walkRoute={detail ? walkRoute : null}
+        walkRoute={detail ? walkRoute : carWalk}
+        car={car?.coordinate ?? null}
         journey={detail ? null : journeySelection}
         selectedRecommendationId={selectedId}
         focusRecommendation={focus}
@@ -467,6 +478,14 @@ function Explore({
             <span />
           </button>
           <div className="explore-panel-inner">
+            {car && !detail && (
+              <ParkedCarCard
+                key={car.parkedAt}
+                car={car}
+                tariffs={timparkData?.data.tariffs ?? null}
+                onWalkRoute={setCarWalk}
+              />
+            )}
             {!destination && (
               <div className="explore-welcome">
                 <span className="explore-welcome-eyebrow">
@@ -481,6 +500,7 @@ function Explore({
                   Găsește parcarea potrivită și descoperă când merită să continui pe jos sau cu
                   bicicleta.
                 </p>
+                <FavouriteShortcuts places={knownPlaces} verb="Mergi la" onPick={selectDestination} />
                 <div className="explore-steps">
                   <div>
                     <span className="explore-step-icon">
@@ -563,8 +583,10 @@ function Explore({
                           </span>
                         </p>
                       )}
+                      <SaveFavourite place={destination} />
                       <button
                         onClick={() => {
+                          setStops([]);
                           setDestination(null);
                           setReco(null);
                           setDriveRoute(null);
@@ -604,6 +626,10 @@ function Explore({
                       options.find((o) => o.id !== detail.id && o.access !== 'customers') ?? null
                     }
                     avoidZones={avoidZones}
+                    arriveTarget={parkingSettings.arrive ? reco.arriveAt : null}
+                    arriveUsed={reco.arriveAt}
+                    schedule={timparkData?.data.tariffs.schedule ?? null}
+                    onArrive={(at) => setParkingSettings((s) => ({ ...s, arrive: localInputValue(at) }))}
                   />
                 )}
                 {destination.location && (
@@ -619,12 +645,37 @@ function Explore({
                       onPick={pickOption}
                       onOpen={openDetail}
                       onResult={onResult}
+                      stops={stops}
+                      stopsSlot={
+                        <StopPicker
+                          destination={[destination.location.lng, destination.location.lat]}
+                          places={knownPlaces}
+                          stops={stops}
+                          onChange={setStops}
+                        />
+                      }
                     />
                     <div className="explore-origin">
                       <div className="explore-origin-label">
                         <LocateFixed size={13} /> PUNCTUL DE PLECARE
                       </div>
                       <strong>{origin?.name ?? 'Alege de unde pornești'}</strong>
+                      <FavouriteShortcuts
+                        places={knownPlaces}
+                        verb="Plec de la"
+                        hideEmpty
+                        onPick={(d, slot) => {
+                          if (!d.location || d.id === destination.id) return;
+                          locateTicket.current++;
+                          setLocating(false);
+                          setOriginError(null);
+                          setOrigin({
+                            name: `${SLOTS.find((x) => x.id === slot)!.label}: ${d.name}`,
+                            coordinate: [d.location.lng, d.location.lat],
+                          });
+                          leaveDemo();
+                        }}
+                      />
                       <div className="explore-origin-actions">
                         <button onClick={requestGps} disabled={locating}>
                           <LocateFixed size={14} />

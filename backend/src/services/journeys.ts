@@ -71,6 +71,17 @@ const notes: Record<JourneyMode, string> = {
     'Rută de bicicletă calculată. Nu confirmă existența unei piste separate sau siguranța întregului traseu.',
 };
 
+/** A walking option around a route we already have (the saved DEMO copy). */
+export function walkOption(route: JourneyOption['route']) {
+  return JourneyOption.parse({
+    id: 'journey-walk',
+    mode: 'walk',
+    route,
+    practical: journeyPractical('walk', route.duration),
+    note: notes.walk,
+  });
+}
+
 export async function requestActiveRoute(
   mode: 'walk' | 'cycle',
   origin: Coordinate,

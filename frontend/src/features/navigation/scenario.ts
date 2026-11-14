@@ -1,4 +1,4 @@
-import type { Coordinate } from '@vlaiq/shared';
+import { TariffColor, type Coordinate } from '@vlaiq/shared';
 import type { NavPlace } from './places';
 
 /**
@@ -13,6 +13,8 @@ export interface ParkingHandoff {
   backup: { place: NavPlace; chance: number; walkMinutes: number } | null;
   /** The final destination, reached on foot after parking. */
   final: { name: string; coordinate: Coordinate } | null;
+  /** Timpark facts of the target, for "Am parcat aici" on arrival (spec §6.17). */
+  parking: { tariff: TariffColor | null; smsCode: string | null; stayMinutes: number | null };
 }
 
 export interface HandoffInput {
@@ -20,6 +22,7 @@ export interface HandoffInput {
   walkMinutes?: number | null;
   backup?: { name: string; coordinate: Coordinate; chance: number; walkMinutes: number } | null;
   final?: { name: string; coordinate: Coordinate } | null;
+  parking?: { tariff: TariffColor | null; smsCode: string | null; stayMinutes: number | null };
 }
 
 // Same prototype area the backend accepts for routing (places.ts, backend/src/routes/navigation.ts).
@@ -38,6 +41,9 @@ export function handoffParams(input: HandoffInput): Record<string, string> {
     out.altChance = round(input.backup.chance, 3);
     out.altWalk = round(input.backup.walkMinutes, 1);
   }
+  if (input.parking?.tariff) out.tariff = input.parking.tariff;
+  if (input.parking?.smsCode) out.sms = input.parking.smsCode;
+  if (input.parking?.stayMinutes) out.stay = String(input.parking.stayMinutes);
   if (input.final) {
     out.final = coord(input.final.coordinate);
     out.finalName = input.final.name;
@@ -87,5 +93,10 @@ export function handoffFromUrl(search: string): ParkingHandoff {
           }
         : null,
     final: finalCoordinate && finalName ? { name: finalName, coordinate: finalCoordinate } : null,
+    parking: {
+      tariff: TariffColor.safeParse(q.get('tariff')).data ?? null,
+      smsCode: /^\d{2,4}$/.test(q.get('sms') ?? '') ? q.get('sms') : null,
+      stayMinutes: ((n) => (Number.isInteger(n) && n >= 15 && n <= 600 ? n : null))(Number(q.get('stay'))),
+    },
   };
 }

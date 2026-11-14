@@ -6,6 +6,7 @@ import {
   ArrowUp,
   ArrowUpLeft,
   ArrowUpRight,
+  Car,
   Check,
   ChevronDown,
   ChevronUp,
@@ -33,6 +34,7 @@ import { loadNavPlaces, type NavPlaces } from './places';
 import { handoffFromUrl } from './scenario';
 import { formatDistance, instruction } from './geometry';
 import { NavigationMap } from './NavigationMap';
+import { saveCar } from '../car/carStore';
 import { useTheme } from '../../app/theme';
 import './navigation.css';
 
@@ -112,6 +114,7 @@ function NavigationView({ places }: { places: NavPlaces }) {
   // DEMO "parking full" offer: null = not shown, otherwise seconds left before it keeps the current route.
   const [offer, setOffer] = useState<number | null>(null);
   const [fullName, setFullName] = useState<string | null>(null);
+  const [carSaved, setCarSaved] = useState<'ok' | 'blocked' | null>(null);
   useEffect(() => {
     if (!demo) {
       setOffer(null);
@@ -444,9 +447,42 @@ function NavigationView({ places }: { places: NavPlaces }) {
                   ? `În planificator, deschide „${backup.place.name}” ca să vezi ruta pe jos pe hartă.`
                   : 'În planificator vezi ruta pe jos de la parcare, desenată pe hartă.'}
               </p>
-              <a href="/" onClick={nav.stop}>
-                Vezi mersul pe jos <ArrowRight size={15} />
-              </a>
+              <div className="walk-handoff-actions">
+                <button
+                  onClick={() =>
+                    setCarSaved(
+                      saveCar({
+                        version: 1,
+                        name: nav.destination.name.slice(0, 120),
+                        coordinate: nav.destination.coordinate,
+                        parkedAt: new Date().toISOString(),
+                        // A DEMO switch goes to the backup, whose Timpark facts we were not given.
+                        tariff: nav.switched ? null : handoff.parking.tariff,
+                        smsCode: nav.switched ? null : handoff.parking.smsCode,
+                        paidUntil: null,
+                        destination: handoff.final,
+                        walkMinutes: finalWalk ?? null,
+                        stayMinutes: handoff.parking.stayMinutes,
+                      })
+                        ? 'ok'
+                        : 'blocked',
+                    )
+                  }
+                  disabled={carSaved === 'ok'}
+                >
+                  <Car size={15} /> {carSaved === 'ok' ? 'Loc salvat' : 'Am parcat aici'}
+                </button>
+                <a href="/" onClick={nav.stop}>
+                  Vezi mersul pe jos <ArrowRight size={15} />
+                </a>
+              </div>
+              {carSaved && (
+                <p role="status">
+                  {carSaved === 'ok'
+                    ? `Locul mașinii e salvat pe acest dispozitiv${demo ? ' (DEMO: poziție simulată)' : ''}. Pe ecranul principal: drumul înapoi și ora la care expiră plata.`
+                    : 'Browserul nu permite salvarea. Locul nu a fost salvat.'}
+                </p>
+              )}
             </section>
           )}
           <section

@@ -1,0 +1,295 @@
+/* "Mașina ta", trip helpers and favourites (spec §6.17–6.21). Tokens from styles/tokens.css. */
+.parked-car,
+.trip-helper {
+  margin: 0 0 12px;
+  padding: 12px 14px;
+  border: 1px solid rgb(var(--primary) / 0.45);
+  border-radius: 14px;
+  background: rgb(var(--primary) / 0.07);
+  color: rgb(var(--text));
+  font-size: 13px;
+}
+.parked-car-head {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+}
+.parked-car-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  flex-shrink: 0;
+  border-radius: 10px;
+  background: rgb(var(--primary));
+  color: rgb(var(--primary-fg));
+}
+.parked-car-head > div {
+  flex: 1;
+  min-width: 0;
+}
+.parked-car-eyebrow,
+.trip-helper-eyebrow {
+  display: block;
+  color: rgb(var(--primary));
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+}
+.parked-car h2 {
+  margin: 2px 0;
+  font-size: 15px;
+  font-weight: 700;
+  overflow-wrap: anywhere;
+}
+.parked-car p,
+.trip-helper p {
+  margin: 6px 0 0;
+  color: rgb(var(--text-muted));
+  line-height: 1.45;
+}
+.parked-car p strong,
+.trip-helper p strong {
+  color: rgb(var(--text));
+}
+.parked-car-close {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  margin: -8px -8px 0 0;
+  border-radius: 10px;
+  color: rgb(var(--text-muted));
+}
+.parked-car-close:hover {
+  background: rgb(var(--surface-2));
+  color: rgb(var(--text));
+}
+.parked-car-alert,
+.parked-car-expired {
+  display: flex;
+  gap: 8px;
+  align-items: flex-start;
+  padding: 8px 10px;
+  border: 1px solid rgb(var(--warning) / 0.6);
+  border-radius: 10px;
+  background: rgb(var(--warning) / 0.12);
+  color: rgb(var(--text)) !important;
+}
+.parked-car-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  align-items: center;
+  margin-top: 8px;
+}
+.parked-car-chips > span {
+  color: rgb(var(--text-muted));
+  font-size: 12px;
+}
+.parked-car-chips button,
+.trip-helper-chips button,
+.place-favourites button {
+  display: inline-flex;
+  gap: 6px;
+  align-items: center;
+  min-height: 44px;
+  padding: 0 12px;
+  border: 1px solid rgb(var(--border));
+  border-radius: 10px;
+  background: rgb(var(--surface-2));
+  color: rgb(var(--text));
+  font-size: 12px;
+  font-weight: 600;
+}
+.parked-car-chips button:hover,
+.trip-helper-chips button:hover,
+.place-favourites button:hover {
+  border-color: rgb(var(--primary) / 0.7);
+}
+.parked-car small,
+.trip-helper small {
+  display: block;
+  margin-top: 6px;
+  color: rgb(var(--text-muted));
+  font-size: 11px;
+}
+.parked-car-walk,
+.trip-helper-primary {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  min-height: 44px;
+  margin-top: 10px;
+  border-radius: 10px;
+  background: rgb(var(--primary));
+  color: rgb(var(--primary-fg));
+  font-size: 13px;
+  font-weight: 700;
+}
+.parked-car-walk:disabled {
+  opacity: 0.7;
+}
+.parked-car-walk-result {
+  font-size: 12px;
+}
+.trip-helper-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 8px;
+}
+.trip-helper-row {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  flex-wrap: wrap;
+  margin-top: 8px;
+}
+.trip-helper-row label {
+  color: rgb(var(--text-muted));
+  font-size: 12px;
+}
+.trip-helper-row input {
+  min-height: 44px;
+  padding: 0 10px;
+  border: 1px solid rgb(var(--border));
+  border-radius: 10px;
+  background: rgb(var(--surface-2));
+  color: rgb(var(--text));
+  color-scheme: dark;
+}
+.trip-helper-bars {
+  display: grid;
+  gap: 4px;
+  margin-top: 8px;
+}
+.trip-helper-bar {
+  display: grid;
+  grid-template-columns: 46px 1fr auto;
+  gap: 8px;
+  align-items: center;
+  min-height: 30px;
+  padding: 2px 6px;
+  border: 1px solid transparent;
+  border-radius: 8px;
+  color: rgb(var(--text));
+  font-size: 12px;
+  text-align: left;
+}
+.trip-helper-bar[aria-pressed='true'] {
+  border-color: rgb(var(--primary) / 0.7);
+  background: rgb(var(--primary) / 0.1);
+}
+.trip-helper-meter {
+  height: 8px;
+  border-radius: 99px;
+  background: rgb(var(--surface-2));
+  overflow: hidden;
+}
+.trip-helper-meter i {
+  display: block;
+  height: 100%;
+  border-radius: 99px;
+  background: rgb(var(--q-estimated));
+}
+.place-favourites {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 10px 0 0;
+}
+.place-favourites .is-empty {
+  border-style: dashed;
+  color: rgb(var(--text-muted));
+}
+.place-favourite-save {
+  display: inline-flex;
+  gap: 6px;
+  align-items: center;
+  min-height: 44px;
+  margin-top: 6px;
+  color: rgb(var(--primary));
+  font-size: 12px;
+  font-weight: 600;
+}
+.handoff-links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 8px;
+}
+.handoff-links a {
+  display: inline-flex;
+  gap: 6px;
+  align-items: center;
+  min-height: 44px;
+  padding: 0 12px;
+  border: 1px solid rgb(var(--border));
+  border-radius: 10px;
+  background: rgb(var(--surface-2));
+  color: rgb(var(--text));
+  font-size: 12px;
+  font-weight: 600;
+}
+.parking-card-tour {
+  grid-column: 1 / -1;
+}
+.tour-stops {
+  margin-top: 12px;
+  padding: 10px 12px;
+  border: 1px dashed rgb(var(--border));
+  border-radius: 12px;
+  font-size: 12px;
+}
+.tour-stops-title {
+  margin: 0 0 6px;
+  color: rgb(var(--text-muted));
+}
+.tour-stops-title strong {
+  color: rgb(var(--text));
+}
+.tour-stops-list {
+  display: grid;
+  gap: 4px;
+  margin: 0 0 6px;
+  padding: 0;
+  list-style: none;
+}
+.tour-stops-list li {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding-left: 8px;
+  border-radius: 8px;
+  background: rgb(var(--surface-2));
+}
+.tour-stops-list button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  color: rgb(var(--text-muted));
+}
+.tour-stops-add {
+  display: inline-flex;
+  gap: 6px;
+  align-items: center;
+  min-height: 44px;
+  color: rgb(var(--primary));
+  font-weight: 600;
+}
+.tour-stops-message {
+  margin: 6px 0 0;
+  color: rgb(var(--warning));
+}
+.place-favourites small {
+  color: rgb(var(--text-muted));
+  font-size: 11px;
+}

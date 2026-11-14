@@ -1,5 +1,6 @@
 import { Router } from 'express';
-import { AvailabilityExplainRequest, RecommendationRequest } from '@vlaiq/shared';
+import { AvailabilityExplainRequest, MAX_STOP_SPREAD_M, RecommendationRequest } from '@vlaiq/shared';
+import { tourSpreadM } from '../engines/smartmatch/tour';
 import { recommendParkings } from '../services/parkingRecommendations';
 import { availabilityModel, explainAvailability } from '../engines/smartmatch';
 export const recommendationsRouter = Router();
@@ -29,6 +30,15 @@ recommendationsRouter.post('/', async (req, res) => {
       error: {
         code: 'OUTSIDE_AREA',
         message: 'Recomandările sunt disponibile în zona Timișoara.',
+      },
+    });
+  if (input.data.stops.some((s) => !inArea(s.coordinate)))
+    return res.status(400).json({ error: { code: 'OUTSIDE_AREA', message: 'Opririle trebuie să fie în zona Timișoara.' } });
+  if (tourSpreadM(input.data.destination, input.data.stops.map((s) => s.coordinate)) > MAX_STOP_SPREAD_M)
+    return res.status(400).json({
+      error: {
+        code: 'STOPS_TOO_FAR',
+        message: `Opririle sunt prea departe una de alta pentru o singură parcare (peste ${(MAX_STOP_SPREAD_M / 1000).toLocaleString('ro-RO')} km). Planifică-le separat.`,
       },
     });
   try {
