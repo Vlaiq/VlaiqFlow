@@ -231,9 +231,9 @@ fs.mkdirSync(output, { recursive: true });
       await r.fulfill({ json: value }).catch(() => {});
     });
     // Parking settings live in "Unde parchezi" and are shared with the car journey.
-    await page.getByLabel('Stai cât?', { exact: true }).selectOption('60');
+    await page.getByRole('combobox', { name: /^Stai cât\?/ }).selectOption('60');
     await page.waitForTimeout(70);
-    await page.getByLabel('Stai cât?', { exact: true }).selectOption('180');
+    await page.getByRole('combobox', { name: /^Stai cât\?/ }).selectOption('180');
     await page.waitForTimeout(1000);
     assert.equal(latestInput.stayMinutes, 180, 'journey uses the shared parking stay');
     await page.getByText('Surse și limitele comparației', { exact: true }).click();

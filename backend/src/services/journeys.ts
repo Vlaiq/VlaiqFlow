@@ -10,6 +10,8 @@ import {
 import { config } from '../config';
 import { getRoutes } from './routing';
 import { fossgisRoute } from './fossgis';
+import { validateEndpoints } from './routeValidation';
+import { reportRoutingFailure, RoutingHttpError } from './routingDiagnostics';
 
 const orsResponse = z.object({
   features: z
@@ -82,7 +84,7 @@ export function walkOption(route: JourneyOption['route']) {
   });
 }
 
-export async function requestActiveRoute(
+async function loadActiveRoute(
   mode: 'walk' | 'cycle',
   origin: Coordinate,
   destination: Coordinate,
@@ -90,6 +92,7 @@ export async function requestActiveRoute(
   if (!config.orsApiKey) {
     // Keyless fallback with real geometry (rate-limited public server), so the app works out of the box.
     const route = await fossgisRoute(mode, origin, destination);
+    validateEndpoints(route.geometry, origin, destination);
     return JourneyOption.parse({
       id: `journey-${mode}`,
       mode,
@@ -99,7 +102,7 @@ export async function requestActiveRoute(
     });
   }
   const response = await fetch(
-    `https://api.openrouteservice.org/v2/directions/${profile[mode]}/geojson`,
+    `https://api.heigit.org/openrouteservice/v2/directions/${profile[mode]}/geojson`,
     {
       method: 'POST',
       signal: AbortSignal.timeout(15000),
@@ -107,8 +110,9 @@ export async function requestActiveRoute(
       body: JSON.stringify({ coordinates: [origin, destination], instructions: true }),
     },
   );
-  if (!response.ok) throw new Error('ACTIVE_PROVIDER_UNAVAILABLE');
+  if (!response.ok) throw new RoutingHttpError(response.status);
   const feature = orsResponse.parse(await response.json()).features[0]!;
+  validateEndpoints(feature.geometry.coordinates, origin, destination);
   const route = {
     id: `ors-${mode}`,
     ...feature.properties.summary,
@@ -133,6 +137,17 @@ export async function requestActiveRoute(
     route,
     practical: journeyPractical(mode, route.duration),
     note: notes[mode],
+  });
+}
+
+export async function requestActiveRoute(
+  mode: 'walk' | 'cycle',
+  origin: Coordinate,
+  destination: Coordinate,
+) {
+  return loadActiveRoute(mode, origin, destination).catch((error: unknown) => {
+    reportRoutingFailure(config.orsApiKey ? 'ors' : 'fossgis', profile[mode], 'directions', error);
+    throw error;
   });
 }
 

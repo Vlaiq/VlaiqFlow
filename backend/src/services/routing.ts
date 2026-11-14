@@ -9,6 +9,8 @@ import {
 } from '@vlaiq/shared';
 import { config } from '../config';
 import { offlineDriving } from './offlineRoutes';
+import { validateEndpoints } from './routeValidation';
+import { reportRoutingFailure, RoutingHttpError } from './routingDiagnostics';
 
 // No arbitrary upstream URL is accepted from clients. Keys never leave the server.
 const coord = z.tuple([z.number(), z.number()]);
@@ -86,7 +88,7 @@ async function requestRoutes(
   avoid: AvoidCircle[],
 ): Promise<RoutesResponse> {
   if (config.orsApiKey) {
-    const res = await fetch('https://api.openrouteservice.org/v2/directions/driving-car/geojson', {
+    const res = await fetch('https://api.heigit.org/openrouteservice/v2/directions/driving-car/geojson', {
       method: 'POST',
       signal: AbortSignal.timeout(15000),
       headers: { Authorization: config.orsApiKey, 'Content-Type': 'application/json' },
@@ -110,7 +112,7 @@ async function requestRoutes(
       const plain = await requestRoutes(origin, destination, []);
       return { ...plain, avoidance: 'failed' };
     }
-    if (!res.ok) throw new Error('Routing provider unavailable');
+    if (!res.ok) throw new RoutingHttpError(res.status);
     const body = orsResponse.parse(await res.json());
     return RoutesResponse.parse({
       routes: body.features.slice(0, 3).map((f, i) => ({
@@ -137,7 +139,7 @@ async function requestRoutes(
   // Low-volume prototype fallback; no live traffic or speed-limit claims.
   const url = `https://router.project-osrm.org/route/v1/driving/${origin.join(',')};${destination.join(',')}?overview=full&geometries=geojson&steps=true&alternatives=true`;
   const res = await fetch(url, { signal: AbortSignal.timeout(15000) });
-  if (!res.ok) throw new Error('Routing provider unavailable');
+  if (!res.ok) throw new RoutingHttpError(res.status);
   const routes = parseOsrmRoutes(
     await res.json(),
     'osrm',
@@ -190,11 +192,13 @@ export async function getRoutes(
   if (running) return running;
   const job = requestRoutes(origin, destination, avoid)
     .then((result) => {
+      result.routes.forEach((route) => validateEndpoints(route.geometry, origin, destination));
       if (cache.size >= 100) cache.delete(cache.keys().next().value!);
       cache.set(key, { result, expires: Date.now() + 300000 });
       return result;
     })
     .catch((e: unknown) => {
+      reportRoutingFailure(config.orsApiKey ? 'ors' : 'osrm', 'driving-car', 'directions', e);
       // Provider down: the saved DEMO route for this exact pair, labelled as a saved copy (spec §6.8).
       const saved = offlineDriving(origin, destination);
       if (!saved) throw e;

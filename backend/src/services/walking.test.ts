@@ -6,7 +6,7 @@ afterEach(() => {
 it('coalesces simultaneous pedestrian matrix requests and never fabricates route geometry', async () => {
   vi.doMock('../config', () => ({ config: { orsApiKey: 'test-key' } }));
   const fetcher = vi.fn(
-    async () => new Response(JSON.stringify({ durations: [[120]], distances: [[160]] })),
+    async (_url: string) => new Response(JSON.stringify({ durations: [[120]], distances: [[160]] })),
   );
   vi.stubGlobal('fetch', fetcher);
   const { walkTimes } = await import('./walking');
@@ -18,6 +18,9 @@ it('coalesces simultaneous pedestrian matrix requests and never fabricates route
   expect(fetcher).toHaveBeenCalledTimes(1);
   expect(a[0]?.minutes).toBe(2);
   expect(a[0]).not.toHaveProperty('geometry');
+  expect(fetcher.mock.calls[0]?.[0]).toBe(
+    'https://api.heigit.org/openrouteservice/v2/matrix/foot-walking',
+  );
 });
 it('rejects negative/nonfinite matrix values and labels the cached fallback honestly', async () => {
   vi.doMock('../config', () => ({ config: { orsApiKey: 'test-key' } }));

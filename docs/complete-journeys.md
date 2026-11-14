@@ -68,8 +68,9 @@ Existing `/api/recommendations` and `/api/journeys/compare` remain compatible.
    concurrently. Actual pedestrian duration must satisfy the requested walk limit. A candidate with
    either invalid route is omitted. Both full geometry and metrics come from the actual provider.
 6. Direct active walking and cycling are isolated with `Promise.allSettled`. A failed category does not
-   erase valid alternatives. Without ORS, no complete car option is claimed because its foot leg is
-   unavailable; standalone parking discovery and the existing driving demo remain accessible.
+   erase valid alternatives. Without ORS, the existing OSRM driving and FOSSGIS foot/bike fallbacks
+   can supply real geometry when reachable. A candidate still requires both validated directions;
+   the labelled walking formula is only for screening, and unavailable driving matrices stay unknown.
 
 A cold full comparison is bounded to two matrices + six candidate directions + two active directions.
 Cache hits can reduce that number. This is a bounded shortlist, not a citywide optimum.
@@ -164,8 +165,10 @@ PLAYWRIGHT_MODULE=/opt/codex/cua_node/lib/node_modules/playwright node scripts/t
 
 Browser fixture screenshots are visibly stamped synthetic; the initial provider-unavailable path uses
 the real running backend. Fixtures prove interaction/contracts, not external connectivity or road safety.
-Actual ORS key is absent here; official-site/OSRM HTTPS attempts received proxy CONNECT 403 on 14 Nov.
-**REAL PROVIDER VERIFICATION BLOCKED.** No complete live ORS journey was verified in this environment.
+Historical Sprint 01 verification, before the HeiGIT migration: the ORS key was absent and
+official-site/OSRM HTTPS attempts received proxy CONNECT 403 on 14 Nov; live provider verification
+was blocked. This earlier observation is retained as history. Mission 01's fresh bounded real-backend
+verification and its exact scope are recorded separately in [ors-verification.md](ors-verification.md).
 
 Not implemented: verified cycling-infrastructure overlay, full scheduled transit planner/GTFS connections,
 live occupancy/traffic, calibrated availability, exact emissions savings, automatic navigation phase transfer

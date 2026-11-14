@@ -40,6 +40,9 @@ it('maps actual ORS metrics, sends the explicit origin, caches results and prese
   expect(concurrent).toEqual(result);
   expect(result[0]).toMatchObject({ minutes: 2, meters: 900, quality: 'estimated' });
   expect(result[1]?.minutes).toBeNull();
+  expect(fetcher.mock.calls[0]?.[0]).toBe(
+    'https://api.heigit.org/openrouteservice/v2/matrix/driving-car',
+  );
   expect(JSON.parse(fetcher.mock.calls[0]?.[1].body).locations).toEqual([from, ...to]);
   await driveTimes(from, to);
   expect(fetcher).toHaveBeenCalledTimes(1);

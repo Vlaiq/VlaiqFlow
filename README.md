@@ -56,7 +56,8 @@ Also in the app:
 | Chance of a free space | **Estimated**: a rule model by area type, day and hour; not a measurement | `backend/src/engines/smartmatch/occupancy.ts` |
 | DEMO origin, arrival time, "parking full" event and car movement | **Simulated**, labelled DEMO, per browser session | Never changes what other users see |
 | Live occupancy, live traffic, transit arrivals, measured CO₂ savings | **Not available** | No open source exists; shown as unknown |
-| AI assistant (Gemini), voice (ElevenLabs), analytics DB | **Not implemented** | Planned in `docs/spec.md` §6.11–6.14 |
+| FLOW Voice (ElevenLabs) | **Implemented; live voice verification pending** | Pinned agent/version, four real planner tools, map acknowledgement, deterministic navigation audio/fallback; [setup, tests and demo](docs/flow-voice.md) |
+| AI assistant (Gemini), analytics DB | **Not implemented** | Planned in `docs/spec.md` §6.11–6.14 |
 
 Every price, availability and duration in the API carries a `quality` (`confirmed | estimated | unknown | simulated`) and a `source`.
 
@@ -97,7 +98,29 @@ flowchart LR
 
 Without `ORS_API_KEY`, driving uses the OSRM public demo, and walking and cycling use the FOSSGIS servers (`routing.openstreetmap.de`). These are low-volume services: the backend sends at most one FOSSGIS request per second with a User-Agent naming the team, caches results, and the map shows the OSM "fix the map" link their policy asks for. Set a key for anything beyond a demo.
 
+ORS directions and matrices use `https://api.heigit.org/openrouteservice/v2/`. In Codex, bind the
+`ORS_API_KEY` HTTP secret to `api.heigit.org`, preserve the inherited HTTPS proxy and CA trust, and
+start Node 24 with `NODE_USE_ENV_PROXY=1`. The proxy supplies the credential for matching HTTPS
+requests; never print the binding or put it in frontend variables. This cloud verification does not
+configure the separate production server's credentials or network access.
+
 ## Verification
+
+Live ORS/HeiGIT verification passed through Codex's secure HTTPS proxy on 14 Nov 2026 for driving,
+walking, cycling and both parking matrices; see [the verification record](docs/ors-verification.md).
+Automated tests use visibly labelled fixtures. Transit routing and a verified cycling overlay remain unavailable.
+
+Mission 01 adds endpoint-snap validation for every directions entry point and safe provider diagnostics.
+To repeat its opt-in live check in a correctly configured Codex Node 24 environment:
+
+```bash
+NODE_USE_ENV_PROXY=1 pnpm -F backend exec tsx ../scripts/verify-ors.ts
+```
+
+This starts a temporary real backend on port 18787, makes at most ten provider requests with bounded
+deadlines and zero retries, validates complete journeys/matrices and checks cache reuse. It exits with
+failure if any category is unavailable. Leave `NODE_USE_ENV_PROXY` unset in environments that do not
+use an inherited HTTPS proxy. No public production deployment is implied.
 
 ```bash
 pnpm typecheck

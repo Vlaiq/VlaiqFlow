@@ -84,13 +84,16 @@ it('uses ORS on the server and preserves provider maneuver indices', async () =>
     road: 'Test',
   });
   expect(JSON.stringify(response)).not.toContain('test-only-key');
+  expect(fetcher.mock.calls[0]?.[0]).toBe(
+    'https://api.heigit.org/openrouteservice/v2/directions/driving-car/geojson',
+  );
   expect(fetcher.mock.calls[0]?.[1].headers.Authorization).toBe('test-only-key');
 });
 it('rejects failed and invalid upstream responses rather than manufacturing a route', async () => {
   vi.doMock('../config', () => ({ config: { orsApiKey: undefined } }));
   vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response('{}', { status: 503 })));
   const { getRoutes } = await import('./routing');
-  await expect(getRoutes([21.21, 45.75], [21.211, 45.751])).rejects.toThrow('unavailable');
+  await expect(getRoutes([21.21, 45.75], [21.211, 45.751])).rejects.toThrow('HTTP 503');
 });
 
 const orsBody = () =>

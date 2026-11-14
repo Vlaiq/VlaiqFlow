@@ -49,9 +49,13 @@ import { api } from '../services/api';
 import { AppShell } from './AppShell';
 import { useAppRouter } from './router';
 import { useTheme } from './theme';
+import { FlowVoiceProvider, VoiceCard, useVoiceRegistration } from '../features/voice/FlowVoice';
+import { useFlowPlanner } from '../features/voice/useFlowPlanner';
 
 type Load<T> =
-  { state: 'loading' } | { state: 'ok'; data: T } | { state: 'error'; message: string };
+  | { state: 'loading' }
+  | { state: 'ok'; data: T }
+  | { state: 'error'; message: string };
 function useLoad<T>(fn: () => Promise<T>, attempt = 0): Load<T> {
   const [value, setValue] = useState<Load<T>>({ state: 'loading' });
   useEffect(() => {
@@ -106,6 +110,14 @@ const findPlace = (list: Destination[] | null, ref: { id: string; name: string }
 const motionPaths = ['/motion', '/challenges', '/community', '/wallet'];
 
 export function App() {
+  return (
+    <FlowVoiceProvider>
+      <AppContent />
+    </FlowVoiceProvider>
+  );
+}
+
+function AppContent() {
   const { location, navigate } = useAppRouter();
   const path = location.pathname;
   const motionVisible = motionPaths.includes(path);
@@ -389,6 +401,7 @@ function Explore({
   const demoOrigin = findPlace(knownPlaces, DEMO_ORIGIN);
   const demoDestination = findPlace(knownPlaces, DEMO_DESTINATION);
   const startDemo = () => {
+    planner.changed();
     if (!demoOrigin?.location || !demoDestination) return;
     locateTicket.current++;
     setLocating(false);
@@ -404,6 +417,7 @@ function Explore({
     selectDestination(demoDestination);
   };
   const requestGps = useCallback(() => {
+    planner.changed();
     if (!navigator.geolocation || !window.isSecureContext) {
       setOriginError('Localizarea necesită HTTPS. Poți alege plecarea pe hartă.');
       return;
@@ -426,6 +440,7 @@ function Explore({
           );
           return;
         }
+        planner.changed();
         setOrigin({ name: `Locația mea · ±${Math.round(p.coords.accuracy)} m`, coordinate });
         leaveDemo();
       },
@@ -442,6 +457,7 @@ function Explore({
     );
   }, [leaveDemo]);
   const manualOrigin = useCallback(() => {
+    planner.changed();
     locateTicket.current++;
     setLocating(false);
     setPickingOrigin(true);
@@ -454,6 +470,24 @@ function Explore({
     setExpanded(true);
     panelRef.current?.scrollTo({ top: 0 });
   }, [arrivalWalk, closeDetail]);
+  const planner = useFlowPlanner({
+    origin,
+    destination,
+    places: knownPlaces,
+    settings: parkingSettings,
+    demo: !!demo,
+    setOrigin,
+    setDestination: selectDestination,
+    setSettings: setParkingSettings,
+    showJourney: (selection) => {
+      setDetailId(null);
+      // A journey chosen by voice must be visible: open the routes view.
+      setPlannerView('journey');
+      setJourneySelection(selection);
+      setExpanded(true);
+    },
+  });
+  useVoiceRegistration(planner.tools, planner.begin);
   const detailIndex = detailId ? options.findIndex((o) => o.id === detailId) : -1;
   const detail = detailIndex >= 0 ? options[detailIndex]! : null;
   return (
@@ -467,13 +501,20 @@ function Explore({
         walkRoute={detail ? walkRoute : (arrivalRoute ?? carWalk)}
         car={car?.coordinate ?? null}
         journey={detail || arrivalRoute ? null : journeySelection}
+        onJourneyRendered={planner.acknowledge}
         selectedRecommendationId={selectedId}
         focusRecommendation={focus}
-        onSelectRecommendation={openDetail}
+        onSelectRecommendation={(id) => {
+          planner.changed();
+          openDetail(id);
+        }}
         theme={theme}
         origin={origin?.coordinate ?? null}
         pickingOrigin={pickingOrigin}
-        onPickOrigin={pickOrigin}
+        onPickOrigin={(next) => {
+          planner.changed();
+          pickOrigin(next);
+        }}
         protectedZone={zone}
       />
       <div className="explore-sidebar">
@@ -487,7 +528,10 @@ function Explore({
           <DestinationSearch
             destinations={knownPlaces}
             unavailable={destinations.state === 'error'}
-            onSelect={selectDestination}
+            onSelect={(next) => {
+              planner.changed();
+              selectDestination(next);
+            }}
           />
         </header>
         <section
@@ -519,6 +563,7 @@ function Explore({
                 onWalkRoute={setCarWalk}
               />
             )}
+            <VoiceCard environment={demo ? 'demo' : 'live'} />
             {!destination && (
               <div className="explore-welcome">
                 <span className="explore-welcome-eyebrow">
@@ -583,6 +628,7 @@ function Explore({
                       <button
                         onClick={() => {
                           setStops([]);
+                          planner.changed();
                           setDestination(null);
                           setReco(null);
                           setDriveRoute(null);
@@ -679,11 +725,20 @@ function Explore({
                       destination={destination}
                       origin={origin?.coordinate ?? null}
                       settings={parkingSettings}
-                      onSettings={setParkingSettings}
+                      onSettings={(next) => {
+                        planner.changed();
+                        setParkingSettings(next);
+                      }}
                       selectedId={selectedId}
                       onSelect={setSelectedId}
-                      onPick={pickOption}
-                      onOpen={openDetail}
+                      onPick={(id) => {
+                        planner.changed();
+                        pickOption(id);
+                      }}
+                      onOpen={(id) => {
+                        planner.changed();
+                        openDetail(id);
+                      }}
                       onResult={onResult}
                       stops={stops}
                       stopsSlot={
@@ -696,6 +751,13 @@ function Explore({
                       }
                     />}
                     {plannerView === 'journey' && <GreenSwitch
+                      result={planner.result}
+                      preference={planner.preference}
+                      onPreference={planner.onPreference}
+                      selectedId={planner.selectedId}
+                      onSelect={planner.onSelect}
+                      onRetry={planner.retry}
+                      comparisonId={planner.comparisonId}
                       origin={origin?.coordinate ?? null}
                       destination={destination}
                       parkingSettings={parkingSettings}

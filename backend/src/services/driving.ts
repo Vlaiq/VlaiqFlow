@@ -1,6 +1,7 @@
 import { z } from 'zod';
 import type { Coordinate, RecommendationOption } from '@vlaiq/shared';
 import { config } from '../config';
+import { reportRoutingFailure, RoutingHttpError } from './routingDiagnostics';
 
 type Drive = NonNullable<RecommendationOption['drive']>;
 const Matrix = z.object({
@@ -35,7 +36,7 @@ export async function driveTimes(
   };
   const job = (async () => {
     try {
-      const response = await fetch('https://api.openrouteservice.org/v2/matrix/driving-car', {
+      const response = await fetch('https://api.heigit.org/openrouteservice/v2/matrix/driving-car', {
         method: 'POST',
         signal: AbortSignal.timeout(8000),
         headers: { Authorization: apiKey, 'Content-Type': 'application/json' },
@@ -46,7 +47,7 @@ export async function driveTimes(
           metrics: ['duration', 'distance'],
         }),
       });
-      if (!response.ok) return failed();
+      if (!response.ok) throw new RoutingHttpError(response.status);
       const result = Matrix.parse(await response.json());
       const values = destinations.map((_, i): Drive => {
         const seconds = result.durations[0]?.[i],
@@ -63,7 +64,8 @@ export async function driveTimes(
       if (cache.size >= 100) cache.delete(cache.keys().next().value!);
       cache.set(key, { expires: Date.now() + 300000, values });
       return values;
-    } catch {
+    } catch (error) {
+      reportRoutingFailure('ors', 'driving-car', 'matrix', error);
       return failed();
     }
   })().finally(() => pending.delete(key));

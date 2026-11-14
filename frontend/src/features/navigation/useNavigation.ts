@@ -1,6 +1,10 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { Coordinate, NavigationRoute } from '@vlaiq/shared';
 import { api } from '../../services/api';
+import { navigationSpeech } from '../voice/speech';
+import { navigationState } from '../voice/navigationState';
+import { speechEvent } from './speechEvents';
+import type { NavigationSpeechEvent } from '../../../../shared/src/flowVoice';
 import {
   bearing,
   cumulative,
@@ -49,6 +53,13 @@ export function useNavigation(places: NavPlaces) {
   const [routes, setRoutes] = useState<NavigationRoute[]>([]);
   const [selected, setSelected] = useState(0);
   const route = routes[selected];
+  const routeRevision = useMemo(() => crypto.randomUUID(), [route]);
+  const [visibility, setVisibility] = useState(document.visibilityState);
+  useEffect(() => {
+    const change = () => setVisibility(document.visibilityState);
+    document.addEventListener('visibilitychange', change);
+    return () => document.removeEventListener('visibilitychange', change);
+  }, []);
   const [origin, setOrigin] = useState<Coordinate>(DEMO_ORIGIN);
   const [manualOrigin, setManualOrigin] = useState(false);
   const [fix, setFix] = useState<Fix | null>(null);
@@ -75,7 +86,6 @@ export function useNavigation(places: NavPlaces) {
   const lastReroute = useRef(0);
   const deviationCount = useRef(0);
   const rerouting = useRef(false);
-  const spoken = useRef('');
   const acquireTimer = useRef<number>();
   const gpsError = useRef(false); // last error came from GPS, so "Reîncearcă" restarts GPS
   const routeFromGps = useRef(false); // current routes start at the GPS position, not at `origin`
@@ -88,6 +98,14 @@ export function useNavigation(places: NavPlaces) {
   }, []);
   const loadRoutes = useCallback(async (from: Coordinate, to: Coordinate) => {
     request.current?.abort();
+    navigationSpeech.cancel();
+    const state = navigationState.read();
+    navigationState.update({
+      ...state,
+      last_instruction: state.last_instruction
+        ? { ...state.last_instruction, current: false }
+        : null,
+    });
     const controller = new AbortController();
     request.current = controller;
     setLoading(true);
@@ -152,8 +170,8 @@ export function useNavigation(places: NavPlaces) {
     lastFix.current = null;
     deviationCount.current = 0;
     rerouting.current = false;
-    spoken.current = '';
-    window.speechSynthesis?.cancel();
+    navigationSpeech.cancel();
+    navigationState.clear();
   }, [stopWatcher, loadRoutes, origin, destination]);
   useEffect(
     () => () => {
@@ -161,7 +179,8 @@ export function useNavigation(places: NavPlaces) {
       stopWatcher();
       window.clearTimeout(acquireTimer.current);
       request.current?.abort();
-      window.speechSynthesis?.cancel();
+      navigationSpeech.cancel();
+      navigationState.clear();
     },
     [stopWatcher],
   );
@@ -394,7 +413,6 @@ export function useNavigation(places: NavPlaces) {
     setNotice(null);
     setFollow(true);
     setPerspective(true);
-    spoken.current = '';
     const p = sample(route.geometry, lengths, 0);
     setFix({
       coordinate: p.coordinate,
@@ -457,19 +475,114 @@ export function useNavigation(places: NavPlaces) {
   }, [mode, paused, arrived, route, lengths, playback]);
 
   useEffect(() => {
-    if (muted || !metrics || !['live', 'demo'].includes(mode) || !('speechSynthesis' in window))
-      return;
-    const key = `${route?.id}-${route?.geometry[0]?.join(',')}-${metrics.step.index}-${metrics.step.road}`;
-    if (key === spoken.current) return;
-    spoken.current = key;
-    const text = new SpeechSynthesisUtterance(`${instruction(metrics.step)}. ${metrics.step.road}`);
-    text.lang = 'ro-RO';
-    window.speechSynthesis.cancel();
-    window.speechSynthesis.speak(text);
-  }, [metrics, muted, mode, route?.id]);
-  useEffect(() => {
-    if (muted) window.speechSynthesis?.cancel();
-  }, [muted]);
+    const active = mode === 'live' || mode === 'demo';
+    const enabled =
+      active &&
+      !paused &&
+      visibility === 'visible' &&
+      !!fix &&
+      (mode === 'demo' || (fix.accuracy <= 50 && Date.now() - fix.timestamp <= 8000));
+    const step = arrived ? route?.steps.at(-1) : metrics?.step;
+    const stepId = step ? String(step.index) : null;
+    navigationSpeech.sync({
+      session: String(session.current),
+      revision: routeRevision,
+      step: loading ? null : stepId,
+      enabled,
+      muted,
+    });
+    let event: NavigationSpeechEvent | null = null;
+    if (enabled && loading)
+      event = {
+        session_id: String(session.current),
+        route_revision: routeRevision,
+        event_id: `${routeRevision}:recalculating`,
+        step_id: null,
+        phase: 'status',
+        kind: 'recalculating',
+        text: `${mode === 'demo' ? 'Simulare. ' : ''}Traseul se recalculează.`,
+        locale: 'ro',
+        priority: 'urgent',
+        expires_at_ms: Date.now() + 6000,
+      };
+    else if (enabled && metrics && step && fix)
+      event = speechEvent({
+        session: String(session.current),
+        revision: routeRevision,
+        step,
+        distance: metrics.maneuverDistance,
+        speed: fix.speed,
+        accuracy: fix.accuracy,
+        fixAge: mode === 'demo' ? 0 : Date.now() - fix.timestamp,
+        demo: mode === 'demo',
+        arrived,
+        parking: new URLSearchParams(window.location.search).has('walk'),
+        now: Date.now(),
+      });
+    if (event && !muted) {
+      if (mode === 'live' && fix)
+        event.expires_at_ms = Math.min(event.expires_at_ms, fix.timestamp + 8000);
+      // Prepare the exact immediate phrase while a preparation announcement is due.
+      if (event.phase === 'prepare' && step)
+        navigationSpeech.warm({
+          ...event,
+          text: `${mode === 'demo' ? 'Simulare. ' : ''}${instruction(step)}${step.road ? ` pe ${step.road}` : ''}.`,
+          phase: 'now',
+          priority: 'urgent',
+        });
+      const currentEvent = event;
+      const walking =
+        event.kind === 'parking_arrival'
+          ? navigationState.walkingHandoff(destination.name, destination.coordinate)
+          : null;
+      void navigationSpeech.announce(event).then((played) => {
+        if (!played || !walking) return;
+        // Announce only a leg whose geometry and metrics remain available in the authoritative planner.
+        void navigationSpeech.announce({
+          ...currentEvent,
+          event_id: `${currentEvent.route_revision}:walking-handoff`,
+          kind: 'walking_handoff',
+          phase: 'status',
+          text: `${mode === 'demo' ? 'Simulare. ' : ''}Segmentul pe jos din planificator durează aproximativ ${Math.ceil(walking.seconds / 60)} minute. Deschide planificatorul când ești pregătit să continui.`,
+          priority: 'normal',
+          expires_at_ms: Math.min(Date.now() + 12000, currentEvent.expires_at_ms),
+        });
+      });
+    }
+    const last = navigationSpeech.last;
+    navigationState.update(
+      {
+        active,
+        route_revision: active ? routeRevision : null,
+        remaining_distance_meters: active ? (metrics?.remaining ?? null) : null,
+        remaining_duration_seconds: active ? (metrics?.seconds ?? null) : null,
+        last_instruction: last
+          ? {
+              text: last.text,
+              current:
+                enabled &&
+                !loading &&
+                last.route_revision === routeRevision &&
+                last.expires_at_ms > Date.now() &&
+                (last.step_id === null || last.step_id === stepId),
+              route_revision: last.route_revision,
+            }
+          : null,
+      },
+      {
+        environment: mode === 'demo' ? 'demo' : 'live',
+        origin: mode === 'live' ? 'Locația curentă' : places.origin.name,
+        destination: destination.name,
+      },
+    );
+  }, [metrics, muted, mode, routeRevision, fix, loading, paused, arrived, visibility, route]);
+  useEffect(
+    () => () => {
+      navigationSpeech.cancel();
+      navigationState.clear();
+    },
+    [],
+  );
 
   useEffect(() => {
     if (!['live', 'demo'].includes(mode) || arrived || !('wakeLock' in navigator)) return;
@@ -504,9 +617,16 @@ export function useNavigation(places: NavPlaces) {
   const switchTarget = useCallback(
     (place: NavPlace) => {
       if (mode !== 'demo' || !fix) return;
+      navigationSpeech.cancel();
+      const state = navigationState.read();
+      navigationState.update({
+        ...state,
+        last_instruction: state.last_instruction
+          ? { ...state.last_instruction, current: false }
+          : null,
+      });
       beforeSwitch.current ??= { origin, destination };
       setSwitched(true);
-      spoken.current = '';
       setPaused(false);
       setArrived(false);
       setNotice(`Ruta nouă spre ${place.name}`);
@@ -569,6 +689,23 @@ export function useNavigation(places: NavPlaces) {
     playback,
     setPlayback,
     stop,
+    repeatInstruction: () => {
+      void navigationSpeech.repeat();
+    },
+    announceStatus: (text: string, kind: NavigationSpeechEvent['kind'] = 'deviation') => {
+      void navigationSpeech.announce({
+        session_id: String(session.current),
+        route_revision: routeRevision,
+        event_id: crypto.randomUUID(),
+        step_id: null,
+        phase: 'status',
+        kind,
+        text,
+        locale: 'ro',
+        priority: 'normal',
+        expires_at_ms: Date.now() + 12000,
+      });
+    },
     retry: () => (gpsError.current ? startLive() : loadRoutes(origin, destination.coordinate)),
   };
 }

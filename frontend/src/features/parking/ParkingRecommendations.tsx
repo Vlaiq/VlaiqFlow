@@ -140,8 +140,8 @@ export function ParkingRecommendations({
         </div>
       </div>
       <p className="parking-panel-description">
-        Comparăm parcările Timpark și OpenStreetMap din jurul destinației după mersul pe jos, șansele
-        estimate de loc și costul pentru {stayLabel(stay)}.
+        Comparăm parcările Timpark și OpenStreetMap din jurul destinației după mersul pe jos,
+        șansele estimate de loc și costul pentru {stayLabel(stay)}.
       </p>
 
       <details className="flow-parking-options">
@@ -182,11 +182,13 @@ export function ParkingRecommendations({
         <label>
           Mergi pe jos maximum
           <select value={maxWalk} onChange={(e) => set({ maxWalkMinutes: Number(e.target.value) })}>
-            {[5, 8, 12, 15, 20].map((m) => (
-              <option key={m} value={m}>
-                {m} min
-              </option>
-            ))}
+            {[...new Set([5, 8, 12, 15, 20, maxWalk])]
+              .sort((a, b) => a - b)
+              .map((m) => (
+                <option key={m} value={m}>
+                  {m} min
+                </option>
+              ))}
           </select>
         </label>
         <label className="parking-settings-wide">

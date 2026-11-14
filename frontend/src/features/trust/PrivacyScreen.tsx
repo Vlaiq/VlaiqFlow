@@ -8,6 +8,12 @@ import './privacy.css';
  */
 const flows: { what: string; where: string; kept: string }[] = [
   {
+    what: 'FLOW Voice: microfonul și contextul minim al călătoriei',
+    where:
+      'Numai după pornire explicită: vocea ajunge prin WebRTC la ElevenLabs. Instrumentele trimit etichete de locații, preferințe și rezumate ale rutelor, fără coordonate sau istoric GPS. Textul indicațiilor deterministe poate ajunge la ElevenLabs pentru sinteză.',
+    kept: 'Aplicația nu salvează audio, transcripturi sau tokenuri. Agentul este configurat cu înregistrarea audio dezactivată și retenție 0 zile; procesarea furnizorului rămâne supusă setărilor contului. Clipurile de navigație sunt păstrate în memoria serverului cel mult 15 minute; browserul le eliberează după redare. Oprește FLOW Voice ca să închizi microfonul.',
+  },
+  {
     what: 'Destinația aleasă și punctul de plecare (GPS sau ales pe hartă)',
     where:
       'Serverul FLOW le trimite furnizorului de rute: openrouteservice (HeiGIT, Germania), serverul OSRM FOSSGIS (routing.openstreetmap.de, Germania) sau serverul demo OSRM (router.project-osrm.org).',
@@ -76,7 +82,8 @@ export function PrivacyScreen() {
         {controller && email ? (
           <p>
             Operatorul datelor pentru {domain} este <strong>{controller}</strong>. Pentru orice
-            întrebare sau cerere privind datele tale scrie la <a href={`mailto:${email}`}>{email}</a>.
+            întrebare sau cerere privind datele tale scrie la{' '}
+            <a href={`mailto:${email}`}>{email}</a>.
           </p>
         ) : (
           <p className="privacy-gap" role="note">
@@ -112,17 +119,19 @@ export function PrivacyScreen() {
         <p>
           Locația este cerută doar când apeși „Locația mea” sau pornești o activitate, niciodată la
           deschiderea aplicației. Îți poți retrage oricând permisiunea din setările browserului.
-          Ghidarea vocală folosește vocea browserului, pe dispozitivul tău.
+          Ghidarea vocală încearcă ElevenLabs și revine la sinteza browserului dacă fișierul nu
+          ajunge la timp. Unele voci ale browserului pot necesita procesare prin furnizorul
+          sistemului; disponibilitatea și procesarea depind de dispozitiv.
         </p>
       </section>
 
       <section className="flow-help-card privacy-card">
         <h2>De ce avem voie</h2>
         <p>
-          Prelucrăm datele pentru a-ți oferi funcția pe care o ceri (art. 6 alin. 1 lit. b din
-          GDPR) și, pentru limitarea abuzurilor, în interesul legitim de a ține serviciul
-          disponibil (art. 6 alin. 1 lit. f). Cookie-ul Motion este strict necesar pentru
-          portofelul pe care îl folosești, așa că nu afișăm un banner de cookie-uri.
+          Prelucrăm datele pentru a-ți oferi funcția pe care o ceri (art. 6 alin. 1 lit. b din GDPR)
+          și, pentru limitarea abuzurilor, în interesul legitim de a ține serviciul disponibil (art.
+          6 alin. 1 lit. f). Cookie-ul Motion este strict necesar pentru portofelul pe care îl
+          folosești, așa că nu afișăm un banner de cookie-uri.
         </p>
       </section>
 
@@ -157,18 +166,21 @@ export function PrivacyScreen() {
         <summary>In English</summary>
         <p>
           {brand.product} has no accounts, ads or analytics. Your start point and destination are
-          sent through our server to a routing provider (openrouteservice, FOSSGIS OSRM or the
-          OSRM demo server) and cached in memory for a few minutes. Map tiles load directly from
+          sent through our server to a routing provider (openrouteservice, FOSSGIS OSRM or the OSRM
+          demo server) and cached in memory for a few minutes. Map tiles load directly from
           OpenFreeMap. For Motion activities, GPS points are evaluated on our server and then
           discarded; we keep only summaries (mode, start time, distance, duration, coins) linked to
           a random cookie whose hash we store. Inactive wallets are deleted after{' '}
           {MOTION_RULES.retentionDays} days, and you can delete yours at any time from the Wallet.
-          IP addresses are held in memory for one minute for rate limiting. Your parked car, the
-          payment time you enter and your saved places stay in this browser only (the car is
-          forgotten after 48 hours). Google Maps and Waze receive only the parking position, and
-          only when you tap their button. Calendar files and notifications are created on your
-          device. You can complain to
-          the Romanian data protection authority (ANSPDCP).
+          When you explicitly start FLOW Voice, microphone audio and minimal journey
+          labels/preferences are processed by ElevenLabs; route geometry and GPS history stay in the
+          app. Navigation instruction text may be synthesized by ElevenLabs, with browser speech as
+          fallback. We do not store audio, transcripts or conversation tokens. IP addresses are held
+          in memory for one minute for rate limiting. Your parked car, the payment time you enter and
+          your saved places stay in this browser only (the car is forgotten after 48 hours). Google
+          Maps and Waze receive only the parking position, and only when you tap their button.
+          Calendar files and notifications are created on your device. You can complain to the
+          Romanian data protection authority (ANSPDCP).
         </p>
       </details>
 
