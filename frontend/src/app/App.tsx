@@ -70,6 +70,10 @@ const CityScreen = lazy(() =>
 const DataTrustScreen = lazy(() =>
   import('../features/trust/DataTrustScreen').then((m) => ({ default: m.DataTrustScreen })),
 );
+const PrivacyScreen = lazy(() =>
+  import('../features/trust/PrivacyScreen').then((m) => ({ default: m.PrivacyScreen })),
+);
+const privacyPaths = ['/confidentialitate', '/privacy'];
 const motionPaths = ['/motion', '/challenges', '/community', '/wallet'];
 
 export function App() {
@@ -186,10 +190,22 @@ export function App() {
           <DataTrustScreen />
         </Suspense>
       )}
+      {privacyPaths.includes(path) && (
+        <Suspense fallback={loading}>
+          <PrivacyScreen />
+        </Suspense>
+      )}
       {path === '/help' && <Help />}
-      {!['/', ...motionPaths, '/navigation', '/city', '/data', '/sources', '/help'].includes(
-        path,
-      ) && (
+      {![
+        '/',
+        ...motionPaths,
+        ...privacyPaths,
+        '/navigation',
+        '/city',
+        '/data',
+        '/sources',
+        '/help',
+      ].includes(path) && (
         <section className="flow-unknown">
           <strong>404</strong>
           <h1>Drumul acesta nu duce nicăieri.</h1>
@@ -631,6 +647,9 @@ function Help() {
           <p>
             Portofelul de prototip este legat de browser și nu este un cont sincronizat. Traseele
             GPS nu sunt publicate.
+          </p>
+          <p>
+            <a href="/confidentialitate">Ce date folosim și cum le poți șterge</a>
           </p>
           <a href="/data">Vezi sursele, acoperirea și limitele datelor</a>
         </section>

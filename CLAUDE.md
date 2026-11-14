@@ -5,7 +5,7 @@ Parking-first, multimodal navigation PWA for Timișoara. Built by team **VLAIQ**
 - Full requirements: `docs/spec.md`. Read the section for the feature you are touching before you change it.
 - Things only humans can do (rules, licenses, accounts, user tests): `docs/team-checklist.md`. Do not pretend to have done them.
 - The City Hall's hackathon guide (https://ghid-pmt.vercel.app/unihack) lists the official data, endpoints and pitfalls. Spec §5.2 summarises it. We extend the city's **CityApp**, Timpark and Sesizări; we do not duplicate them (spec §2).
-- Working product name **VLAIQ FLOW**, tagline "Park smarter. Move greener." The name is not final, so keep all branding in `shared/src/brand.ts`. Never rename the team.
+- Product name **VLAIQ FLOW** (final since 14 Nov 2026), tagline "Park smarter. Move greener.", production domain **vlaiqflow.ro**. Keep all branding in `shared/src/brand.ts`. Never rename the team.
 
 ## Non-negotiable rules
 
@@ -22,7 +22,8 @@ Parking-first, multimodal navigation PWA for Timișoara. Built by team **VLAIQ**
 11. **City Hall endpoints** (`*.primariatm.ro` only): call them from the backend or `scripts/`, never per user request; snapshot the result into `shared/src/data` with its date and version; send a `User-Agent` naming the team. Check coordinate order ([lng, lat] vs [lat, lng]) against a known point.
 12. **No second inbox, no payments.** Problems link to Sesizări; parking payment hands off to Timpark SMS / CityApp.
 13. **Romanian first** in the UI (English second), plain wording, WCAG 2.1 AA.
-14. **Adoptable:** open-source, a README anyone can follow, no paid service on a personal account (spec §17).
+14. **Privacy page stays true.** `frontend/src/features/trust/PrivacyScreen.tsx` (`/confidentialitate`) lists every place personal data goes. Update it in the same change whenever a feature starts sending location, text or identifiers to a new provider, or stores something new.
+15. **Adoptable:** open-source, a README anyone can follow, no paid service on a personal account (spec §17).
 
 ## Stack (decided — change only with team agreement)
 

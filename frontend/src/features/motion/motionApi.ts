@@ -1,9 +1,9 @@
 import { z } from 'zod';
 import { MotionResult, MotionWallet, type MotionMode, type MotionPoint } from '@vlaiq/shared';
 const BASE = (import.meta.env.VITE_API_URL ?? '').replace(/\/$/, '');
-async function call(path: string, body?: unknown) {
+async function call(path: string, body?: unknown, method = body ? 'POST' : 'GET') {
   const response = await fetch(`${BASE}/api/motion/${path}`, {
-    method: body ? 'POST' : 'GET',
+    method,
     credentials: 'include',
     headers: body ? { 'Content-Type': 'application/json' } : {},
     body: body ? JSON.stringify(body) : undefined,
@@ -24,4 +24,6 @@ export const motionApi = {
   cancel: async (id: string) => {
     await call('cancel', { id });
   },
+  /** Deletes this browser wallet on the server and clears its cookie (GDPR art. 17). */
+  erase: async () => z.object({ erased: z.boolean() }).parse(await call('wallet', undefined, 'DELETE')),
 };

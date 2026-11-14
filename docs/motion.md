@@ -77,6 +77,11 @@ origins are checked against the app host/configured CORS origins. Cookie respons
 
 The append-only reward ledger is written through atomic file replacement before the
 in-memory state is committed. The directory and files use owner-only permissions.
+**Erasure and retention.** `DELETE /api/motion/wallet` (the „Șterge portofelul” button in the Wallet)
+removes the browser wallet from the file and clears the cookie. Wallets with no activity or
+reward for `MOTION_RULES.retentionDays` (365) are purged when the store loads and on every
+activity start. Both are stated on the privacy page (`/confidentialitate`).
+
 Run one backend process against this file. Multi-process deployment, serverless ephemeral
 disks, account recovery, abuse-resistant public rewards and backups require a transactional
 database and proper authentication. Make the data directory persistent on a VM. A fresh

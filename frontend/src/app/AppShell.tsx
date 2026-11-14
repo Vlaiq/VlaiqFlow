@@ -5,6 +5,7 @@ import {
   Compass,
   Database,
   Leaf,
+  Lock,
   Map,
   Menu,
   Navigation2,
@@ -56,6 +57,8 @@ export function AppShell({
     '/city': 'Pentru Primărie',
     '/data': 'FLOW Data Trust',
     '/help': 'Bine ai venit în FLOW',
+    '/confidentialitate': 'Confidențialitate',
+    '/privacy': 'Confidențialitate',
   };
   return (
     <div
@@ -194,6 +197,13 @@ export function AppShell({
             <CircleHelp />
             <span>
               Cum funcționează FLOW<small>Demo, confidențialitate și instalare</small>
+            </span>
+            <ArrowRight size={17} />
+          </a>
+          <a href="/confidentialitate">
+            <Lock />
+            <span>
+              Confidențialitate<small>Ce date folosim și cum le ștergi</small>
             </span>
             <ArrowRight size={17} />
           </a>

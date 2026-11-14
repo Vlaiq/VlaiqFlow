@@ -38,6 +38,17 @@ motionRouter.get('/wallet', (_req, res, next) => {
     next(e);
   }
 });
+// Right to erasure (GDPR art. 17): deletes this browser wallet and forgets the cookie.
+motionRouter.delete('/wallet', (_req, res, next) => {
+  try {
+    const erased = getStore().erase(res.locals.motionOwner);
+    res.removeHeader('Set-Cookie');
+    res.clearCookie('motion_session', { httpOnly: true, sameSite: 'strict', path: '/api/motion' });
+    res.json({ erased });
+  } catch (e) {
+    next(e);
+  }
+});
 motionRouter.post('/start', (req, res, next) => {
   const input = z.object({ mode: MotionMode }).strict().safeParse(req.body);
   if (!input.success) {

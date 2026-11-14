@@ -16,6 +16,7 @@ import {
   ShieldCheck,
   Sparkles,
   Timer,
+  Trash2,
   Trophy,
   Wallet,
   X,
@@ -144,6 +145,24 @@ export function MotionScreen({
   const walletPill = useRef<HTMLButtonElement>(null);
   const appliedDemo = useRef<MotionResult | null>(null);
   const [leagueOptIn, setLeagueOptIn] = useState(false);
+  const [eraseDialog, setEraseDialog] = useState(false);
+  const [erase, setErase] = useState<
+    { state: 'idle' } | { state: 'busy' } | { state: 'done' } | { state: 'error'; message: string }
+  >({ state: 'idle' });
+  const eraseWallet = useCallback(async () => {
+    setEraseDialog(false);
+    setErase({ state: 'busy' });
+    try {
+      await motionApi.erase();
+      setWallet({ balance: 0, lifetime: 0, transactions: [], dailyEarned: 0, todayActivities: 0 });
+      setErase({ state: 'done' });
+    } catch (e) {
+      setErase({
+        state: 'error',
+        message: e instanceof Error ? e.message : 'Portofelul nu a putut fi șters. Reîncearcă.',
+      });
+    }
+  }, []);
   const loadWallet = useCallback(async () => {
     setLoading(true);
     setWalletError(null);
@@ -731,6 +750,34 @@ export function MotionScreen({
                       apoi eliminate. DEMO are un sold separat.
                     </p>
                   </DataSourceInfo>
+                  <div className="wallet-erase">
+                    <p>
+                      Datele portofelului îți aparțin. Le poți șterge oricând; portofelele fără
+                      activitate timp de 12 luni se șterg automat.{' '}
+                      <a href="/confidentialitate">Cum folosim datele</a>
+                    </p>
+                    <button
+                      className="motion-button secondary danger"
+                      disabled={recording || erase.state === 'busy' || !!walletError}
+                      onClick={() => setEraseDialog(true)}
+                    >
+                      {erase.state === 'busy' ? (
+                        <LoaderCircle size={16} className="spin" />
+                      ) : (
+                        <Trash2 size={16} />
+                      )}
+                      {erase.state === 'busy' ? 'Ștergem…' : 'Șterge portofelul'}
+                    </button>
+                    {recording && (
+                      <small>Încheie sau anulează activitatea în curs înainte de ștergere.</small>
+                    )}
+                    {erase.state === 'done' && (
+                      <p role="status">
+                        <Check size={15} /> Portofelul și istoricul au fost șterse de pe server.
+                      </p>
+                    )}
+                    {erase.state === 'error' && <p role="alert">{erase.message}</p>}
+                  </div>
                 </section>
               </div>
             )}
@@ -884,6 +931,16 @@ export function MotionScreen({
             <ArrowLeft size={15} /> Înapoi la hartă
           </a>
         )}
+        <ConfirmDialog
+          open={eraseDialog}
+          title="Ștergi portofelul?"
+          description="Soldul, istoricul activităților și identificatorul acestui browser vor fi șterse definitiv de pe server. Acțiunea nu poate fi anulată."
+          confirmLabel="Șterge definitiv"
+          cancelLabel="Păstrează portofelul"
+          danger
+          onCancel={() => setEraseDialog(false)}
+          onConfirm={() => void eraseWallet()}
+        />
         <ConfirmDialog
           open={leaveDialog}
           title="Oprești activitatea?"

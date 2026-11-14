@@ -31,11 +31,44 @@ const day = (timestamp: number) =>
     day: '2-digit',
   }).format(timestamp);
 
+export const MOTION_RETENTION_DAYS = MOTION_RULES.retentionDays;
+const RETENTION_MS = MOTION_RETENTION_DAYS * 86400000;
+
 /** Single-process prototype ledger. Only summaries/digests persist, never GPS coordinates. */
 export class MotionStore {
   private data: z.infer<typeof Database>;
-  constructor(private file: string) {
+  constructor(
+    private file: string,
+    now = Date.now(),
+  ) {
     this.data = existsSync(file) ? Database.parse(JSON.parse(readFileSync(file, 'utf8'))) : {};
+    this.purgeInactive(now);
+  }
+  /** Deletes wallets whose last activity or reward is older than the retention period. */
+  purgeInactive(now = Date.now()) {
+    const stale = Object.entries(this.data)
+      .filter(([, user]) => {
+        const last = Math.max(
+          0,
+          ...user.activities.map((a) => a.startedAt),
+          ...user.ledger.map((t) => t.awardedAt),
+        );
+        return now - last > RETENTION_MS;
+      })
+      .map(([owner]) => owner);
+    if (!stale.length) return 0;
+    const next = structuredClone(this.data);
+    for (const owner of stale) delete next[owner];
+    this.save(next);
+    return stale.length;
+  }
+  /** Right to erasure: removes every activity and reward of this browser wallet. */
+  erase(owner: string) {
+    if (!this.data[owner]) return false;
+    const next = structuredClone(this.data);
+    delete next[owner];
+    this.save(next);
+    return true;
   }
   private save(next: z.infer<typeof Database>) {
     mkdirSync(dirname(this.file), { recursive: true, mode: 0o700 });
@@ -56,6 +89,7 @@ export class MotionStore {
     };
   }
   start(owner: string, mode: MotionMode, now = Date.now()) {
+    this.purgeInactive(now);
     const next = structuredClone(this.data);
     const user = (next[owner] ??= { activities: [], ledger: [] });
     for (const activity of user.activities)

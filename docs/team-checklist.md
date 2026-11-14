@@ -25,7 +25,9 @@ Agentul AI nu poate face aceste lucruri. Bifați-le și notați rezultatul (link
 - [ ] **Tarifele de parcare** pentru zona demo (Piața Victoriei, Piața Unirii): sursa oficială și data verificării → ___
 - [ ] **Factorii de emisie** (mașină g/km, transport public g/pasager-km) cu sursă citabilă → spec D4
 - [ ] **Cotele actuale** openrouteservice: directions, matrix, autocomplete → spec D3
-- [ ] **Decizii:** numele final al produsului, limba UI-ului, ora de feature freeze
+- [ ] **Decizii:** ~~numele final al produsului~~ (VLAIQ FLOW, final pe 14 nov.), limba UI-ului, ora de feature freeze
+- [ ] **Operatorul datelor pentru vlaiqflow.ro:** completați `privacyContact.controller` și `privacyContact.email` în `shared/src/brand.ts` înainte de lansare. Până atunci pagina /confidentialitate arată un gol vizibil
+- [ ] **Domeniul vlaiqflow.ro** e pe contul personal al unui membru (decizie conștientă, excepție de la spec §17). Notați cine îl reînnoiește și cum se transferă la predare → ___
 
 ## Conturi și chei (fiecare în `.env`, niciodată în git)
 

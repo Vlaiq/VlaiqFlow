@@ -2136,3 +2136,58 @@
     align-self: flex-end;
   }
 }
+
+/* Right to erasure: delete this browser wallet */
+.wallet-erase {
+  margin-top: 22px;
+  padding-top: 18px;
+  border-top: 1px solid var(--app-border);
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.wallet-erase p,
+.wallet-erase small {
+  font-size: 12px;
+  line-height: 1.6;
+  color: var(--app-muted);
+}
+.wallet-erase a {
+  color: var(--app-accent-text);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+.wallet-erase p[role='status'] {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--app-accent-text);
+}
+.wallet-erase p[role='alert'] {
+  color: rgb(var(--danger));
+}
+.motion-button.secondary.danger {
+  align-self: flex-start;
+  color: rgb(var(--danger));
+  border-color: rgb(var(--danger) / 0.45);
+}
+.motion-button.secondary.danger:hover:not(:disabled) {
+  background: rgb(var(--danger) / 0.1);
+}
+.motion-button:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+.wallet-erase .spin {
+  animation: wallet-erase-spin 1s linear infinite;
+}
+@keyframes wallet-erase-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .wallet-erase .spin {
+    animation: none;
+  }
+}

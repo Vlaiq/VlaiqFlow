@@ -107,6 +107,8 @@ NODE_ENV=production pnpm -F backend start
 
 In production, the backend serves `frontend/dist` if present, supports deep-link refresh and retains `/api` routing. Set a real domain pointing to your VM, run Caddy with [the example](deploy/Caddyfile.example), and set `FLOW_DOMAIN` plus the matching `CORS_ORIGINS`. No domain or deployment is claimed to be provisioned by these instructions.
 
+Before a public launch, fill in the data controller and contact e-mail in `privacyContact` (`shared/src/brand.ts`); the privacy page at `/confidentialitate` shows a visible gap until then. Keep Caddy access logs off, or list them on the privacy page if you enable them.
+
 Keep `backend/.data` persistent, private and outside version control. It contains the single-process prototype wallet ledger, not raw GPS traces. Use a transactional database and proper authentication before multi-instance deployment or trusted public rewards. All API keys stay server-side. A static frontend on another host needs a separately configured HTTPS backend; same-origin proxying is recommended for wallet cookies.
 
 ## Maintenance and handover

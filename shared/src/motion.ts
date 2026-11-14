@@ -58,6 +58,8 @@ export const MOTION_RULES = {
   coinsPer250m: 5,
   sessionCap: 40,
   dailyCap: 80,
+  /** Wallets with no activity for this long are deleted on the server (stated on the privacy page). */
+  retentionDays: 365,
 } as const;
 export const motionNames: Record<MotionMode, string> = {
   walk: 'Mers pe jos',
