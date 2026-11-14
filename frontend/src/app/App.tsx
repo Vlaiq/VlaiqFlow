@@ -7,6 +7,8 @@ import {
   Leaf,
   LocateFixed,
   MapPin,
+  Navigation2,
+  ParkingSquare,
   Play,
   ShieldCheck,
   X,
