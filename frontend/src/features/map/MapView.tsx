@@ -315,7 +315,25 @@ export function MapView({
     });
     map.addControl(new CountyControl(visibleMapPadding), 'top-right');
 
+    // MapLibre's own ResizeObserver skips its first callback. If the container had no size when the map
+    // was created (CSS not applied yet, hidden pane or tab), the canvas stays at the 400×300 default:
+    // most of the screen is blank, map clicks (pick origin) miss and route fitting fails. Resize whenever
+    // the canvas no longer matches its container.
+    const container = map.getContainer();
+    const syncSize = () => {
+      const canvas = map.getCanvas();
+      if (
+        canvas.clientWidth !== container.clientWidth ||
+        canvas.clientHeight !== container.clientHeight
+      )
+        map.resize();
+    };
+    const sizeObserver = new ResizeObserver(syncSize);
+    sizeObserver.observe(container);
+    map.once('load', syncSize);
+
     return () => {
+      sizeObserver.disconnect();
       window.clearTimeout(timeout);
       popup.remove();
       map.remove();
