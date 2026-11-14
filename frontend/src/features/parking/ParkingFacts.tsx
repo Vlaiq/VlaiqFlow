@@ -1,6 +1,6 @@
 import type { DataQuality } from '@vlaiq/shared';
 import { QualityBadge } from '../../components/QualityBadge';
-import { chanceLevel, fmt1, pct } from './recommendationLabels';
+import { chanceLevel, fmt1, pct, scoreLines, type ScoreInput } from './recommendationLabels';
 import './parking.css';
 
 /** The SmartMatch rule-model estimate. Labelled as an estimate; live occupancy stays unknown. */
@@ -44,23 +44,13 @@ export function FreeChance({
   );
 }
 
-interface ScoreParts {
-  walk: number;
-  risk: number;
-  price: number;
-  drive?: number | null;
-  total: number;
-}
-
-/** How the SmartMatch cost is built, in minute-equivalents (lower is better). */
-export function ScoreBreakdown({ score }: { score: ScoreParts }) {
-  const parts = [
-    { id: 'drive', label: 'Drum auto', value: score.drive ?? null },
-    { id: 'walk', label: 'Mers pe jos', value: score.walk },
-    { id: 'risk', label: 'Risc de plin', value: score.risk },
-    { id: 'price', label: 'Preț', value: score.price },
-  ].filter((p): p is { id: string; label: string; value: number } => p.value != null);
-  const sum = parts.reduce((n, p) => n + Math.max(0, p.value), 0) || 1;
+/**
+ * How the SmartMatch score is built (lower is better). Walk and drive are real minutes; risk and price are
+ * converted into minutes, and each line shows the conversion with the real price next to it.
+ */
+export function ScoreBreakdown(props: ScoreInput) {
+  const parts = scoreLines(props);
+  const sum = parts.reduce((n, p) => n + Math.max(0, p.minutes), 0) || 1;
   return (
     <div className="score-breakdown">
       <div className="score-breakdown-bar" aria-hidden>
@@ -68,22 +58,29 @@ export function ScoreBreakdown({ score }: { score: ScoreParts }) {
           <span
             key={p.id}
             data-part={p.id}
-            style={{ width: `${(Math.max(0, p.value) / sum) * 100}%` }}
+            style={{ width: `${(Math.max(0, p.minutes) / sum) * 100}%` }}
           />
         ))}
       </div>
       <ul>
         {parts.map((p) => (
           <li key={p.id} data-part={p.id}>
-            <span>{p.label}</span>
-            <strong>{fmt1(p.value)} min</strong>
+            <span>
+              {p.label}
+              <small>{p.how}</small>
+            </span>
+            <strong>{fmt1(p.minutes)} min</strong>
           </li>
         ))}
         <li className="score-breakdown-total">
-          <span>Cost total SmartMatch</span>
-          <strong>{fmt1(score.total)} min echivalente</strong>
+          <span>Scor SmartMatch</span>
+          <strong>{fmt1(props.score.total)} min echivalente</strong>
         </li>
       </ul>
+      <p className="score-breakdown-note">
+        Prețul și riscul nu sunt timp real: le transformăm în minute ca să le putem aduna cu mersul
+        și compara parcările. Prețul de plată real este cel de la „Cost”.
+      </p>
     </div>
   );
 }

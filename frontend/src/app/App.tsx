@@ -484,6 +484,7 @@ function Explore({
                         : null
                     }
                     stayMinutes={reco.stayMinutes}
+                    params={reco.params}
                     smsNumber={timparkData?.data.tariffs.smsNumber ?? null}
                     selectedOrigin={origin}
                     onOriginRequest={requestGps}

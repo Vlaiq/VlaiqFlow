@@ -87,6 +87,11 @@ export const ParkingMatch = z.object({
     price: z.number().finite(),
     drive: z.number().finite().nonnegative().nullable(),
   }),
+  /** How price and the risk of a full parking were turned into minutes for this parking preference. */
+  params: z.object({
+    fullPenaltyMinutes: z.number().finite().nonnegative(),
+    minutesPerCurrency: z.number().finite().nonnegative(),
+  }),
 });
 export type ParkingMatch = z.infer<typeof ParkingMatch>;
 export const CompleteJourney = z

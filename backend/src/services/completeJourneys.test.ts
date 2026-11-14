@@ -49,6 +49,8 @@ describe('complete journey orchestration', () => {
     expect(j.parking?.match.freeChance).toMatchObject({ value: 0.5, quality: 'estimated' });
     expect(j.parking?.match).toMatchObject({ rank: 1, kind: 'osm' });
     expect(j.parking?.match.score).toEqual({ total: 10, walk: 3, risk: 1, price: 1, drive: 5 });
+    // The conversion into minutes travels with the parking, from the SmartMatch response.
+    expect(j.parking?.match.params).toEqual({ fullPenaltyMinutes: 12, minutesPerCurrency: 8 });
   });
   it('keeps the SmartMatch order (risk and price), not only the shortest drive', async () => {
     // "near" is 1 driving minute closer but very likely full; "sure" wins on SmartMatch cost + drive.

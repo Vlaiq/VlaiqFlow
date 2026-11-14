@@ -96,6 +96,7 @@ exports.completeFixture = function completeFixture(input) {
             factors: ['SYNTHETIC TEST FIXTURE'],
           },
           score: { total: 10, walk: 3, risk: 6, price: 1, drive: 5 },
+          params: { fullPenaltyMinutes: 12, minutesPerCurrency: 8 },
         },
       },
     ),

@@ -245,6 +245,7 @@ export function ParkingRecommendations({
                   onSelect={() => onPick(o.id)}
                   onOpen={() => onOpen(o.id)}
                   stayMinutes={result.data.stayMinutes}
+                  params={result.data.params}
                   hasOrigin={!!origin}
                 />
               ))}
@@ -267,6 +268,7 @@ function OptionCard({
   onSelect,
   onOpen,
   stayMinutes,
+  params,
   hasOrigin,
 }: {
   option: RecommendationOption;
@@ -275,6 +277,7 @@ function OptionCard({
   onSelect: () => void;
   onOpen: () => void;
   stayMinutes: number;
+  params: RecommendationResponse['params'];
   hasOrigin: boolean;
 }) {
   const badge = rank === 1 ? 'Recomandat' : rank === 2 ? 'Rezervă' : null;
@@ -351,7 +354,12 @@ function OptionCard({
 
       <details className="parking-card-source">
         <summary>De ce pe locul {rank}?</summary>
-        <ScoreBreakdown score={o.cost} />
+        <ScoreBreakdown
+          score={o.cost}
+          price={{ amount: o.price.total, currency: o.price.currency }}
+          freeChance={o.pFree.value}
+          params={params}
+        />
         <p>{o.walk.source}</p>
         <p>
           {o.price.source} · {o.price.note}

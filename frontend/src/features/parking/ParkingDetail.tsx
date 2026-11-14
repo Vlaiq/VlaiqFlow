@@ -19,6 +19,7 @@ import {
   type Coordinate,
   type NavigationRoute,
   type RecommendationOption,
+  type RecommendationResponse,
 } from '@vlaiq/shared';
 import { QualityBadge } from '../../components/QualityBadge';
 import { api } from '../../services/api';
@@ -57,6 +58,8 @@ interface Props {
   /** Destination point, for the real walking route from the parking (provider geometry only). */
   destination?: Coordinate | null;
   stayMinutes: number;
+  /** SmartMatch conversion of price and risk into minutes, for the score breakdown. */
+  params: RecommendationResponse['params'];
   smsNumber: string | null;
   selectedOrigin?: Origin | null;
   onOriginRequest?: () => void;
@@ -112,6 +115,7 @@ export function ParkingDetail({
   destinationName,
   destination = null,
   stayMinutes,
+  params,
   smsNumber,
   selectedOrigin,
   onOriginRequest,
@@ -343,7 +347,12 @@ export function ParkingDetail({
 
       <section aria-labelledby="score-title" className="parking-detail-score">
         <h3 id="score-title">De ce e pe locul {rank}</h3>
-        <ScoreBreakdown score={o.cost} />
+        <ScoreBreakdown
+          score={o.cost}
+          price={{ amount: o.price.total, currency: o.price.currency }}
+          freeChance={o.pFree.value}
+          params={params}
+        />
         <p className="text-xs text-muted">
           Mai puțin = mai bine. Șansele de loc vin din: {o.pFree.factors.join('; ')}. Nu sunt o
           măsurătoare în timp real.

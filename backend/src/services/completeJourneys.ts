@@ -128,6 +128,7 @@ function parkingInfo(
   rank: number,
   req: CompleteJourneyRequest,
   tariffAt: string,
+  params: { fullPenaltyMinutes: number; minutesPerCurrency: number },
 ): NonNullable<CompleteJourney['parking']> {
   const p = c.option;
   const priceKnown = p.price.total === 0 || (p.price.total !== null && p.price.currency !== null);
@@ -180,6 +181,10 @@ function parkingInfo(
         risk: p.cost.risk,
         price: p.cost.price,
         drive: c.driveMinutes,
+      },
+      params: {
+        fullPenaltyMinutes: params.fullPenaltyMinutes,
+        minutesPerCurrency: params.minutesPerCurrency,
       },
     },
   };
@@ -239,7 +244,7 @@ async function carJourneys(
                 req,
                 'car_park_walk',
                 legs,
-                parkingInfo(c, rankOf.get(p.id)!, req, screened.arriveAt),
+                parkingInfo(c, rankOf.get(p.id)!, req, screened.arriveAt, screened.params),
                 at,
               ),
             );

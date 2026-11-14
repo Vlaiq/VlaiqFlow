@@ -389,7 +389,18 @@ export function GreenSwitch({
                   {selected.parking.warnings.map((w) => (
                     <p key={w}>{w}</p>
                   ))}
-                  <ScoreBreakdown score={selected.parking.match.score} />
+                  <ScoreBreakdown
+                    score={selected.parking.match.score}
+                    price={{
+                      amount:
+                        selected.parking.fee.minorUnits === null
+                          ? null
+                          : selected.parking.fee.minorUnits / 100,
+                      currency: selected.parking.fee.currency,
+                    }}
+                    freeChance={selected.parking.match.freeChance.value}
+                    params={selected.parking.match.params}
+                  />
                   <small>
                     Șanse estimate din: {selected.parking.match.freeChance.factors.join('; ')}.{' '}
                     {selected.parking.match.freeChance.source}

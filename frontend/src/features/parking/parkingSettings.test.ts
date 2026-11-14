@@ -1,6 +1,38 @@
 import { describe, expect, it } from 'vitest';
 import { DEFAULT_PARKING_SETTINGS, arriveIso } from './settings';
-import { chanceLevel } from './recommendationLabels';
+import { chanceLevel, scoreLines } from './recommendationLabels';
+
+describe('score breakdown shows the real price next to its minute equivalent', () => {
+  const base = {
+    score: { walk: 2.9, risk: 0.6, price: 19.2, total: 22.7 },
+    freeChance: 0.95,
+    params: { fullPenaltyMinutes: 12, minutesPerCurrency: 8 },
+  };
+  it('explains a known price as amount × minutes per currency unit', () => {
+    const price = scoreLines({ ...base, price: { amount: 2.4, currency: 'EUR' } }).find(
+      (l) => l.id === 'price',
+    )!;
+    expect(price.how).toBe('2,40 EUR × 8 min pentru fiecare EUR');
+    expect(price.minutes).toBe(19.2);
+  });
+  it('says free and unknown in words, never as a bare "0 min" price', () => {
+    const free = scoreLines({ ...base, price: { amount: 0, currency: 'EUR' } });
+    expect(free.find((l) => l.id === 'price')!.how).toBe('gratuit la ora aleasă');
+    const unknown = scoreLines({ ...base, price: { amount: null, currency: null } });
+    expect(unknown.find((l) => l.id === 'price')!.how).toMatch(/^necunoscut: socotit ca cel mai scump/);
+  });
+  it('explains the risk with the full-parking penalty and adds drive only when known', () => {
+    const lines = scoreLines({ ...base, price: { amount: 0, currency: 'EUR' } });
+    expect(lines.find((l) => l.id === 'risk')!.how).toBe('~5% risc × 12 min pierdute dacă e plin');
+    expect(lines.some((l) => l.id === 'drive')).toBe(false);
+    const withDrive = scoreLines({
+      ...base,
+      score: { ...base.score, drive: 6 },
+      price: { amount: 0, currency: 'EUR' },
+    });
+    expect(withDrive[0]).toMatchObject({ id: 'drive', minutes: 6 });
+  });
+});
 
 describe('shared parking settings', () => {
   it('sends no arrival time for "now" or for invalid input', () => {
