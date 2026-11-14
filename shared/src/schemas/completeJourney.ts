@@ -197,6 +197,18 @@ export const CompleteJourneyResponse = z
     journeys: z.array(CompleteJourney).max(5),
     rankings: z.object({ fastest: ranking, balanced: ranking, green: ranking }),
     unavailable: z.array(z.object({ category: JourneyCategory, reason: z.string() })),
+    /**
+     * SmartMatch parkings (by their rank in the parking list) that are not offered as a complete journey,
+     * and why: customers-only access, or no walking route within the walking limit.
+     */
+    parkingSkipped: z
+      .array(
+        z.object({
+          rank: z.number().int().positive(),
+          reason: z.enum(['customers_only', 'walk_unavailable']),
+        }),
+      )
+      .default([]),
     opportunity: z
       .object({ journeyId: z.string(), extraSeconds: z.number().finite(), explanation: z.string() })
       .nullable(),

@@ -195,6 +195,7 @@ async function carJourneys(
   req: CompleteJourneyRequest,
   at: string,
   deps: Dependencies,
+  skipped: CompleteJourneyResponse['parkingSkipped'],
 ): Promise<CompleteJourney[]> {
   const screened = await deps.recommend(
     RecommendationRequest.parse({
@@ -212,7 +213,13 @@ async function carJourneys(
     screened.options.filter((p) => p.access !== 'customers'),
   );
   const selected = candidates.slice(0, COMPLETE_POLICY.parkingCandidates);
-  const rankOf = new Map(selected.map((c, i) => [c.option.id, i + 1]));
+  // P-numbers are the SmartMatch ranks shown in the parking list and on the map, so both name the same place.
+  const rankOf = new Map(screened.options.map((o, i) => [o.id, i + 1]));
+  const lastTried = Math.max(0, ...selected.map((c) => rankOf.get(c.option.id)!));
+  screened.options.forEach((o, i) => {
+    if (o.access === 'customers' && i + 1 < lastTried)
+      skipped.push({ rank: i + 1, reason: 'customers_only' });
+  });
   const result: CompleteJourney[] = [];
   let next = 0;
   await Promise.all(
@@ -228,7 +235,10 @@ async function carJourneys(
               deps.drive(req.origin, p.coordinate),
               deps.active('walk', p.coordinate, req.destination),
             ]);
-            if (walk.mode !== 'walk' || walk.route.duration > req.maxWalkMinutes * 60) continue;
+            if (walk.mode !== 'walk' || walk.route.duration > req.maxWalkMinutes * 60) {
+              skipped.push({ rank: rankOf.get(p.id)!, reason: 'walk_unavailable' });
+              continue;
+            }
             const legs: JourneyLeg[] = [
               movingLeg('drive', req.origin, p.coordinate, drive.routes[0]!),
               {
@@ -252,22 +262,26 @@ async function carJourneys(
             );
           } catch {
             /* This candidate must not invalidate the other candidates or active modes. */
+            skipped.push({ rank: rankOf.get(p.id)!, reason: 'walk_unavailable' });
           }
         }
       },
     ),
   );
-  // Parking order is the SmartMatch order, not the shortest drive: availability risk and price count too.
-  return result.sort((a, b) => a.parking!.match.rank - b.parking!.match.rank);
+  // Order of the shortlist (SmartMatch cost plus driving time), not the shortest drive alone:
+  // availability risk and price count too. The P-number stays the parking list rank.
+  const order = new Map(selected.map((c, i) => [c.option.id, i]));
+  return result.sort((a, b) => order.get(a.parking!.id)! - order.get(b.parking!.id)!);
 }
 export async function calculateCompleteJourneys(
   req: CompleteJourneyRequest,
   deps: Dependencies = completeDependencies,
 ): Promise<CompleteJourneyResponse> {
   const at = new Date().toISOString();
+  const parkingSkipped: CompleteJourneyResponse['parkingSkipped'] = [];
   const settled = await Promise.allSettled(
     req.modes.map(async (category) => {
-      if (category === 'car_park_walk') return carJourneys(req, at, deps);
+      if (category === 'car_park_walk') return carJourneys(req, at, deps, parkingSkipped);
       const option = await deps.active(category, req.origin, req.destination);
       if (option.mode !== category) throw new Error('WRONG_ROUTING_MODE');
       return [
@@ -312,6 +326,7 @@ export async function calculateCompleteJourneys(
     journeys,
     rankings,
     unavailable,
+    parkingSkipped: parkingSkipped.sort((a, b) => a.rank - b.rank),
     opportunity:
       active && car
         ? {

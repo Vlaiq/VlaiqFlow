@@ -62,12 +62,38 @@ describe('complete journey orchestration', () => {
     sure.drive = { ...sure.drive!, minutes: 5 };
     sure.pFree = { ...sure.pFree, value: 0.9 };
     sure.cost = { total: 5.4, walk: 3, risk: 1.2, price: 1.2 };
-    const d = deps([near, sure]);
+    // SmartMatch lists by cost, so "sure" is P1 even though "near" is the shorter drive.
+    const d = deps([sure, near]);
     // Same provider route for both, so travel time alone cannot decide.
     const result = await calculateCompleteJourneys(req({ modes: ['car_park_walk'] }), d);
     expect(result.journeys.map((j) => j.parking!.id)).toEqual(['sure', 'near']);
     expect(result.journeys.map((j) => j.parking!.match.rank)).toEqual([1, 2]);
     expect(result.rankings.balanced.recommendedId).toBe(result.journeys[0]!.id);
+  });
+  it('labels journeys with the parking list rank and says why customers-only parkings are left out', async () => {
+    const mall = parking('mall');
+    mall.access = 'customers';
+    mall.cost = { ...mall.cost, total: 1 };
+    const street = parking('street');
+    street.cost = { ...street.cost, total: 4 };
+    const far = parking('far');
+    far.cost = { ...far.cost, total: 6 };
+    const d = deps([mall, street, far]);
+    d.active.mockImplementation(async (mode, from, to): Promise<JourneyOption> => ({
+      id: mode,
+      mode,
+      // The walk from "far" is over the 12 min limit.
+      route: route(from, to, from[0] === far.coordinate[0] && from[1] === far.coordinate[1] ? 1200 : 180, 200),
+      practical: true,
+      note: 'SYNTHETIC TEST FIXTURE',
+    }));
+    far.coordinate = [far.coordinate[0] + 0.001, far.coordinate[1]];
+    const result = await calculateCompleteJourneys(req({ modes: ['car_park_walk'] }), d);
+    expect(result.journeys.map((j) => [j.parking!.id, j.parking!.match.rank])).toEqual([['street', 2]]);
+    expect(result.parkingSkipped).toEqual([
+      { rank: 1, reason: 'customers_only' },
+      { rank: 3, reason: 'walk_unavailable' },
+    ]);
   });
   it('never treats a missing driving time as zero when ranking parkings', () => {
     const a = parking('a'),

@@ -30,7 +30,7 @@ import {
   carNavigationHref,
   journeyDistance,
   journeyMinutes,
-  missingRanks,
+  skippedParkingNotes,
   plannedActivity,
 } from './journeyPresentation';
 import { FreeChance, ScoreBreakdown } from '../parking/ParkingFacts';
@@ -261,16 +261,11 @@ export function GreenSwitch({
               );
             })}
           </div>
-          {missingRanks(value.journeys).length > 0 && (
-            <p className="journey-missing-note">
-              {missingRanks(value.journeys)
-                .map((r) => `P${r}`)
-                .join(', ')}{' '}
-              {missingRanks(value.journeys).length === 1 ? 'nu apare' : 'nu apar'} aici: traseul
-              calculat pe jos de la parcare depășește {parkingSettings.maxWalkMinutes} min sau nu a
-              putut fi calculat acum. Lista „Unde parchezi” poate folosi o estimare a mersului.
+          {skippedParkingNotes(value.parkingSkipped, parkingSettings.maxWalkMinutes).map((note) => (
+            <p className="journey-missing-note" key={note}>
+              {note}
             </p>
-          )}
+          ))}
           <p className="journey-live-status" role="status" aria-live="polite">
             {selected
               ? `${names[selected.category]} selectat · ${journeyMinutes(selected.travelSeconds.value!)} min pe trasee calculate.`

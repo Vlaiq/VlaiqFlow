@@ -1,4 +1,9 @@
-import { ActiveJourneyContext, type CompleteJourney, type Destination } from '@vlaiq/shared';
+import {
+  ActiveJourneyContext,
+  type CompleteJourney,
+  type CompleteJourneyResponse,
+  type Destination,
+} from '@vlaiq/shared';
 import { handoffParams } from '../navigation/scenario';
 export const journeyMinutes = (seconds: number) => Math.max(1, Math.ceil(seconds / 60));
 export const journeyDistance = (meters: number) =>
@@ -6,14 +11,29 @@ export const journeyDistance = (meters: number) =>
     ? `${(meters / 1000).toLocaleString('ro-RO', { maximumFractionDigits: 1 })} km`
     : `${Math.round(meters)} m`;
 /**
- * Car-option ranks below the last one shown that have no complete journey (the real walking route is
- * over the walk limit, or a provider failed), so the panel can say why "P1" is missing.
+ * Why a parking from the SmartMatch list ("P1") has no complete journey, using the reasons the
+ * backend reports. Nothing is inferred from gaps in the numbering.
  */
-export function missingRanks(journeys: CompleteJourney[]): number[] {
-  const ranks = journeys.flatMap((j) => (j.parking ? [j.parking.match.rank] : []));
-  if (!ranks.length) return [];
-  const max = Math.max(...ranks);
-  return Array.from({ length: max }, (_, i) => i + 1).filter((r) => !ranks.includes(r));
+export function skippedParkingNotes(
+  skipped: CompleteJourneyResponse['parkingSkipped'],
+  maxWalkMinutes: number,
+): string[] {
+  const list = (reason: (typeof skipped)[number]['reason']) =>
+    skipped.filter((s) => s.reason === reason).map((s) => `P${s.rank}`);
+  const notes: string[] = [];
+  const customers = list('customers_only');
+  if (customers.length) {
+    const one = customers.length === 1;
+    notes.push(
+      `${customers.join(', ')} ${one ? 'e' : 'sunt'} doar pentru clienți, deci nu ${one ? 'apare' : 'apar'} în drumul complet.`,
+    );
+  }
+  const walk = list('walk_unavailable');
+  if (walk.length)
+    notes.push(
+      `${walk.join(', ')} ${walk.length === 1 ? 'nu apare' : 'nu apar'} aici: traseul calculat pe jos de la parcare depășește ${maxWalkMinutes} min sau nu a putut fi calculat acum. Lista „Unde parchezi” poate folosi o estimare a mersului.`,
+    );
+  return notes;
 }
 export function plannedActivity(j: CompleteJourney, d: Destination): ActiveJourneyContext | null {
   if (j.category === 'car_park_walk') return null;

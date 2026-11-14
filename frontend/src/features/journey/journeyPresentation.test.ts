@@ -1,7 +1,7 @@
 import { describe, expect, it, vi, afterEach } from 'vitest';
 import { ActiveJourneyContext, CompleteJourneyRequest } from '@vlaiq/shared';
 import { activeJourney } from '../../../../shared/test-fixtures/completeJourney';
-import { plannedActivity, carNavigationHref, missingRanks } from './journeyPresentation';
+import { plannedActivity, carNavigationHref, skippedParkingNotes } from './journeyPresentation';
 import { fetchCompleteJourneys } from './useCompleteJourneys';
 import { journeyFeatures } from '../map/journeyLayers';
 const destination = { id: 'd', name: 'Destinație de test' } as import('@vlaiq/shared').Destination;
@@ -50,14 +50,22 @@ describe('validated journey presentation', () => {
     );
   });
 });
-describe('missing car options', () => {
-  const car = (rank: number) =>
-    ({ parking: { match: { rank } } }) as unknown as import('@vlaiq/shared').CompleteJourney;
-  const active = { parking: null } as unknown as import('@vlaiq/shared').CompleteJourney;
-  it('names the SmartMatch ranks that have no complete journey below the last one shown', () => {
-    expect(missingRanks([car(2), car(3), active])).toEqual([1]);
-    expect(missingRanks([car(1), car(3)])).toEqual([2]);
-    expect(missingRanks([car(1), car(2)])).toEqual([]);
-    expect(missingRanks([active])).toEqual([]);
+describe('parkings without a complete journey', () => {
+  it('explains each skipped SmartMatch rank with the reason the backend gave', () => {
+    const notes = skippedParkingNotes(
+      [
+        { rank: 1, reason: 'customers_only' },
+        { rank: 2, reason: 'customers_only' },
+        { rank: 4, reason: 'walk_unavailable' },
+      ],
+      12,
+    );
+    expect(notes).toHaveLength(2);
+    expect(notes[0]).toContain('P1, P2 sunt doar pentru clienți');
+    expect(notes[1]).toContain('P4 nu apare aici');
+    expect(notes[1]).toContain('12 min');
+  });
+  it('says nothing when every candidate has a journey', () => {
+    expect(skippedParkingNotes([], 12)).toEqual([]);
   });
 });
