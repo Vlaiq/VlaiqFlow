@@ -285,6 +285,7 @@ function Explore({
   const car = useParkedCar();
   const [expanded, setExpanded] = useState(false);
   const [plannerView, setPlannerView] = useState<'parking' | 'journey'>('parking');
+  const [pendingParkingId, setPendingParkingId] = useState<string | null>(null);
   const [layers, setLayers] = useState(false);
   const [origin, setOrigin] = useState<Origin | null>(null);
   const [pickingOrigin, setPickingOrigin] = useState(false);
@@ -332,13 +333,19 @@ function Explore({
     setDriveRoute(null);
     setWalkRoute(null);
   }, []);
-  /** From a Smart Journey car option: open the same parking's preview when the SmartMatch list has it. */
-  const openParkingFromJourney = useCallback(
-    (id: string) => {
-      if (options.some((o) => o.id === id)) openDetail(id);
-    },
-    [options, openDetail],
-  );
+  /** Open the requested parking after SmartMatch remounts and delivers fresh results. */
+  const openParkingFromJourney = useCallback((id: string) => {
+    setPendingParkingId(id);
+    setJourneySelection(null);
+    setPlannerView('parking');
+  }, []);
+  useEffect(() => {
+    if (!pendingParkingId || !reco) return;
+    if (reco.options.some((option) => option.id === pendingParkingId)) {
+      openDetail(pendingParkingId);
+    }
+    setPendingParkingId(null);
+  }, [pendingParkingId, reco, openDetail]);
   const selectDestination = useCallback((value: Destination) => {
     setDestination(value);
     setStops([]);
@@ -346,6 +353,7 @@ function Explore({
     setDriveRoute(null);
     setJourneySelection(null);
     setPlannerView('parking');
+    setPendingParkingId(null);
     setExpanded(true);
     panelRef.current?.scrollTo({ top: 0 });
   }, []);
