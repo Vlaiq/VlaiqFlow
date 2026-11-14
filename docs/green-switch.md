@@ -1,4 +1,11 @@
-# Green Switch and FLOW Opportunity
+# Green Switch · current complete-journey planner
+
+Sprint 01 connects Green Switch to `POST /api/journeys/complete`: actual drive → parking → walk,
+independent active routes, all preference rankings computed by the backend, synchronized map and timeline.
+See [complete journey architecture](complete-journeys.md) for the current UI contract and limitations.
+The original direct `/compare` API below is retained for compatibility; it no longer drives Explore.
+
+# Original direct comparison API
 
 `POST /api/journeys/compare` accepts strict JSON `{ origin: [lng,lat], destination: [lng,lat] }`.
 The origin must be an explicit GPS/manual choice; the UI never substitutes a demo origin.

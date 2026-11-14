@@ -4,6 +4,18 @@
 
 FLOW connects destination search, parking comparisons, available greener routes and active movement rewards. It extends municipal services: parking payment stays in Timpark/CityApp, public-space reports go to Sesizări. It does not claim live parking occupancy, traffic, public transport arrivals, measured emissions savings or an official partnership.
 
+## FLOW Smart Journey · Sprint 01
+
+The planner now joins **driving → a specific parking → walking to the destination**, alongside genuine
+walking/cycling alternatives when ORS is available. Green Switch selects backend-computed rankings;
+separate map legs and an interactive timeline stay synchronized. Parking search remains unknown and
+excluded, tariff calculations are orientative, and selecting a plan never awards Motion coins.
+
+See [architecture/contracts](docs/complete-journeys.md), [NetRom evidence](docs/challenge-evidence/netrom-glue-it-together.md),
+[demo instructions](docs/demo-smart-journey.md) and [actual-user test protocol](docs/user-testing/flow-smart-journey.md).
+The sprint's provider verification is blocked here by an absent ORS key and proxy 403; tests use visibly
+labelled fixtures for the complete routed flow. Transit routing and a verified cycling overlay remain unavailable.
+
 ## What runs
 
 - **Explorează** — local street/place search, real Timpark/OSM parking data, real Timiș county boundary and map controls. Phone bottom sheet and laptop planning sidebar.
@@ -74,6 +86,7 @@ Browser scripts use an installed Playwright and Chromium. In the prepared cloud:
 
 ```bash
 export PLAYWRIGHT_MODULE=/opt/codex/cua_node/lib/node_modules/playwright
+node scripts/test-smart-journey-browser.cjs
 node scripts/test-premium-browser.cjs
 node scripts/test-motion-browser.cjs
 node scripts/test-navigation-browser.cjs

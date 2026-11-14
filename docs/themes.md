@@ -4,8 +4,9 @@ The shared semantic palette lives in `frontend/src/styles/tokens.css`. Existing 
 channel variables remain compatible with Tailwind (`bg-surface`, `text-muted`, and
 opacity utilities). UI components and Motion use the same `--app-*` semantic aliases.
 The original metallic FLOW Coin SVG keeps its own artwork palette; only its grounded
-shadow adapts to the surrounding theme. No font files, trackers or external theme
-assets are downloaded. Preferred Manrope/Inter names fall back to the system stack.
+shadow adapts to the surrounding theme. No trackers or externally hosted theme assets are used. Sprint 01 self-hosts Inter and Manrope
+Latin/Latin Extended variable subsets with swap and system fallbacks; original SIL OFL notices
+are distributed in `/licenses`. See `docs/complete-journeys.md`.
 
 ## Themes
 

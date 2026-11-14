@@ -1,8 +1,8 @@
 # Third-party code, data and services
 
 The FLOW Coin in `frontend/src/features/motion/FlowCoin.tsx` is original layered SVG artwork.
-Motion uses existing React/Lucide dependencies and the system font stack; it adds no external
-image assets, copied logos, downloadable fonts or animation libraries.
+Motion uses existing React/Lucide dependencies and original SVG artwork. Sprint 01 self-hosts the
+Inter and Manrope variable fonts (Latin/Latin Extended) under SIL OFL 1.1; no new animation library.
 
 Add a row before using any third-party code, data or service. A repository without a license cannot be copied.
 
@@ -23,4 +23,9 @@ Add a row before using any third-party code, data or service. A repository witho
 | [Natural Earth Admin-1](https://github.com/nvkelso/natural-earth-vector) | Real generalized Timiș county polygon (RO-TM) | Public domain; upstream statement retained in `docs/data-sources/natural-earth-public-domain.txt` | Preserve metadata/source/date/precision note; not cadastral accuracy |
 
 The fallback map draws already attributed municipal Timpark geometries, not a fabricated street grid.
-The app uses the existing system font stack; no downloaded proprietary fonts or UI assets were added.
+Inter and Manrope are redistributed from pinned `@fontsource-variable` packages under SIL OFL 1.1,
+with original copyright/license files in `docs/data-sources/{inter,manrope}-OFL.txt` and deployed
+`frontend/public/licenses/`. Local `fonts.css` retains the package unicode subsets and uses swap.
+System fallbacks remain available; no proprietary font or copied interface artwork is included.
+
+| Inter / Manrope variable fonts | Body / display typography and Romanian diacritics | SIL OFL 1.1 | Preserve original copyright and OFL, distributed at `/licenses/inter-OFL.txt` and `/licenses/manrope-OFL.txt`; no font modification or standalone sale |
