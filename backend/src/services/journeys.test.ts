@@ -78,10 +78,10 @@ describe('real-profile journey comparison', () => {
     expect(a).toEqual(b);
     expect(fetcher).toHaveBeenCalledTimes(2);
     expect(fetcher.mock.calls.map((args) => args[0])).toContain(
-      'https://api.openrouteservice.org/v2/directions/foot-walking/geojson',
+      'https://api.heigit.org/openrouteservice/v2/directions/foot-walking/geojson',
     );
     expect(fetcher.mock.calls.map((args) => args[0])).toContain(
-      'https://api.openrouteservice.org/v2/directions/cycling-regular/geojson',
+      'https://api.heigit.org/openrouteservice/v2/directions/cycling-regular/geojson',
     );
     expect(a.options.find((o) => o.mode === 'cycle')?.route.geometry).toEqual(geometry);
     expect(a.options.find((o) => o.mode === 'cycle')?.route.steps[1]?.index).toBe(1);

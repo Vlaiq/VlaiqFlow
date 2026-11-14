@@ -84,6 +84,9 @@ it('uses ORS on the server and preserves provider maneuver indices', async () =>
     road: 'Test',
   });
   expect(JSON.stringify(response)).not.toContain('test-only-key');
+  expect(fetcher.mock.calls[0]?.[0]).toBe(
+    'https://api.heigit.org/openrouteservice/v2/directions/driving-car/geojson',
+  );
   expect(fetcher.mock.calls[0]?.[1].headers.Authorization).toBe('test-only-key');
 });
 it('rejects failed and invalid upstream responses rather than manufacturing a route', async () => {

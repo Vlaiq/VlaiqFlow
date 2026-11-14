@@ -88,7 +88,7 @@ export async function requestActiveRoute(
     });
   }
   const response = await fetch(
-    `https://api.openrouteservice.org/v2/directions/${profile[mode]}/geojson`,
+    `https://api.heigit.org/openrouteservice/v2/directions/${profile[mode]}/geojson`,
     {
       method: 'POST',
       signal: AbortSignal.timeout(15000),

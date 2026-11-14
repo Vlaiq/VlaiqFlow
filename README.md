@@ -13,8 +13,9 @@ excluded, tariff calculations are orientative, and selecting a plan never awards
 
 See [architecture/contracts](docs/complete-journeys.md), [NetRom evidence](docs/challenge-evidence/netrom-glue-it-together.md),
 [demo instructions](docs/demo-smart-journey.md) and [actual-user test protocol](docs/user-testing/flow-smart-journey.md).
-The sprint's provider verification is blocked here by an absent ORS key and proxy 403; tests use visibly
-labelled fixtures for the complete routed flow. Transit routing and a verified cycling overlay remain unavailable.
+Live ORS/HeiGIT verification passed through Codex's secure HTTPS proxy on 14 Nov 2026 for driving,
+walking, cycling and both parking matrices; see [the verification record](docs/ors-verification.md).
+Automated tests use visibly labelled fixtures. Transit routing and a verified cycling overlay remain unavailable.
 
 ## What runs
 
@@ -53,6 +54,12 @@ Frontend: port **5173**. Backend: **8787**, proxied through `/api` during develo
 | `GEMINI_API_KEY`, `ELEVENLABS_API_KEY`, `DATABASE_URL` | backend, optional | Reserved optional integrations; core features do not require them |
 
 Without ORS the app still works with real street geometry: driving uses the OSRM public demo, walking and cycling use the FOSSGIS OSRM server (`routing.openstreetmap.de`, profiles `routed-foot` / `routed-bike`). Both are low-volume public services: the backend sends at most one FOSSGIS request per second with a User-Agent naming the team, caches results, fails fast when its queue is full, and the map shows the OSM "fix the map" link their policy asks for ([usage policy](https://routing.openstreetmap.de/about.html)). Set `ORS_API_KEY` for anything beyond a demo. No route is ever drawn as a straight line. Motion itself requires no external provider key. GPS on a physical phone requires **HTTPS**. Browser sensors and Wake Lock are optional; keep activity recording in the foreground.
+
+ORS directions and matrices use `https://api.heigit.org/openrouteservice/v2/`. In Codex, bind the
+`ORS_API_KEY` HTTP secret to `api.heigit.org`, preserve the inherited HTTPS proxy and CA trust, and
+start Node 24 with `NODE_USE_ENV_PROXY=1`. The proxy supplies the credential for matching HTTPS
+requests; never print the binding or put it in frontend variables. This cloud verification does not
+configure the separate production server's credentials or network access.
 
 ## Map scope and data coverage
 

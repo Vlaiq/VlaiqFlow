@@ -69,7 +69,7 @@ const pending = new Map<string, Promise<RoutesResponse>>();
 
 async function requestRoutes(origin: Coordinate, destination: Coordinate): Promise<RoutesResponse> {
   if (config.orsApiKey) {
-    const res = await fetch('https://api.openrouteservice.org/v2/directions/driving-car/geojson', {
+    const res = await fetch('https://api.heigit.org/openrouteservice/v2/directions/driving-car/geojson', {
       method: 'POST',
       signal: AbortSignal.timeout(15000),
       headers: { Authorization: config.orsApiKey, 'Content-Type': 'application/json' },

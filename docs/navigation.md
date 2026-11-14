@@ -53,7 +53,7 @@ Network destinations:
 
 - `tiles.openfreemap.org` — real vector map, labels, glyphs and buildings.
 - `router.project-osrm.org` — prototype routing fallback.
-- `api.openrouteservice.org` — preferred routing provider when a key is configured.
+- `api.heigit.org/openrouteservice/v2/` — preferred routing provider when a key is configured.
 
 Provider distance and duration are **estimated**, without live traffic. Remaining time
 uses the fraction of route geometry remaining, rather than a traffic prediction.

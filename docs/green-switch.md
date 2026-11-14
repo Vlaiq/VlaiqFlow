@@ -52,4 +52,4 @@ Tests beside `shared/src/schemas/journey.ts` verify preference/opportunity polic
 unknown inputs and unsupported metrics. Backend tests use clearly synthetic fixtures
 to verify actual profile URLs, geometry preservation, caching/deduplication and graceful
 provider failures. Real active routes still require a working backend ORS binding and
-network access to `api.openrouteservice.org`; tests do not establish that access.
+network access to `api.heigit.org/openrouteservice/v2/`; tests do not establish that access.

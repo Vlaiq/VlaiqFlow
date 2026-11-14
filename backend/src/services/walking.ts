@@ -46,7 +46,7 @@ export async function walkTimes(destination: Coordinate, points: Coordinate[]): 
   if (running) return running;
   const job = (async () => {
     try {
-      const res = await fetch('https://api.openrouteservice.org/v2/matrix/foot-walking', {
+      const res = await fetch('https://api.heigit.org/openrouteservice/v2/matrix/foot-walking', {
         method: 'POST',
         signal: AbortSignal.timeout(10_000),
         headers: { Authorization: apiKey, 'Content-Type': 'application/json' },

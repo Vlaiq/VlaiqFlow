@@ -35,7 +35,7 @@ export async function driveTimes(
   };
   const job = (async () => {
     try {
-      const response = await fetch('https://api.openrouteservice.org/v2/matrix/driving-car', {
+      const response = await fetch('https://api.heigit.org/openrouteservice/v2/matrix/driving-car', {
         method: 'POST',
         signal: AbortSignal.timeout(8000),
         headers: { Authorization: apiKey, 'Content-Type': 'application/json' },
