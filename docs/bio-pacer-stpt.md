@@ -1,8 +1,88 @@
 # BIO-PACER STPT — engineering and integration handoff
 
-Status on **14 November 2026: PARTIAL overall**. The isolated implementation and deterministic
+Status rechecked on **14 November 2026: PARTIAL overall**. The isolated implementation and deterministic
 verification are complete. Authentic SMTT data validation and a real pedestrian-provider exercise
 remain unverified. There is no frontend, endpoint, deployment or full transit itinerary in this change.
+The finalization recheck below records the latest access result and freshly executed quality gates.
+
+## Finalization recheck — updated network configuration
+
+Starting local and freshly fetched remote feature-branch SHA both matched
+`16927f52c233d737a317cf0c4dbc4b416426d4be`; the worktree was clean and exclusively checked out on
+`feature/stpt-bio-pacer`. No unrelated branch was merged, rebased or cherry-picked. Inspected the
+existing transit modules/contracts, ingestion scripts, this handoff and third-party attribution before
+rechecking acquisition. Existing scheduling, routing-validation and recommendation algorithms were
+preserved; this follow-up changes only this document.
+
+Executed the existing official ingestion command **once**:
+
+```text
+Command: node scripts/fetch-smtt-gtfs.mjs
+Source: https://smtt.ro/transit/gtfs/maps/smtt-timisoara-ro.zip
+Started:   2026-11-14T17:15:38.786984+00:00
+Completed: 2026-11-14T17:15:38.916799+00:00
+Local time: 14 November 2026, 19:15:38 Europe/Bucharest
+Exit code: 1
+GTFS ingestion failed: URLError: <urlopen error Tunnel connection failed: 403 Forbidden>
+Previous digest preserved. No synthetic timetable was substituted.
+```
+
+The runtime still denied the proxy CONNECT request despite the announced allowlist update. This is
+not a publisher HTTP 403: no publisher HTTPS response, certificate, ZIP or source metadata was received.
+TLS/proxy settings were not bypassed, the URL was not redirected to another domain, and acquisition
+stopped after this attempt. The production digest was absent before and after; there was no previous
+snapshot to replace. All archive, parsing, memory, provenance and atomic-write safeguards remain intact.
+
+| Finalization evidence | Actual result |
+|---|---|
+| Authentic archive, checksum, bytes and retrieval timestamp | Unavailable; attempt times above are not a successful retrieval |
+| Current version, validity, agency IDs/timezone and calendar coverage | Unknown |
+| Stops, routes, trips, stop times, invalid geographic records and actual-feed warnings | Unknown; no dataset was parsed |
+| Coverage of 14–15 November 2026 demonstration dates | Unverified |
+| Real stop/direction/departure/midnight verification | Blocked by absent authentic feed |
+| Real walking route and schedule-backed feasibility | Not exercised; no validated real boarding platform was available |
+| Real dataset load/search/memory benchmark | Not run; no real dataset was available |
+| Redistribution/attribution terms | Still not independently verified; no source data redistributed |
+
+Routing configuration was inspected without printing credentials or making a provider request.
+In this runtime **`ORS_API_KEY` is configured**; configuration presence does not prove key validity or
+provider reachability. The checked-out abstraction is `activeRouting.ts` →
+`journeys.ts:requestActiveRoute('walk', ...)`, whose configured endpoint is
+`https://api.openrouteservice.org/v2/directions/foot-walking/geojson`. If no key is configured, its
+existing fallback uses `routing.openstreetmap.de/routed-foot`. This branch does **not** configure an
+`api.heigit.org` walking endpoint. Allowlisting `api.heigit.org` does not change this implementation's
+endpoint or authorize redirecting its credentials. No key, Authorization header or private coordinates
+were recorded, and no shared provider or frontend file was edited.
+
+Fresh verification on 14 November used Node **24.22.1**, pnpm **12.18.0**, Python **3.12.14** and the
+unchanged dependency lockfile. The following were executed again, rather than relying on prior results:
+
+| Check | Re-executed result |
+|---|---|
+| Isolated transit suite | PASS: 108 tests in 3 files (54 feed/calendar/index, 33 Bio-Pacer, 21 archive/CSV) |
+| Workspace typecheck | PASS: shared, backend and frontend |
+| Full repository tests | PASS: 69 shared + 30 frontend + 180 backend = 279 tests in 31 files |
+| Production build | PASS; existing Vite >500 kB chunk advisory remains |
+| `git diff --check` | PASS |
+
+Existing regression tests cover corrupted/truncated ZIP and invalid input rejection, last-good snapshot
+preservation and atomic replacement, calendar exceptions, midnight/DST, unknown accessibility, provider
+errors, timeout-triggered cancellation, later comfortable departures and unavailable timetable handling.
+Those are synthetic fixture results, not current SMTT metadata, an actual walk or a real-data benchmark.
+No validation was relaxed and no production schedule, coordinates or feasibility figures were invented.
+
+**Integration handoff:** first have the environment owner resolve HTTPS proxy CONNECT access for the
+exact official SMTT URL, then explicitly rerun ingestion in that updated environment. Validate current
+metadata, date coverage and source terms; use the resulting real boarding platform and active service
+date for reproducible departure checks. Only then make one bounded request through the existing
+configured walking adapter, keeping the correct provider/credential domain and foot profile, and run
+the required real-data load/search/memory benchmark. If the authorized integration is to use HeiGIT,
+the integration owner must supply that approved adapter/configuration; this mission does not substitute
+domains or merge its branch. The exact later application integration files remain listed below.
+
+This recheck remains **PARTIAL**, with authentic data acquisition blocked. It does not establish
+production readiness. The evidence update is committed/pushed only to `feature/stpt-bio-pacer`; the
+final response records the new delivery SHA and remote verification. No application was deployed.
 
 ## Objective and scope
 
@@ -45,7 +125,7 @@ Official producer URL: <https://smtt.ro/transit/gtfs/maps/smtt-timisoara-ro.zip>
 Reference: <https://gtfs.org/documentation/schedule/reference/>.
 SMTT publishes the schedule; STPT and metropolitan operators provide services. No endorsement is claimed.
 
-The implemented fetch command was exercised on **14 November 2026 at 18:45:37 Europe/Bucharest
+The initial implementation's fetch command was exercised on **14 November 2026 at 18:45:37 Europe/Bucharest
 (16:45:37 UTC)**. It failed with:
 
 ```text
