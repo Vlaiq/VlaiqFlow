@@ -4,6 +4,7 @@ import {
   CircleHelp,
   Compass,
   Database,
+  Gauge,
   Leaf,
   Lock,
   Map,
@@ -58,6 +59,8 @@ export function AppShell({
     '/city': 'Pentru Primărie',
     '/data': 'FLOW Data Trust',
     '/date-parcari': 'Datele de parcare',
+    '/sanse-parcare': 'Cum calculăm șansele',
+    '/parking-chance': 'Cum calculăm șansele',
     '/parking-data': 'Datele de parcare',
     '/help': 'Bine ai venit în FLOW',
     '/confidentialitate': 'Confidențialitate',
@@ -186,6 +189,13 @@ export function AppShell({
             <ShieldCheck />
             <span>
               De unde provin datele?<small>Surse, actualizări și limite</small>
+            </span>
+            <ArrowRight size={17} />
+          </a>
+          <a href="/sanse-parcare">
+            <Gauge />
+            <span>
+              Cum calculăm șansele<small>Șansa de loc liber, explicată pas cu pas</small>
             </span>
             <ArrowRight size={17} />
           </a>

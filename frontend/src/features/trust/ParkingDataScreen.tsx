@@ -383,7 +383,8 @@ function ModelSection({ model }: { model: AvailabilityModelResponse | null }) {
       <h2 id="pdata-model-title">Cum calculăm șansa, pas cu pas.</h2>
       <p className="pdata-lead">
         {model.name}. Calitate: <QualityBadge quality={model.quality} />{' '}
-        {model.calibrated ? 'calibrat pe observații.' : 'necalibrat: curbele sunt ipoteze scrise, nu măsurători.'}
+        {model.calibrated ? 'calibrat pe observații.' : 'necalibrat: curbele sunt ipoteze scrise, nu măsurători.'}{' '}
+        <a href="/sanse-parcare" className="pdata-inline-link">Explicația pe larg, cu calculator</a>
       </p>
       <ol className="pdata-steps">
         <li>

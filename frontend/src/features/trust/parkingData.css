@@ -435,3 +435,6 @@
     grid-template-columns: 1fr;
   }
 }
+.pdata-inline-link {
+  color: rgb(var(--primary)) !important;
+}

@@ -198,20 +198,44 @@ export interface PFreeContext {
 const hhmm = (at: Date) =>
   new Intl.DateTimeFormat('ro-RO', { timeZone: 'Europe/Bucharest', hour: '2-digit', minute: '2-digit', hourCycle: 'h23' }).format(at);
 
-/**
- * Probability that at least one space is free on arrival (spec §7.3, rule model v2).
- * Inputs: area profile, arrival instant, capacity (null when unknown).
- */
-export function pFree(profile: AreaProfile, at: Date, capacity: number | null, ctx: PFreeContext = {}): PFreeResult {
-  const { day, holiday } = slotOf(at);
+/** Every intermediate value of one calculation, for the explainer page and the tests. */
+export function pFreeDetail(profile: AreaProfile, at: Date, capacity: number | null) {
+  const { day, hour, minute, holiday } = slotOf(at);
   const expected = Math.round(expectedOccupancy(profile, at) * 1000) / 1000;
   const known = capacity != null && capacity > 0;
   const c = known ? capacity : DEFAULT_CAPACITY;
   const kappa = known ? KAPPA_KNOWN : KAPPA_UNKNOWN;
   const needed = findableSpaces(c);
+  const mu = Math.min(0.995, Math.max(0.005, expected));
+  const raw = betaBinomialFree(expected, c, kappa, needed);
   const p = (m: number) => clamp(betaBinomialFree(m, c, kappa, needed));
-  const value = p(expected);
-  const range: [number, number] = [p(expected + CURVE_ERROR), p(expected - CURVE_ERROR)];
+  return {
+    day,
+    hour,
+    minute,
+    holiday,
+    expected,
+    known,
+    capacityUsed: c,
+    kappa,
+    alpha: mu * kappa,
+    beta: (1 - mu) * kappa,
+    spread: Math.sqrt((mu * (1 - mu)) / (kappa + 1)),
+    needed,
+    raw,
+    value: p(expected),
+    clamped: raw < P_MIN || raw > P_MAX,
+    range: [p(expected + CURVE_ERROR), p(expected - CURVE_ERROR)] as [number, number],
+  };
+}
+
+/**
+ * Probability that at least one space is free on arrival (spec §7.3, rule model v2).
+ * Inputs: area profile, arrival instant, capacity (null when unknown).
+ */
+export function pFree(profile: AreaProfile, at: Date, capacity: number | null, ctx: PFreeContext = {}): PFreeResult {
+  const d = pFreeDetail(profile, at, capacity);
+  const { day, holiday, expected, known, needed, value, range } = d;
   const dayLabel = holiday ? `sărbătoare legală (${holiday}), tratată ca duminică` : DAY_LABEL_RO[day];
   const factors = [
     PROFILE_LABEL_RO[profile],

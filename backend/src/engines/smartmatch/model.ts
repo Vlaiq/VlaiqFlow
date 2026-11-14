@@ -1,4 +1,4 @@
-import type { AreaProfile, AvailabilityModelResponse } from '@vlaiq/shared';
+import type { AreaProfile, AvailabilityExplainResponse, AvailabilityModelResponse } from '@vlaiq/shared';
 import { M2_PER_SPACE, MAX_KERB_COUNTED_M, M_PER_KERB_SPACE, PROFILE_RADIUS_M } from './candidates';
 import {
   CURVE_ERROR,
@@ -10,6 +10,8 @@ import {
   P_MAX,
   P_MIN,
   PROFILE_LABEL_RO,
+  pFree,
+  pFreeDetail,
 } from './occupancy';
 import { MODEL_SOURCE } from './rank';
 
@@ -50,5 +52,29 @@ export function availabilityModel(): AvailabilityModelResponse {
       rule: RULES[id],
       curves: OCCUPANCY_CURVES[id],
     })),
+  };
+}
+
+/** One calculation with all its steps, plus the same parking over every hour of that day. */
+export function explainAvailability(
+  profile: AreaProfile,
+  at: Date,
+  capacity: number | null,
+): AvailabilityExplainResponse {
+  const detail = pFreeDetail(profile, at, capacity);
+  const startOfHour = at.getTime() - detail.minute * 60_000;
+  const dayCurve = Array.from({ length: 24 }, (_, hour) => {
+    const t = new Date(startOfHour + (hour - detail.hour) * 3_600_000);
+    const d = pFreeDetail(profile, t, capacity);
+    return { hour, expected: d.expected, value: d.value, low: d.range[0], high: d.range[1] };
+  });
+  return {
+    profile,
+    at: at.toISOString(),
+    capacity,
+    quality: 'estimated',
+    detail,
+    factors: pFree(profile, at, capacity).factors,
+    dayCurve,
   };
 }

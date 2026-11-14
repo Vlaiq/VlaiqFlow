@@ -110,3 +110,41 @@ export const AvailabilityModelResponse = z.object({
   ),
 });
 export type AvailabilityModelResponse = z.infer<typeof AvailabilityModelResponse>;
+
+/** One availability calculation, step by step, for the "Cum calculăm șansele" page. */
+export const AvailabilityExplainRequest = z.object({
+  profile: AreaProfile,
+  at: z.string().datetime({ offset: true }),
+  /** Number of spaces; omitted = unknown. */
+  capacity: z.coerce.number().int().min(1).max(5000).optional(),
+});
+export type AvailabilityExplainRequest = z.infer<typeof AvailabilityExplainRequest>;
+
+export const AvailabilityExplainResponse = z.object({
+  profile: AreaProfile,
+  at: z.string(),
+  capacity: z.number().int().nullable(),
+  quality: z.literal('estimated'),
+  detail: z.object({
+    day: z.enum(['weekday', 'saturday', 'sunday']),
+    hour: z.number().int(),
+    minute: z.number().int(),
+    holiday: z.string().nullable(),
+    expected: z.number(),
+    known: z.boolean(),
+    capacityUsed: z.number().int(),
+    kappa: z.number(),
+    alpha: z.number(),
+    beta: z.number(),
+    spread: z.number(),
+    needed: z.number().int(),
+    raw: z.number(),
+    value: z.number(),
+    clamped: z.boolean(),
+    range: z.tuple([z.number(), z.number()]),
+  }),
+  factors: z.array(z.string()),
+  /** The same parking at every full hour of that local day. */
+  dayCurve: z.array(z.object({ hour: z.number().int(), expected: z.number(), value: z.number(), low: z.number(), high: z.number() })).length(24),
+});
+export type AvailabilityExplainResponse = z.infer<typeof AvailabilityExplainResponse>;

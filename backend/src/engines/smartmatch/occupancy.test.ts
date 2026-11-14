@@ -84,3 +84,17 @@ describe('kerbside capacity', () => {
     expect(streetCapacity([[21.22, 45.75], [21.22, 45.75001]]).value).toBeNull();
   });
 });
+
+describe('explained calculation', () => {
+  it('gives the same answer as the engine, with its intermediate steps', async () => {
+    const { explainAvailability } = await import('./model');
+    const { AvailabilityExplainResponse } = await import('@vlaiq/shared');
+    const at = local('2026-11-13T19:00:00+02:00');
+    const e = explainAvailability('centre', at, 20);
+    expect(AvailabilityExplainResponse.safeParse(e).success).toBe(true);
+    expect(e.detail.value).toBe(pFree('centre', at, 20).value);
+    expect(e.detail.alpha + e.detail.beta).toBeCloseTo(e.detail.kappa);
+    expect(e.dayCurve.map((h) => h.hour)).toEqual(Array.from({ length: 24 }, (_, h) => h));
+    expect(e.dayCurve[19]!.value).toBe(e.detail.value);
+  });
+});

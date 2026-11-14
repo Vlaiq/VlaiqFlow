@@ -80,6 +80,10 @@ const ParkingDataScreen = lazy(() =>
   import('../features/trust/ParkingDataScreen').then((m) => ({ default: m.ParkingDataScreen })),
 );
 const parkingDataPaths = ['/date-parcari', '/parking-data'];
+const ChanceScreen = lazy(() =>
+  import('../features/trust/ChanceScreen').then((m) => ({ default: m.ChanceScreen })),
+);
+const chancePaths = ['/sanse-parcare', '/parking-chance'];
 const PrivacyScreen = lazy(() =>
   import('../features/trust/PrivacyScreen').then((m) => ({ default: m.PrivacyScreen })),
 );
@@ -207,6 +211,11 @@ export function App() {
           <DataTrustScreen />
         </Suspense>
       )}
+      {chancePaths.includes(path) && (
+        <Suspense fallback={loading}>
+          <ChanceScreen />
+        </Suspense>
+      )}
       {parkingDataPaths.includes(path) && (
         <Suspense fallback={loading}>
           <ParkingDataScreen />
@@ -223,6 +232,7 @@ export function App() {
         ...motionPaths,
         ...privacyPaths,
         ...parkingDataPaths,
+        ...chancePaths,
         '/navigation',
         '/city',
         '/data',

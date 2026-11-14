@@ -44,7 +44,7 @@ export function FreeChance({
             ? `Interval plauzibil ${pct(range[0])}–${pct(range[1])}. `
             : ''}
           Model după zonă, zi, ora sosirii și capacitate, nu senzori. Ocuparea live este
-          necunoscută. <a href="/date-parcari#sanse">Cum calculăm</a>
+          necunoscută. <a href="/sanse-parcare">Cum calculăm</a>
         </p>
       )}
     </div>

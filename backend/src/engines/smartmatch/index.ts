@@ -4,4 +4,4 @@ export { publicHoliday, orthodoxEaster } from './holidays';
 export { timparkPrice, osmPrice, paidMinutes } from './price';
 export { rank, explain, MODEL_SOURCE, type WalkTime } from './rank';
 export { MODE_PARAMS, MAX_MATRIX_CANDIDATES } from './weights';
-export { availabilityModel } from './model';
+export { availabilityModel, explainAvailability } from './model';

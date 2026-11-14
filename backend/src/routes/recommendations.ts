@@ -1,7 +1,7 @@
 import { Router } from 'express';
-import { RecommendationRequest } from '@vlaiq/shared';
+import { AvailabilityExplainRequest, RecommendationRequest } from '@vlaiq/shared';
 import { recommendParkings } from '../services/parkingRecommendations';
-import { availabilityModel } from '../engines/smartmatch';
+import { availabilityModel, explainAvailability } from '../engines/smartmatch';
 export const recommendationsRouter = Router();
 const inArea = ([lng, lat]: [number, number]) =>
   lng >= 21 && lng <= 21.5 && lat >= 45.6 && lat <= 45.9;
@@ -9,6 +9,14 @@ const inArea = ([lng, lat]: [number, number]) =>
 recommendationsRouter.get('/model', (_req, res) => {
   res.set('Cache-Control', 'no-cache');
   res.json(availabilityModel());
+});
+// One calculation step by step (no personal data: a profile, a time and a capacity).
+recommendationsRouter.get('/model/explain', (req, res) => {
+  const input = AvailabilityExplainRequest.safeParse(req.query);
+  if (!input.success)
+    return res.status(400).json({ error: { code: 'INVALID_INPUT', message: 'Parametri invalizi pentru calcul.' } });
+  const { profile, at, capacity } = input.data;
+  res.json(explainAvailability(profile, new Date(at), capacity ?? null));
 });
 recommendationsRouter.post('/', async (req, res) => {
   const input = RecommendationRequest.safeParse(req.body);
