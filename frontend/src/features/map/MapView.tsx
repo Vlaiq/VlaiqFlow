@@ -148,6 +148,17 @@ function destinationMarkerElement(approximate: boolean): HTMLElement {
   return el;
 }
 
+/**
+ * The planner keeps the map mounted but hidden while another screen is open, so the canvas can still be
+ * 0×0 when a route arrives right after coming back. Fitting at that size zooms nowhere; resize first.
+ */
+function matchContainer(map: maplibregl.Map) {
+  const canvas = map.getCanvas();
+  const container = map.getContainer();
+  if (canvas.clientWidth !== container.clientWidth || canvas.clientHeight !== container.clientHeight)
+    map.resize();
+}
+
 export function MapView({
   parkings,
   timpark,
@@ -473,6 +484,7 @@ export function MapView({
         const bounds = new maplibregl.LngLatBounds(route[0], route[0]);
         for (const c of route) bounds.extend(c);
         const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+        matchContainer(map);
         map.fitBounds(bounds, {
           padding: visibleMapPadding(),
           maxZoom: 16.5,
@@ -544,6 +556,7 @@ export function MapView({
         const bounds = new maplibregl.LngLatBounds(walkRoute[0], walkRoute[0]);
         for (const c of walkRoute) bounds.extend(c);
         const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+        matchContainer(map);
         map.fitBounds(bounds, {
           padding: visibleMapPadding(),
           maxZoom: 17,

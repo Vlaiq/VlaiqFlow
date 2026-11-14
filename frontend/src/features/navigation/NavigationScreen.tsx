@@ -31,7 +31,7 @@ import type { NavigationRoute } from '@vlaiq/shared';
 import { brand } from '@vlaiq/shared';
 import { useNavigation } from './useNavigation';
 import { loadNavPlaces, type NavPlaces } from './places';
-import { handoffFromUrl } from './scenario';
+import { arrivalWalkHref, handoffFromUrl } from './scenario';
 import { formatDistance, instruction } from './geometry';
 import { NavigationMap } from './NavigationMap';
 import { saveCar } from '../car/carStore';
@@ -472,7 +472,13 @@ function NavigationView({ places }: { places: NavPlaces }) {
                 >
                   <Car size={15} /> {carSaved === 'ok' ? 'Loc salvat' : 'Am parcat aici'}
                 </button>
-                <a href="/" onClick={nav.stop}>
+                <a
+                  href={arrivalWalkHref({
+                    from: { name: nav.destination.name, coordinate: nav.destination.coordinate },
+                    to: handoff.final,
+                  })}
+                  onClick={nav.stop}
+                >
                   Vezi mersul pe jos <ArrowRight size={15} />
                 </a>
               </div>

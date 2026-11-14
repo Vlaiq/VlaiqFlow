@@ -100,3 +100,31 @@ export function handoffFromUrl(search: string): ParkingHandoff {
     },
   };
 }
+
+/** The walk from the parking to the final destination, handed back to the planner on arrival. */
+export interface ArrivalWalk {
+  from: { name: string; coordinate: Coordinate };
+  to: { name: string; coordinate: Coordinate };
+}
+
+/** Planner link that opens the walking leg. It carries its own places, so it works after a reload too. */
+export function arrivalWalkHref(walk: ArrivalWalk): string {
+  const q = new URLSearchParams({
+    walkFrom: coord(walk.from.coordinate),
+    walkFromName: walk.from.name.slice(0, 120),
+    walkTo: coord(walk.to.coordinate),
+    walkToName: walk.to.name.slice(0, 120),
+  });
+  return `/?${q.toString()}`;
+}
+
+/** Reads the walking leg back; a missing or out-of-area place means no walk card, never a guessed one. */
+export function arrivalWalkFromUrl(search: string): ArrivalWalk | null {
+  const q = new URLSearchParams(search);
+  const from = parseCoordinate(q.get('walkFrom'));
+  const to = parseCoordinate(q.get('walkTo'));
+  const fromName = q.get('walkFromName')?.trim().slice(0, 120);
+  const toName = q.get('walkToName')?.trim().slice(0, 120);
+  if (!from || !to || !fromName || !toName) return null;
+  return { from: { name: fromName, coordinate: from }, to: { name: toName, coordinate: to } };
+}

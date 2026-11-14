@@ -36,6 +36,8 @@ import { DestinationSearch } from '../features/search/DestinationSearch';
 import { GreenSwitch, type JourneyMapSelection } from '../features/journey/GreenSwitch';
 import { InstallPrompt } from '../components/InstallPrompt';
 import { ParkedCarCard } from '../features/car/ParkedCarCard';
+import { ArrivalWalkCard } from '../features/journey/ArrivalWalkCard';
+import { arrivalWalkFromUrl } from '../features/navigation/scenario';
 import { useParkedCar } from '../features/car/carStore';
 import { FavouriteShortcuts, SaveFavourite, SLOTS } from '../features/car/favourites';
 import { StopPicker } from '../features/parking/StopPicker';
@@ -279,6 +281,13 @@ function Explore({
   const [journeySelection, setJourneySelection] = useState<JourneyMapSelection | null>(null);
   const [stops, setStops] = useState<TourStop[]>([]);
   const [carWalk, setCarWalk] = useState<Coordinate[] | null>(null);
+  // The walking leg after arriving at the parking (from the navigation screen's link).
+  const { location, navigate } = useAppRouter();
+  const arrivalWalk = useMemo(
+    () => (location.pathname === '/' ? arrivalWalkFromUrl(location.search) : null),
+    [location.pathname, location.search],
+  );
+  const [arrivalRoute, setArrivalRoute] = useState<Coordinate[] | null>(null);
   const car = useParkedCar();
   const [expanded, setExpanded] = useState(false);
   const [layers, setLayers] = useState(false);
@@ -336,6 +345,8 @@ function Explore({
     [options, openDetail],
   );
   const selectDestination = useCallback((value: Destination) => {
+    // A new destination replaces the walking leg from the last navigation.
+    if (new URLSearchParams(window.location.search).has('walkFrom')) navigate('/', true);
     setDestination(value);
     setStops([]);
     setDetailId(null);
@@ -343,7 +354,7 @@ function Explore({
     setJourneySelection(null);
     setExpanded(true);
     panelRef.current?.scrollTo({ top: 0 });
-  }, []);
+  }, [navigate]);
   /** A real origin replaces the DEMO one; the DEMO arrival goes back to "now" unless the user changed it. */
   const leaveDemo = useCallback(() => {
     if (!demo) return;
@@ -425,6 +436,12 @@ function Explore({
     setExpanded(false);
     setOriginError(null);
   }, []);
+  useEffect(() => {
+    if (!arrivalWalk) return;
+    closeDetail();
+    setExpanded(true);
+    panelRef.current?.scrollTo({ top: 0 });
+  }, [arrivalWalk, closeDetail]);
   const detailIndex = detailId ? options.findIndex((o) => o.id === detailId) : -1;
   const detail = detailIndex >= 0 ? options[detailIndex]! : null;
   return (
@@ -435,9 +452,9 @@ function Explore({
         destination={destination}
         recommendations={options}
         route={detail ? driveRoute : null}
-        walkRoute={detail ? walkRoute : carWalk}
+        walkRoute={detail ? walkRoute : (arrivalRoute ?? carWalk)}
         car={car?.coordinate ?? null}
-        journey={detail ? null : journeySelection}
+        journey={detail || arrivalRoute ? null : journeySelection}
         selectedRecommendationId={selectedId}
         focusRecommendation={focus}
         onSelectRecommendation={openDetail}
@@ -475,6 +492,13 @@ function Explore({
             <span />
           </button>
           <div className="explore-panel-inner">
+            {arrivalWalk && !detail && (
+              <ArrivalWalkCard
+                walk={arrivalWalk}
+                onRoute={setArrivalRoute}
+                onClose={() => navigate('/', true)}
+              />
+            )}
             {car && !detail && (
               <ParkedCarCard
                 key={car.parkedAt}
