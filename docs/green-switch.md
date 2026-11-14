@@ -12,11 +12,11 @@ The origin must be an explicit GPS/manual choice; the UI never substitutes a dem
 The current routing coverage is the Timișoara prototype area (21–21.5 longitude,
 45.6–45.9 latitude). A county-wide map does not imply county-wide provider coverage.
 
-Driving reuses the existing navigation route service. Walking and cycling use only
-openrouteservice's `foot-walking` and `cycling-regular` GeoJSON directions profiles.
-`ORS_API_KEY` stays on the backend. There is no straight-line or driving-profile fallback
-for an active route. Missing configuration, access denial, bad data or an upstream
-failure creates a mode-specific unavailable explanation, not invented geometry.
+Driving reuses the existing navigation route service. When ORS is configured, walking and cycling use
+HeiGIT's `foot-walking` and `cycling-regular` GeoJSON directions profiles. `ORS_API_KEY` stays on the
+backend. Without a key, the existing FOSSGIS `routed-foot` / `routed-bike` services provide real geometry
+when reachable. No straight-line or driving-profile geometry substitutes for an active route.
+Access denial, bad data or an upstream failure creates a mode-specific unavailable explanation.
 
 Requests deduplicate by rounded origin/destination and retain full successful comparisons
 for five minutes; a partial/failed comparison uses a 15-second backoff. Cache size is
@@ -51,5 +51,7 @@ provider geometry to the existing map. Source and update time are in progressive
 Tests beside `shared/src/schemas/journey.ts` verify preference/opportunity policy,
 unknown inputs and unsupported metrics. Backend tests use clearly synthetic fixtures
 to verify actual profile URLs, geometry preservation, caching/deduplication and graceful
-provider failures. Real active routes still require a working backend ORS binding and
-network access to `api.heigit.org/openrouteservice/v2/`; tests do not establish that access.
+provider failures. ORS routes require a working backend binding and network access to
+`api.heigit.org/openrouteservice/v2/`; fixture tests do not establish that access. Mission 01's
+separate live evidence is in [ors-verification.md](ors-verification.md). All directions paths now
+enforce the same 250 m endpoint tolerance before successful caching, including this comparison API.

@@ -1,6 +1,8 @@
 import { z } from 'zod';
 import { RoutesResponse, type Coordinate, type NavigationRoute } from '@vlaiq/shared';
 import { config } from '../config';
+import { validateEndpoints } from './routeValidation';
+import { reportRoutingFailure, RoutingHttpError } from './routingDiagnostics';
 
 // No arbitrary upstream URL is accepted from clients. Keys never leave the server.
 const coord = z.tuple([z.number(), z.number()]);
@@ -75,7 +77,7 @@ async function requestRoutes(origin: Coordinate, destination: Coordinate): Promi
       headers: { Authorization: config.orsApiKey, 'Content-Type': 'application/json' },
       body: JSON.stringify({ coordinates: [origin, destination], instructions: true }),
     });
-    if (!res.ok) throw new Error('Routing provider unavailable');
+    if (!res.ok) throw new RoutingHttpError(res.status);
     const body = orsResponse.parse(await res.json());
     return RoutesResponse.parse({
       routes: body.features.slice(0, 3).map((f, i) => ({
@@ -101,7 +103,7 @@ async function requestRoutes(origin: Coordinate, destination: Coordinate): Promi
   // Low-volume prototype fallback; no live traffic or speed-limit claims.
   const url = `https://router.project-osrm.org/route/v1/driving/${origin.join(',')};${destination.join(',')}?overview=full&geometries=geojson&steps=true&alternatives=true`;
   const res = await fetch(url, { signal: AbortSignal.timeout(15000) });
-  if (!res.ok) throw new Error('Routing provider unavailable');
+  if (!res.ok) throw new RoutingHttpError(res.status);
   const routes = parseOsrmRoutes(
     await res.json(),
     'osrm',
@@ -148,9 +150,14 @@ export async function getRoutes(
   if (running) return running;
   const job = requestRoutes(origin, destination)
     .then((result) => {
+      result.routes.forEach((route) => validateEndpoints(route.geometry, origin, destination));
       if (cache.size >= 100) cache.delete(cache.keys().next().value!);
       cache.set(key, { result, expires: Date.now() + 300000 });
       return result;
+    })
+    .catch((error: unknown) => {
+      reportRoutingFailure(config.orsApiKey ? 'ors' : 'osrm', 'driving-car', 'directions', error);
+      throw error;
     })
     .finally(() => pending.delete(key));
   pending.set(key, job);

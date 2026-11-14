@@ -109,6 +109,18 @@ Live ORS/HeiGIT verification passed through Codex's secure HTTPS proxy on 14 Nov
 walking, cycling and both parking matrices; see [the verification record](docs/ors-verification.md).
 Automated tests use visibly labelled fixtures. Transit routing and a verified cycling overlay remain unavailable.
 
+Mission 01 adds endpoint-snap validation for every directions entry point and safe provider diagnostics.
+To repeat its opt-in live check in a correctly configured Codex Node 24 environment:
+
+```bash
+NODE_USE_ENV_PROXY=1 pnpm -F backend exec tsx ../scripts/verify-ors.ts
+```
+
+This starts a temporary real backend on port 18787, makes at most ten provider requests with bounded
+deadlines and zero retries, validates complete journeys/matrices and checks cache reuse. It exits with
+failure if any category is unavailable. Leave `NODE_USE_ENV_PROXY` unset in environments that do not
+use an inherited HTTPS proxy. No public production deployment is implied.
+
 ```bash
 pnpm typecheck
 pnpm test

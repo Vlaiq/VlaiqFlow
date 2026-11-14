@@ -1,6 +1,7 @@
 import { z } from 'zod';
 import { distanceM, type Coordinate, type RecommendationOption } from '@vlaiq/shared';
 import { config } from '../config';
+import { reportRoutingFailure, RoutingHttpError } from './routingDiagnostics';
 
 type Walk = RecommendationOption['walk'];
 
@@ -57,7 +58,7 @@ export async function walkTimes(destination: Coordinate, points: Coordinate[]): 
           metrics: ['duration', 'distance'],
         }),
       });
-      if (!res.ok) throw new Error(`ORS matrix HTTP ${res.status}`);
+      if (!res.ok) throw new RoutingHttpError(res.status);
       const body = orsMatrix.parse(await res.json());
       const walks = points.map((p, i): Walk => {
         const s = body.durations[i]?.[0];
@@ -74,7 +75,7 @@ export async function walkTimes(destination: Coordinate, points: Coordinate[]): 
       cache.set(cacheKey, { walks, expires: Date.now() + TTL_MS });
       return walks;
     } catch (e) {
-      console.warn('[walking] ORS matrix failed, using the straight-line estimate:', String(e));
+      reportRoutingFailure('ors', 'foot-walking', 'matrix', e);
       const walks = fallback();
       if (cache.size >= 200) cache.delete(cache.keys().next().value!);
       cache.set(cacheKey, { walks, expires: Date.now() + 15000 });

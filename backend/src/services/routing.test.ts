@@ -93,5 +93,5 @@ it('rejects failed and invalid upstream responses rather than manufacturing a ro
   vi.doMock('../config', () => ({ config: { orsApiKey: undefined } }));
   vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response('{}', { status: 503 })));
   const { getRoutes } = await import('./routing');
-  await expect(getRoutes([21.21, 45.75], [21.211, 45.751])).rejects.toThrow('unavailable');
+  await expect(getRoutes([21.21, 45.75], [21.211, 45.751])).rejects.toThrow('HTTP 503');
 });

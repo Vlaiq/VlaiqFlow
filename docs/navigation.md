@@ -43,6 +43,8 @@ Routing is `POST /api/navigation/routes` with GeoJSON `[longitude, latitude]` or
 destination. Requests are validated and restricted to the Timișoara prototype area
 (longitude 21–21.5, latitude 45.6–45.9). The server deduplicates concurrent requests,
 caches results for five minutes, and bounds upstream timeouts and cache size.
+Provider geometry must also begin/end within 250 m of the requested endpoints before it is cached.
+This tolerance does not certify an entrance, crossing or accessibility.
 
 When backend `ORS_API_KEY` is configured, openrouteservice supplies routes and steps.
 Otherwise, OSRM's public demo provides a low-volume prototype fallback. No key is
@@ -87,8 +89,11 @@ cooldown and watcher cleanup. It deliberately intercepts routing and map style w
 **synthetic test fixtures**; resulting screenshots are stamped accordingly.
 It does not establish real road connectivity or successful provider access.
 
-During implementation, real OpenFreeMap and OSRM requests returned HTTP 403 from the
-cloud network policy; the backend correctly returned 503 without inventing a route.
-Domain additions were saved in the environment draft and still need applying in settings.
-After applying them, verify a nonempty real route response, vector tile loading and
-the complete DEMO in Timișoara, then test GPS on an HTTPS phone session.
+During the original implementation, OpenFreeMap and OSRM requests returned HTTP 403 from the
+cloud network policy; the backend returned 503 without inventing a route. This is historical evidence.
+The current HeiGIT proxy path and real backend routes passed the separate Mission 01 smoke test;
+see [the verification record](ors-verification.md). External vector tiles and physical-phone GPS
+remain separate checks. Browser regressions can use the existing local Timpark fallback map.
+
+Mission 01 also adds `scripts/test-routing-reliability-browser.cjs` for a synthetic provider 503,
+recovery and the DEMO parking-full keep/expiry/accepted-switch flow. It never proves live routing.
