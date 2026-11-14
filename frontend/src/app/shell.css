@@ -442,12 +442,16 @@
   overflow: hidden;
   background: rgb(var(--bg));
 }
+.explore-screen {
+  /* Grows with the screen on PCs; the map keeps the rest. Below 1050px a fixed width, below 800px a sheet. */
+  --explore-sidebar: clamp(400px, 33vw, 560px);
+}
 .explore-sidebar {
   position: absolute;
   top: 22px;
   bottom: 22px;
   left: 24px;
-  width: 380px;
+  width: var(--explore-sidebar);
   display: flex;
   flex-direction: column;
   gap: 14px;
@@ -486,6 +490,7 @@
 }
 .explore-panel {
   pointer-events: auto;
+  container-type: inline-size;
   min-height: 0;
   overflow: auto;
   border: 1px solid rgb(var(--border));
@@ -497,6 +502,11 @@
 }
 .explore-panel-inner {
   padding: 22px;
+}
+@container (min-width: 470px) {
+  .explore-panel-inner {
+    padding: 26px 28px;
+  }
 }
 .explore-welcome-eyebrow {
   display: flex;
@@ -899,7 +909,7 @@ html[data-theme='dark'] .flow-app .maplibregl-ctrl-icon {
   }
   .explore-sidebar {
     left: 18px;
-    width: 355px;
+    width: 380px;
   }
   .explore-search {
     padding: 15px;

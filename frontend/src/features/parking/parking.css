@@ -370,3 +370,19 @@ html[data-theme='dark'] .parking-settings input {
     animation: none;
   }
 }
+
+/* Wider sidebar on PCs: settings on one row, facts side by side with more air. */
+@container (min-width: 470px) {
+  .parking-settings {
+    gap: 10px 12px;
+  }
+  .parking-panel-description {
+    font-size: 13px;
+  }
+  .parking-result-card .parking-card-facts {
+    gap: 12px 16px;
+  }
+  .parking-result-card .parking-card-facts dd {
+    font-size: 16px;
+  }
+}

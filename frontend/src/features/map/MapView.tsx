@@ -79,8 +79,13 @@ const FLY_ZOOM: Record<Destination['precision'], number> = {
  * left of the 440 px side panel on laptops, above the bottom sheet on phones. Matches App.tsx.
  */
 function visibleMapPadding(): maplibregl.PaddingOptions {
-  if (window.matchMedia('(min-width: 1024px)').matches)
-    return { left: 460, top: 20, right: 60, bottom: 20 };
+  if (window.matchMedia('(min-width: 1024px)').matches) {
+    // Keep fitted routes and parkings clear of the sidebar, whose width grows with the screen.
+    const side = document.querySelector('.explore-sidebar')?.getBoundingClientRect();
+    const canvas = document.querySelector('.explore-screen')?.getBoundingClientRect();
+    const left = side && canvas ? Math.round(side.right - canvas.left + 40) : 460;
+    return { left, top: 20, right: 60, bottom: 20 };
+  }
   const sheet = document.querySelector('.explore-panel')?.getBoundingClientRect();
   const canvas = document.querySelector('.explore-screen')?.getBoundingClientRect();
   const bottom = sheet && canvas ? canvas.bottom - sheet.top + 16 : window.innerHeight * 0.42;
