@@ -15,6 +15,7 @@ import {
 } from 'lucide-react';
 import {
   ActiveJourneyContext,
+  type CompleteJourney,
   type Destination,
   type DestinationsResponse,
   type ParkingsResponse,
@@ -51,6 +52,8 @@ import { useAppRouter } from './router';
 import { useTheme } from './theme';
 import { FlowVoiceProvider, VoiceCard, useVoiceRegistration } from '../features/voice/FlowVoice';
 import { useFlowPlanner } from '../features/voice/useFlowPlanner';
+import { AutoNavigate } from '../features/voice/AutoNavigate';
+import { carNavigationHref } from '../features/journey/journeyPresentation';
 
 type Load<T> =
   | { state: 'loading' }
@@ -302,6 +305,7 @@ function Explore({
     [location.pathname, location.search],
   );
   const [arrivalRoute, setArrivalRoute] = useState<Coordinate[] | null>(null);
+  const [autoNav, setAutoNav] = useState<{ href: string; parking: string } | null>(null);
   const car = useParkedCar();
   const [expanded, setExpanded] = useState(false);
   const [plannerView, setPlannerView] = useState<'parking' | 'journey'>('parking');
@@ -485,8 +489,33 @@ function Explore({
       setPlannerView('journey');
       setJourneySelection(selection);
       setExpanded(true);
+      // A car route chosen by voice starts navigation hands-free after a short countdown.
+      const journey = selection?.value;
+      const href =
+        journey?.parking &&
+        carNavigationHref(journey, journeysRef.current, destinationRef.current?.name);
+      setAutoNav(
+        href && journey?.parking
+          ? { href: `${href}&start=${demoRef.current ? 'demo' : 'live'}`, parking: journey.parking.name }
+          : null,
+      );
     },
   });
+  const journeysRef = useRef<CompleteJourney[]>([]);
+  journeysRef.current = planner.result.state === 'ok' ? planner.result.value.journeys : [];
+  const destinationRef = useRef(destination);
+  destinationRef.current = destination;
+  const demoRef = useRef(demo);
+  demoRef.current = demo;
+  // A new destination (spoken or typed) cancels a pending hands-free start.
+  useEffect(() => setAutoNav(null), [destination?.id]);
+  const autoNavRef = useRef(autoNav);
+  autoNavRef.current = autoNav;
+  const goNavigate = useCallback(() => {
+    const pending = autoNavRef.current;
+    setAutoNav(null);
+    if (pending) navigate(pending.href);
+  }, [navigate]);
   useVoiceRegistration(planner.tools, planner.begin);
   const detailIndex = detailId ? options.findIndex((o) => o.id === detailId) : -1;
   const detail = detailIndex >= 0 ? options[detailIndex]! : null;
@@ -573,6 +602,14 @@ function Explore({
                   }))}
                   onChoose={planner.choose}
                 />}
+            {destination && autoNav && (
+              <AutoNavigate
+                key={autoNav.href}
+                parking={autoNav.parking}
+                onGo={goNavigate}
+                onCancel={() => setAutoNav(null)}
+              />
+            )}
             {!destination && (
               <div className="explore-welcome">
                 <span className="explore-welcome-eyebrow">

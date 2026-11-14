@@ -219,6 +219,8 @@ function VoiceRuntime({ children }: { children: ReactNode }) {
         onConnect: () => {
           if (valid()) {
             clearTimeout(timer.current);
+            // The agent must be heard, like a car navigator: never start a session silent.
+            rawRef.current?.setVolume({ volume: 1 });
             setState('listening');
           }
         },

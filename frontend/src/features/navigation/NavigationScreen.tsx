@@ -126,6 +126,15 @@ function NavigationView({ places }: { places: NavPlaces }) {
   }, [active]);
   const demo = nav.mode === 'demo';
   const handoff = useMemo(() => handoffFromUrl(window.location.search), []);
+  // Hands-free start from FLOW Voice: the link says start=live (GPS) or start=demo; only once per link.
+  const autoStart = useRef(new URLSearchParams(window.location.search).get('start'));
+  useEffect(() => {
+    if (nav.mode !== 'preview' || !nav.route || !autoStart.current) return;
+    const how = autoStart.current;
+    autoStart.current = null;
+    if (how === 'live') nav.startLive();
+    else if (how === 'demo') nav.startDemo();
+  }, [nav.mode, nav.route, nav.startLive, nav.startDemo]);
   const backup = handoff.backup;
   // DEMO "parking full" offer: null = not shown, otherwise seconds left before it keeps the current route.
   const [offer, setOffer] = useState<number | null>(null);

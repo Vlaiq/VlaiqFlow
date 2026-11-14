@@ -215,3 +215,40 @@
 .flow-voice-choices button:focus-visible {
   border-color: rgb(var(--primary));
 }
+
+/* Countdown before FLOW Voice opens navigation (hands-free for drivers). */
+.flow-auto-nav {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 10px;
+  margin: 10px 0;
+  padding: 12px;
+  border-radius: 14px;
+  border: 1px solid rgb(var(--primary) / 0.6);
+  background: rgb(var(--surface-2));
+  color: rgb(var(--text));
+}
+.flow-auto-nav p {
+  flex: 1 1 160px;
+  margin: 0;
+  font-size: 14px;
+  line-height: 1.4;
+}
+.flow-auto-nav button {
+  min-height: 44px;
+  padding: 0 14px;
+  border-radius: 10px;
+  border: 1px solid rgb(var(--border));
+  background: transparent;
+  color: rgb(var(--text));
+  font-weight: 600;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.flow-auto-nav .flow-auto-nav-go {
+  background: rgb(var(--primary));
+  border-color: rgb(var(--primary));
+  color: rgb(var(--primary-fg));
+}

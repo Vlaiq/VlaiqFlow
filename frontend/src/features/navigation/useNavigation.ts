@@ -45,6 +45,8 @@ const GPS_DENIED =
 const GPS_UNAVAILABLE =
   'Dispozitivul nu oferă o poziție. Verifică dacă locația este pornită (pe Windows: Setări → Confidențialitate → Locație) sau folosește DEMO.';
 
+const MUTE_KEY = 'vlaiq-nav-muted';
+
 export function useNavigation(places: NavPlaces) {
   const DEMO_ORIGIN = places.origin.coordinate;
   const avoidZones = places.avoid;
@@ -69,7 +71,22 @@ export function useNavigation(places: NavPlaces) {
   const [notice, setNotice] = useState<string | null>(null);
   const [paused, setPaused] = useState(false);
   const [arrived, setArrived] = useState(false);
-  const [muted, setMuted] = useState(true);
+  // Spoken guidance is on by default, like a car navigator; a mute choice is remembered on this device.
+  const [muted, setMutedState] = useState(() => {
+    try {
+      return window.localStorage.getItem(MUTE_KEY) === '1';
+    } catch {
+      return false;
+    }
+  });
+  const setMuted = useCallback((next: boolean) => {
+    setMutedState(next);
+    try {
+      window.localStorage.setItem(MUTE_KEY, next ? '1' : '0');
+    } catch {
+      /* private mode: the choice lasts for this page only */
+    }
+  }, []);
   const [follow, setFollow] = useState(true);
   const [perspective, setPerspective] = useState(true);
   const [pickOrigin, setPickOrigin] = useState(false);

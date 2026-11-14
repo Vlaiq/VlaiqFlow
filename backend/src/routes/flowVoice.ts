@@ -148,7 +148,7 @@ export function createFlowVoiceRouter(
       if (!res.writableEnded) ctrl.abort();
     };
     res.once('close', abort);
-    const timer = setTimeout(() => ctrl.abort(), 2200);
+    const timer = setTimeout(() => ctrl.abort(), 4000);
     pending++;
     try {
       const response = await deps.fetch(

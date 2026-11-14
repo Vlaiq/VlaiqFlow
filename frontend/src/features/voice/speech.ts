@@ -160,7 +160,7 @@ export const navigationSpeech = new SpeechArbiter({
       cache: 'no-store',
       headers: { 'Content-Type': 'application/json', 'X-Flow-Voice': '1' },
       body: JSON.stringify({ text: event.text, locale: event.locale }),
-      signal: AbortSignal.any([signal, AbortSignal.timeout(2300)]),
+      signal: AbortSignal.any([signal, AbortSignal.timeout(4500)]),
     });
     if (!response.ok || !response.headers.get('content-type')?.startsWith('audio/')) return null;
     return response.blob();

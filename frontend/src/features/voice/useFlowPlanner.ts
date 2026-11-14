@@ -4,7 +4,9 @@ import {
   type CompleteJourneyResponse,
   type Destination,
   type JourneyPreference,
+  normalize,
 } from '@vlaiq/shared';
+import { isInTimisCounty } from '../../../../shared/src/county';
 import {
   type Mode,
   type Preferences,
@@ -30,6 +32,41 @@ import {
 import { navigationState } from './navigationState';
 import { navigationSpeech } from './speech';
 
+const SPOKEN_HERE =
+  /^(?:de la |din |de )?(?:locatia mea|pozitia mea|locatia curenta|aici|unde sunt|unde ma aflu)$/;
+/** Current position as a trip start, within the county and accurate enough to route from. */
+function locate(
+  cache: { current: { origin: Origin; at: number } | null },
+  signal: AbortSignal,
+): Promise<Origin> {
+  const cached = cache.current;
+  if (cached && Date.now() - cached.at < 60_000) return Promise.resolve(cached.origin);
+  return new Promise<Origin>((resolve, reject) => {
+    if (!navigator.geolocation || !window.isSecureContext)
+      return reject(new Error('Localizarea necesită HTTPS.'));
+    const abort = () => reject(new Error('Cererea s-a oprit.'));
+    signal.addEventListener('abort', abort, { once: true });
+    navigator.geolocation.getCurrentPosition(
+      (p) => {
+        signal.removeEventListener('abort', abort);
+        const coordinate: Origin['coordinate'] = [p.coords.longitude, p.coords.latitude];
+        if (p.coords.accuracy > 300) return reject(new Error('Poziția ta e prea imprecisă acum.'));
+        if (!isInTimisCounty(coordinate))
+          return reject(new Error('Poziția ta e în afara județului Timiș.'));
+        const origin = { name: `Locația mea · ±${Math.round(p.coords.accuracy)} m`, coordinate };
+        cache.current = { origin, at: Date.now() };
+        resolve(origin);
+      },
+      (e) => {
+        signal.removeEventListener('abort', abort);
+        reject(
+          new Error(e.code === 1 ? 'Accesul la locație e refuzat.' : 'Nu am putut afla unde ești.'),
+        );
+      },
+      { enableHighAccuracy: true, timeout: 4000, maximumAge: 30_000 },
+    );
+  });
+}
 const placeLabel = (d: Destination) => `${d.name}${d.detail ? ` · ${d.detail}` : ''}`;
 
 interface Inputs {
@@ -61,6 +98,8 @@ export function useFlowPlanner(props: Inputs) {
   const [, refreshSession] = useState(0);
   /** Places the user can tap when a spoken destination matched several (cleared once one is chosen). */
   const [choices, setChoices] = useState<Destination[]>([]);
+  /** Last GPS position read for FLOW Voice, reused for a minute so a spoken trip starts fast. */
+  const here = useRef<{ origin: Origin; at: number } | null>(null);
   const destinationId = props.destination?.id;
   useEffect(() => setChoices([]), [destinationId]);
   const revision = useRef(0);
@@ -236,10 +275,15 @@ export function useFlowPlanner(props: Inputs) {
         const s = latest.current;
         if (!s.props.places && (patch.origin_text || patch.destination_text))
           throw new FlowError('SERVICE_UNAVAILABLE', 'Catalogul locațiilor nu este disponibil.');
-        const o = patch.origin_text ? resolvePlace(patch.origin_text, s.props.places ?? []) : null;
-        const origin: Origin | null = o?.location
+        // "de la locația mea" / "de aici" means the current position, never a place called that.
+        const fromHere = !!patch.origin_text && SPOKEN_HERE.test(normalize(patch.origin_text));
+        const o =
+          patch.origin_text && !fromHere ? resolvePlace(patch.origin_text, s.props.places ?? []) : null;
+        let origin: Origin | null = o?.location
           ? { name: o.name, coordinate: [o.location.lng, o.location.lat] }
-          : s.props.origin;
+          : fromHere
+            ? null
+            : s.props.origin;
         let destination: Destination | null;
         try {
           destination = patch.destination_text
@@ -268,13 +312,21 @@ export function useFlowPlanner(props: Inputs) {
             latest.current.props.setDestination(destination);
         };
         const ticket = String(revision.current);
+        // No start point given: drivers mean "from where I am", so use the current GPS position.
+        let gpsProblem: string | null = null;
+        if (!origin)
+          origin = await locate(here, signal).catch((e: unknown) => {
+            gpsProblem = e instanceof Error ? e.message : null;
+            return null;
+          });
         if (!origin) {
-          showDestination();
+          if (!signal.aborted) showDestination();
+          const why = gpsProblem ?? 'Nu știu de unde pornești.';
           throw new FlowError(
             'MISSING_ORIGIN',
             destination?.location
-              ? `Am pus ${destination.name} pe hartă, cu parcările din jur. Pentru trasee, alege punctul de plecare în aplicație sau spune de unde pornești.`
-              : 'Alege punctul de plecare în aplicație sau spune de unde pornești.',
+              ? `Am pus ${destination.name} pe hartă, cu parcările din jur. ${why} Spune de unde pornești sau alege pe hartă.`
+              : `${why} Spune de unde pornești sau alege pe hartă.`,
           );
         }
         if (!destination)
@@ -402,6 +454,11 @@ export function useFlowPlanner(props: Inputs) {
   const begin = useCallback(() => {
     tools.begin();
     setChoices([]);
+    // If location is already allowed, read it now so "la Iulius Mall" can start from here at once.
+    void navigator.permissions
+      ?.query({ name: 'geolocation' })
+      .then((p) => (p.state === 'granted' ? locate(here, new AbortController().signal) : null))
+      .catch(() => null);
     sessionId.current++;
     revision.current++;
     mapAck.current = null;

@@ -33,7 +33,7 @@ export interface JourneyToolAdapter<Plan = unknown> {
 export const TOOL_BUDGET = {
   get_journey_context: 3500,
   update_journey_preferences: 3500,
-  compare_journeys: 11500,
+  compare_journeys: 13000, // under the agent's 14 s; includes a GPS read (≤ 4 s) when no start is given
   select_and_explain_journey: 5500,
 } as const;
 export type ToolName = keyof typeof TOOL_BUDGET;
