@@ -439,14 +439,9 @@ function NavigationView({ places }: { places: NavPlaces }) {
           {nav.arrived && handoff.final && (
             <section className="walk-handoff panel" aria-label="Continuă pe jos">
               <strong>Ai parcat. Continuă pe jos până la {handoff.final.name}.</strong>
-              <p>
-                {finalWalk != null
-                  ? `Aproximativ ${walkLabel(finalWalk)} pe jos (estimat). `
-                  : ''}
-                {nav.switched && backup
-                  ? `În planificator, deschide „${backup.place.name}” ca să vezi ruta pe jos pe hartă.`
-                  : 'În planificator vezi ruta pe jos de la parcare, desenată pe hartă.'}
-              </p>
+              {finalWalk != null && (
+                <p>Aproximativ {walkLabel(finalWalk)} pe jos (estimat).</p>
+              )}
               <div className="walk-handoff-actions">
                 <button
                   onClick={() =>
