@@ -2,15 +2,78 @@
 
 Verification date: 15 November 2026 (Europe/Bucharest). Repository: `Vlaiq/VlaiqFlow`.
 
-The implementation is ready for code review and local demonstration. **It is not certified as an end-to-end live Auth0 release.** The external tenant cannot be reached from this environment, and no real user email, Google session, passkey device, MFA enrollment, production database or contributor assignment was used to claim success.
+The implementation is ready for code review and local demonstration. **It is not certified as an end-to-end live Auth0 release.** Auth0 metadata is now verified from a separate native Windows CI runtime; the cloud workspace still cannot reach the tenant. No real user email, Google session, passkey device, MFA enrollment, production database or contributor assignment was used to claim success.
 
-## Final live-acceptance pass, following commit 2a2adb0
+## Windows acceptance mission: current result
+
+Continued directly from `27220d6` on `feature/flow-identity-auth0`, preserving the original 631 tests. **648 unique tests now pass on both Linux and native Windows CI: 408 backend + 103 frontend + 130 shared + 7 operator tests.** Targeted reruns are not counted again. The PostgreSQL integration suite ran on both systems. Typecheck and production build pass on both; existing large-chunk warnings remain. Windows CI also passed actual launcher migration/startup, private API 401, IPC shutdown and both service ports becoming free.
+
+Evidence: [full Windows regression run](https://github.com/Vlaiq/VlaiqFlow/actions/runs/43691548353), [Windows regression plus real Auth0 metadata](https://github.com/Vlaiq/VlaiqFlow/actions/runs/43691785665). Runner logs identify **Windows Server 2025**, Node **24.22.1**, pnpm **12.18.0**, Git **2.56.0.windows.4**, and native PostgreSQL **17.11**. Linux used PostgreSQL **17.12** and the same Node/pnpm. This is native Windows evidence, **not certification of Windows 10/11 interactive Ctrl+C, desktop TTY, Docker Desktop, browsers, NVDA, Windows Hello or microphone behavior**.
+
+**PASS — actual Auth0 public metadata from Windows:** at 09:51:50 Europe/Bucharest, 15 November 2026, DNS resolved; default TLS verification stayed enabled; discovery and JWKS returned **200 through both Node fetch and Node HTTPS/JWT-library transport**. Exact issuer, JWKS location, RS256 metadata and RSA key structure were checked. No credentials were used. **This does not validate a user token, complete token exchange, or prove a user session.** Cloud Node still reports `EAI_AGAIN` plus `ERR_PROXY_TUNNEL`; curl records CONNECT 403/HTTP 000, and fresh Linux Chromium reports `ERR_TUNNEL_CONNECTION_FAILED`. The owner's Windows browser/runtime preflight remains a separate step.
+
+Confirmed compatibility defects and fixes:
+
+- Replaced child `spawn('pnpm')` with direct installed Node/tsx/Vite entry points and literal argument arrays. No `.cmd` shell interpolation; spaces and shell metacharacters are exercised natively on Windows.
+- Added explicit local-database, PostgreSQL/schema privilege, IPv4/IPv6 port and HTTP readiness checks. The acceptance API/frontend bind loopback and the Vite API proxy explicitly uses IPv4. No volumes or account rows are deleted.
+- Windows cleanup now targets owned active service process trees; POSIX cleanup covers descendant process groups. Startup failure stops the sibling. Native descendant cleanup and full launcher IPC shutdown pass; console Ctrl+C remains an owner check.
+- An additional actual Linux check terminated the backend child: the launcher exited nonzero and both service ports closed. An unavailable PostgreSQL port produced a concise readiness failure without printing the URL or starting either service.
+- Removed Unix token-file mode checks: they did not establish NTFS ACL privacy. The verifier now accepts bounded hidden interactive TTY input in memory, never files/arguments/pipes, and restores terminal state on completion/cancellation. Unit contracts pass on Windows; an actual Linux PTY paste also produced no echo or saved file. Desktop Windows TTY acceptance is pending.
+- The first full Windows run exposed three existing transit **test-harness** failures. Python stdin now explicitly uses UTF-8; malicious backslash ZIP names are restored in raw fixture headers after Windows normalizes them. Existing parser behavior/security assertions remain unchanged. No tests were removed or weakened.
+
+Fresh Linux Chromium checks pass: real SDK authorize/PKCE construction and running API 401; synthetic-identity profile edit/crop/reload, account switching, keyboard/menu, light/dark and 320/390/768/1440 widths; compiled public-shell/PWA/offline checks. Passport mobile dark and desktop light screenshots were inspected. Fresh axe scans of Passport, editor, Team and gateway report **zero violations**. These are local browser/fixture checks, not real accounts, physical-device testing or a screen-reader study. Existing reduced-motion rules are preserved; desktop assistive-technology acceptance remains pending.
+
+Status vocabulary: **PASS** = real external service/device verified; **LOCAL PASS** = local implementation exercised; **AUTOMATED PASS** = executed automated tests; **BLOCKED** = external condition prevents acceptance; **FAIL** = observed failing behavior; **NOT TESTED** = no evidence. “Implemented” is independent of all verification columns. Windows below refers to Server CI unless explicitly marked desktop.
+
+| Feature | Implemented | Automated | Real Auth0 | Windows | Blocker | Evidence |
+|---|---|---|---|---|---|---|
+| Signup | Official hosted PKCE flow | AUTOMATED PASS: request construction | BLOCKED: owned-account flow pending | NOT TESTED: desktop signup | Owner browser/account | Real SDK browser test; no token exchange |
+| Login | Official SDK | AUTOMATED PASS: routing/PKCE | BLOCKED: real login pending | NOT TESTED: desktop login | Owner credentials entered privately | Public SDK test and gateway |
+| Google | Existing hosted connection reported; no filter | AUTOMATED PASS: no forced connection | BLOCKED: provider consent/token exchange pending | NOT TESTED: desktop | Owned Google session/configuration | No visible-button success claim |
+| Forgot password | Hosted recovery retained | NOT TESTED: delivery | BLOCKED: real mail/reset pending | NOT TESTED: desktop/mailbox | Owned database account/mailbox | Exact private steps in Windows guide |
+| Email verification | Actual SDK claim displayed | LOCAL PASS: UI | BLOCKED: delivery/link/fresh claim pending | NOT TESTED: mailbox | Actual received message | Never inferred from “sent” |
+| Passkey | Tenant configuration reported | NOT TESTED: physical enrollment | BLOCKED: real enrollment/login pending | NOT TESTED: Windows Hello/security key | Compatible physical device | No virtual authenticator used |
+| MFA | Handoff says disabled | NOT TESTED | BLOCKED: entitlement/challenge/recovery pending | NOT TESTED | Admin plan/factor inspection | Passkey is not an MFA acceptance result |
+| OIDC discovery/JWKS reachability | Explicit secure preflight | AUTOMATED PASS: metadata contracts | PASS: real endpoints/metadata over verified TLS | AUTOMATED PASS: both native Node transports | Owner browser/network still needs its own check | Windows Auth0 metadata job; no credentials |
+| JWT signature | Production RS256 guard | AUTOMATED PASS: signature/JWKS negatives | BLOCKED: real-token validation pending | AUTOMATED PASS: local-key middleware | Fresh owned-account access token | Public key metadata alone is not signature acceptance |
+| Issuer/audience | Server-enforced | AUTOMATED PASS: wrong issuer/audience rejected | BLOCKED: actual token claims pending | AUTOMATED PASS: middleware | Actual user token | No hand-decoding substitute |
+| Logout | SDK logout + private-state cleanup | AUTOMATED PASS: fixture/browser | BLOCKED: real Auth0 cookie/logout pending | NOT TESTED: desktop session | Real browser session/two tabs | Synthetic browser contract |
+| Protected routes | Gateway + private API guards | AUTOMATED PASS | BLOCKED: positive real-account access pending | AUTOMATED PASS: actual startup/private 401 | Real login for positive case | Launcher smoke + public browser |
+| Profile persistence | PostgreSQL issuer+subject | AUTOMATED PASS: DB/reload | BLOCKED: real-account persistence pending | AUTOMATED PASS: actual PG integration | Owner save/restart/login | No fixture rows in real-account DB |
+| Avatar persistence | Private processed DB bytes | AUTOMATED PASS: processing/crop/ownership | BLOCKED: real-photo/account test pending | AUTOMATED PASS: native sharp/PG; desktop NOT TESTED | Owned photo + browser | Geometric fixture crop, no invented photo |
+| Wallet ownership | Account-row transactions/locks | AUTOMATED PASS: ownership/concurrency/caps | BLOCKED: real account/GPS pending | AUTOMATED PASS: PG/evaluator | Genuine eligible physical activity | No seeded earned coins |
+| Account isolation | Issuer+subject and stale-response guards | AUTOMATED PASS: A/B fixture + DB | BLOCKED: two real accounts pending | AUTOMATED PASS: server isolation; desktop NOT TESTED | Owned A/B | No email linking |
+| Contributor RBAC | Verified native permission + labeled fallback | AUTOMATED PASS: 401/403/200 | BLOCKED: real B assignment/native claim pending | AUTOMATED PASS: synthetic permission checks | Admin confirms intended B/plan | Fallback disabled in launcher |
+| Voice personalization | Consented bounded context; generic first greeting | AUTOMATED PASS: opt-out/bounds/tools | BLOCKED: authenticated FLOW audio pending | NOT TESTED: WebRTC/microphone | Real account + microphone | Pin re-read unchanged; candidate named/empty provider PASS retained, omission FAIL/timeout |
+| PWA | Public cache, API/callback exclusion | AUTOMATED PASS: build/compiled browser | NOT TESTED: authenticated standalone callback | AUTOMATED PASS: build; device NOT TESTED | Actual HTTPS/device | Offline public shell only |
+| Accessibility | Existing accessible controls preserved | AUTOMATED PASS: fresh axe/keyboard | NOT TESTED: real hosted/device path | NOT TESTED: Windows screen reader | NVDA/device study | Four local axe routes: zero violations |
+| Production readiness | Minimum deployment design audited; not deployed | AUTOMATED PASS: typecheck/build | BLOCKED: production live acceptance | AUTOMATED PASS: build; deployment NOT TESTED | HTTPS origins, durable DB/restore, Google/email/plan/operator configuration | Localhost build must not be deployed as-is |
+
+The application acceptance DB remains empty of real accounts. No passwords, access tokens, subject IDs, mailbox links or private photos were collected for this report. Native tenant plan/RBAC/MFA entitlement was not inspected; supplied settings remain reported configuration. No real contributor assignment, SMTP change, paid upgrade, production deployment or voice promotion was made.
+
+Operator instructions: [Windows PowerShell acceptance](flow-identity-windows-acceptance.md). It covers prerequisites, least-privileged local role, named-volume persistence, native PG alternative, both network preflights, real A/B acceptance, recovery/passkey/MFA gates, hidden terminal token input, troubleshooting and safe restart. Existing [live runbook](flow-identity-live-acceptance.md) retains the deployment audit and candidate details, with obsolete token-file commands removed.
+
+### Defensible 90-second jury fallback now
+
+The requested live login/profile/RBAC demonstration must wait for owner acceptance. Until then use only these verified capabilities:
+
+- **0–15s:** public homepage and parking exploration; keep municipal snapshots/estimates labeled accurately.
+- **15–30s:** open Motion and show the branded account gateway. Explain official Auth0 PKCE integration; do not pretend the gateway is a completed login.
+- **30–45s:** show the Windows CI public Auth0 preflight: real issuer discovery and JWKS 200 over validated TLS. Say explicitly that this is metadata, not a user session.
+- **45–60s:** run the missing-token API probe: real running app returns 401. Describe automated 403/200 tests as signed fixture tests, pending genuine A/B proof.
+- **60–75s:** show the green Windows full suite/PG/startup/build evidence. Describe issuer+subject ownership and private avatar DB storage without showing a fake account as a real one.
+- **75–85s:** state that FLOW Voice keeps its working generic greeting and that authenticated nickname/audio acceptance is still pending. No unverified audio demonstration.
+- **85–90s:** “Auth0 doesn't just let users enter VLAIQ FLOW. It protects the identity behind every profile, every activity and every FLOW Coin.” Keep the real-account release gate visible.
+
+After real A/B login, profile/photo/restart and token-probe checks pass, use the conditional live script in `flow-identity.md`. Include Google, passkey, email, MFA or voice only after that exact capability passes on the presentation device. A service outage fallback must never substitute synthetic authentication.
+
+## Earlier live-acceptance pass (27220d6; historical evidence)
 
 The existing feature branch and draft PR #1 were resumed at exactly `2a2adb00db25114536d406e4fc863ce0fee7f219`. No identity architecture, mobility feature or UI was rebuilt. The original **628 tests passed again** before changes. This pass adds three meaningful network-discovery/JWKS regressions; **631 tests now pass: 398 backend, 103 frontend, 130 shared**, with no skipped PostgreSQL integration suite. Typechecks now also include the backend acceptance/migration scripts. Workspace typecheck and the production build pass; existing large-chunk warnings remain.
 
 | Evidence category | Result in this pass |
 |---|---|
-| Implemented | Existing account/profile/avatar/wallet/route guards preserved. Added `pnpm identity:acceptance` (real SDK, migration, fixed local origin, no test identities/fallback grants) and `pnpm -F backend identity:verify-live` (private local token file, actual production JWT guard, native permission checks, no credential/PII output) |
+| Implemented | Existing account/profile/avatar/wallet/route guards preserved. Added `pnpm identity:acceptance` and `pnpm -F backend identity:verify-live`. The token-file input at that revision has now been replaced by hidden in-memory terminal input in the Windows mission |
 | Tested locally | Real PG17 named volume and migration; 631 tests; real-SDK PKCE construction; profile edit/crop/reload/isolation with **synthetic** identity; compiled PWA/offline public shell; missing-token private APIs and team PATCH 401 with no-store; allowed CORS origin receives ACAO, unlisted origin does not |
 | Verified against real Auth0 | **None.** Discovery and JWKS each fail with curl error 56, `CONNECT tunnel failed, response 403`, HTTP result `000`. The environment's enforced allowlist omits the tenant. This is a proxy rejection before an Auth0 response, not evidence of invalid tenant configuration |
 | Verified against real ElevenLabs | Isolated greeting candidate saved and read back; only greeting/placeholder differ from the immutable production pin; named and explicit-empty signed WebSocket sessions return expected text and PCM audio. Omitted-variable test times out, so candidate is not promotion-ready. Main retains 100% automatic traffic, candidate 0%; production app pin unchanged |
