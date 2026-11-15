@@ -4,17 +4,28 @@ import {
   useContext,
   useEffect,
   useLayoutEffect,
+  useMemo,
   useRef,
   useState,
   type ReactNode,
 } from 'react';
 import { Profile, type ProfileInput } from '../../../../shared/src/identity';
 import { safeReturnTo } from './redirects';
-import { accountCall, privateFetch, API_BASE, setTokenGetter } from './privateApi';
+import {
+  accountCall,
+  privateFetch,
+  API_BASE,
+  deviceId,
+  LOCAL_ACCOUNTS,
+  resetDeviceId,
+  setTokenGetter,
+} from './privateApi';
 import { useAppRouter } from '../../app/router';
 import './identity.css';
 
 interface IdentityContextValue {
+  /** local: no sign-in, this browser is the account; auth0: FLOW Identity with Auth0. */
+  mode: 'local' | 'auth0';
   authenticated: boolean;
   loading: boolean;
   expired: boolean;
@@ -36,6 +47,7 @@ const unavailable = async () => {
   throw new Error('Conectează-te pentru a continua.');
 };
 const guest: IdentityContextValue = {
+  mode: 'auth0',
   authenticated: false,
   loading: false,
   expired: false,
@@ -68,8 +80,53 @@ function configuration() {
     return null;
   return { domain, clientId, audience, redirect, logout };
 }
+/** The parts of the Auth0 client the runtime uses; the no-sign-in mode provides its own. */
+interface AuthSource {
+  isAuthenticated: boolean;
+  isLoading: boolean;
+  user?: { sub?: string; email_verified?: boolean };
+  error?: unknown;
+  getAccessTokenSilently: () => Promise<string>;
+  loginWithRedirect: (options: {
+    appState?: unknown;
+    authorizationParams?: Record<string, unknown>;
+  }) => Promise<void>;
+  logout: (options: { logoutParams: { returnTo: string } }) => Promise<void>;
+}
+/** No sign-in: this browser is the account (random device ID, see privateApi). */
+function LocalIdentity({ children }: { children: ReactNode }) {
+  const source = useMemo<AuthSource>(
+    () => ({
+      isAuthenticated: true,
+      isLoading: false,
+      user: { sub: `device|${deviceId()}` },
+      getAccessTokenSilently: async () => '',
+      loginWithRedirect: async () => {},
+      // "Start over": a new empty identity for this browser.
+      logout: async () => {
+        resetDeviceId();
+        window.location.assign('/');
+      },
+    }),
+    [],
+  );
+  return (
+    <IdentityRuntime auth={source} logoutUri="/" mode="local">
+      {children}
+    </IdentityRuntime>
+  );
+}
+function Auth0Identity({ children, logoutUri }: { children: ReactNode; logoutUri: string }) {
+  const auth = useAuth0();
+  return (
+    <IdentityRuntime auth={auth as unknown as AuthSource} logoutUri={logoutUri} mode="auth0">
+      {children}
+    </IdentityRuntime>
+  );
+}
 export function IdentityProvider({ children }: { children: ReactNode }) {
   const { navigate } = useAppRouter();
+  if (LOCAL_ACCOUNTS) return <LocalIdentity>{children}</LocalIdentity>;
   let cfg: ReturnType<typeof configuration> = null;
   try {
     cfg = configuration();
@@ -108,12 +165,21 @@ export function IdentityProvider({ children }: { children: ReactNode }) {
         navigate(target, true);
       }}
     >
-      <IdentityRuntime logoutUri={cfg.logout}>{children}</IdentityRuntime>
+      <Auth0Identity logoutUri={cfg.logout}>{children}</Auth0Identity>
     </Auth0Provider>
   );
 }
-function IdentityRuntime({ children, logoutUri }: { children: ReactNode; logoutUri: string }) {
-  const auth = useAuth0();
+function IdentityRuntime({
+  children,
+  logoutUri,
+  auth,
+  mode,
+}: {
+  children: ReactNode;
+  logoutUri: string;
+  auth: AuthSource;
+  mode: 'local' | 'auth0';
+}) {
   const { location, navigate } = useAppRouter();
   const [profile, setProfile] = useState<Profile | null>(null),
     [avatar, setAvatar] = useState<string | null>(null);
@@ -280,6 +346,7 @@ function IdentityRuntime({ children, logoutUri }: { children: ReactNode; logoutU
     }
   };
   const value: IdentityContextValue = {
+    mode,
     authenticated: auth.isAuthenticated && !expired,
     loading: auth.isLoading,
     expired,

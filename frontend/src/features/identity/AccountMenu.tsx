@@ -129,10 +129,12 @@ export function AccountMenu() {
               {label}
             </a>
           ))}
-          <button role="menuitem" onClick={() => void id.logout()}>
-            <LogOut size={17} />
-            Deconectare
-          </button>
+          {id.mode === 'auth0' && (
+            <button role="menuitem" onClick={() => void id.logout()}>
+              <LogOut size={17} />
+              Deconectare
+            </button>
+          )}
         </div>
       )}
     </div>

@@ -33,7 +33,8 @@ export interface Fix {
  * approximate fix (clearly labelled); the marker only snaps to the route once accuracy is ≤ 50 m.
  * Jumps > 150 m within 2 s are ignored.
  */
-const START_ACCURACY_M = 300;
+// Wi-Fi or network positions on a laptop are often ±1–5 km: the route can still start there (labelled).
+const START_ACCURACY_M = 5000;
 const TRACK_ACCURACY_M = 150;
 const GOOD_ACCURACY_M = 30;
 const ACQUIRE_MS = 8000;

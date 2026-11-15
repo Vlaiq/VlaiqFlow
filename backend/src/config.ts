@@ -17,6 +17,11 @@ const Env = z.object({
   BUDDY_VOICE_ID: z.string().regex(/^[a-zA-Z0-9]{10,64}$/).default('EXAVITQu4vr4xnSDxMaL'),
   ELEVENLABS_API_KEY: optionalSecret,
   DATABASE_URL: optionalSecret,
+  /**
+   * How people are identified. `local` (default): no sign-in; each browser sends a random device ID
+   * and its profile, wallet and voice memory are tied to it. `auth0`: FLOW Identity with Auth0.
+   */
+  FLOW_ACCOUNTS: z.enum(['local', 'auth0']).default('local'),
   AUTH0_ISSUER_BASE_URL: z
     .string()
     .url()
@@ -62,6 +67,7 @@ export const config = {
   buddyVoiceId: env.BUDDY_VOICE_ID,
   elevenLabsApiKey: env.ELEVENLABS_API_KEY,
   databaseUrl: env.DATABASE_URL,
+  accounts: env.FLOW_ACCOUNTS,
   auth0Issuer: env.AUTH0_ISSUER_BASE_URL,
   auth0Audience: env.AUTH0_AUDIENCE,
   teamContributors: env.FLOW_TEAM_CONTRIBUTORS_JSON,

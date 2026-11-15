@@ -1,4 +1,4 @@
-import { describe, expect, it, vi, afterEach } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { safeReturnTo, isProtectedRoute } from './redirects';
 import { ProfileInput, voicePersonalization } from '../../../../shared/src/identity';
 import { privateFetch, setTokenGetter } from './privateApi';
@@ -83,10 +83,30 @@ describe('identity routes and bounded personalization', () => {
     expect(context?.nickname).not.toContain('<');
   });
 });
+describe('private API without sign-in (default)', () => {
+  afterEach(() => vi.unstubAllGlobals());
+  it('sends this browser\'s random device ID, no token and no cookies', async () => {
+    const request = vi.fn(async () => new Response('{}'));
+    vi.stubGlobal('fetch', request);
+    await privateFetch('/api/me');
+    const init = (request.mock.calls[0] as unknown as [string, RequestInit])[1];
+    const headers = new Headers(init.headers);
+    expect(headers.get('X-Flow-Device')).toMatch(/^[0-9a-f-]{36}$/);
+    expect(headers.get('Authorization')).toBeNull();
+    expect(init.credentials).toBe('omit');
+    // The same ID on every call, so the profile stays the same.
+    await privateFetch('/api/me');
+    const again = new Headers((request.mock.calls[1] as unknown as [string, RequestInit])[1].headers);
+    expect(again.get('X-Flow-Device')).toBe(headers.get('X-Flow-Device'));
+  });
+});
 describe('private API account switching', () => {
+  // These cover FLOW Identity with Auth0 (VITE_FLOW_ACCOUNTS=auth0).
+  beforeEach(() => vi.stubEnv('VITE_FLOW_ACCOUNTS', 'auth0'));
   afterEach(() => {
     setTokenGetter(null);
     vi.unstubAllGlobals();
+    vi.unstubAllEnvs();
   });
   it('never calls the API as a guest', async () => {
     const request = vi.fn();

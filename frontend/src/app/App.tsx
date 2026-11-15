@@ -25,6 +25,7 @@ import {
   type TimparkSnapshot,
 } from '@vlaiq/shared';
 import { isInTimisCounty } from '../../../shared/src/county';
+import { accuracyLabel, locate, locateMessage } from '../services/locate';
 import { MapView } from '../features/map/MapView';
 import { TariffLegend } from '../features/parking/TariffLegend';
 import { ParkingRecommendations } from '../features/parking/ParkingRecommendations';
@@ -457,43 +458,31 @@ function Explore({
   };
   const requestGps = useCallback(() => {
     planner.changed();
-    if (!navigator.geolocation || !window.isSecureContext) {
-      setOriginError('Localizarea necesită HTTPS. Poți alege plecarea pe hartă.');
-      return;
-    }
     setLocating(true);
     setOriginError(null);
     const current = ++locateTicket.current;
-    navigator.geolocation.getCurrentPosition(
-      (p) => {
-        if (current !== locateTicket.current) return;
-        setLocating(false);
-        const coordinate: Coordinate = [p.coords.longitude, p.coords.latitude];
-        if (p.coords.accuracy > 300) {
-          setOriginError('Poziția este prea imprecisă. Alege un punct pe hartă.');
-          return;
-        }
-        if (!isInTimisCounty(coordinate)) {
-          setOriginError(
-            'Poziția este în afara județului Timiș. Alege o plecare din zona acoperită.',
-          );
-          return;
-        }
-        planner.changed();
-        setOrigin({ name: `Locația mea · ±${Math.round(p.coords.accuracy)} m`, coordinate });
-        leaveDemo();
-      },
-      (e) => {
-        if (current !== locateTicket.current) return;
-        setLocating(false);
+    void locate().then((result) => {
+      if (current !== locateTicket.current) return;
+      setLocating(false);
+      if (!result.ok) {
+        setOriginError(locateMessage(result, 'Poți alege plecarea pe hartă.'));
+        return;
+      }
+      if (!isInTimisCounty(result.coordinate)) {
         setOriginError(
-          e.code === 1
-            ? 'Locația a fost refuzată. Alege punctul de plecare pe hartă.'
-            : 'Nu am putut obține poziția. Poți alege plecarea manual.',
+          result.accuracy > 1000
+            ? `Poziția aproximativă (${accuracyLabel(result.accuracy)}) iese în afara județului Timiș, probabil după adresa de internet. Alege plecarea pe hartă.`
+            : 'Poziția este în afara județului Timiș. Alege o plecare din zona acoperită.',
         );
-      },
-      { enableHighAccuracy: true, timeout: 10000, maximumAge: 15000 },
-    );
+        return;
+      }
+      planner.changed();
+      setOrigin({
+        name: `Locația mea · ${result.accuracy > 100 ? 'aproximativ ' : ''}${accuracyLabel(result.accuracy)}`,
+        coordinate: result.coordinate,
+      });
+      leaveDemo();
+    });
   }, [leaveDemo]);
   const manualOrigin = useCallback(() => {
     planner.changed();

@@ -16,6 +16,7 @@ import { fetchCompleteJourneys } from '../journey/useCompleteJourneys';
 import { formatDistance } from '../navigation/geometry';
 import { clearCar, updateCar } from './carStore';
 import { clock, downloadReminder } from './calendar';
+import { accuracyLabel, locate } from '../../services/locate';
 import './car.css';
 
 type Walk =
@@ -105,14 +106,11 @@ export function ParkedCarCard({ car, tariffs, onWalkRoute }: Props) {
       car.destination
         ? route(car.destination.coordinate, car.destination.name).catch(fail)
         : fail(new Error('Fără locație nu știm de unde pornești. Permite Locația și încearcă din nou.'));
-    if (!navigator.geolocation || !window.isSecureContext) return void fromDestination();
-    navigator.geolocation.getCurrentPosition(
-      (p) =>
-        p.coords.accuracy > 300
-          ? void fromDestination()
-          : void route([p.coords.longitude, p.coords.latitude], `locația ta (±${Math.round(p.coords.accuracy)} m)`).catch(fail),
-      () => void fromDestination(),
-      { enableHighAccuracy: true, timeout: 10000, maximumAge: 30000 },
+    // A walk back to the car needs a close start: past ±300 m, it starts from the destination instead.
+    void locate().then((result) =>
+      result.ok && result.accuracy <= 300
+        ? void route(result.coordinate, `locația ta (${accuracyLabel(result.accuracy)})`).catch(fail)
+        : void fromDestination(),
     );
   };
 

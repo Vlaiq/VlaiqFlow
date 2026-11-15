@@ -8,13 +8,41 @@ export const ownerKey = (id: Identity) =>
   createHash('sha256')
     .update(JSON.stringify([id.issuer, id.subject]))
     .digest('hex');
-export const jwtGuard = (options: AuthOptions = {}) =>
-  auth({
-    issuerBaseURL: config.auth0Issuer,
-    audience: config.auth0Audience,
-    tokenSigningAlg: 'RS256',
-    ...options,
-  });
+/** Issuer of the no-sign-in identities: one random ID per browser (FLOW_ACCOUNTS=local). */
+export const DEVICE_ISSUER = 'urn:vlaiq-flow:device';
+const DEVICE_ID = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/;
+/**
+ * Without sign-in, the browser sends `X-Flow-Device: <random UUID v4>` (kept in its localStorage).
+ * A custom header is never sent cross-site without a CORS preflight, so it is not CSRF-able like a
+ * cookie. Anyone holding the ID acts as that device: it is a prototype convenience, not an account.
+ */
+export const deviceGuard: RequestHandler = (req, res, next) => {
+  const id = req.get('X-Flow-Device')?.trim().toLowerCase();
+  if (!id || !DEVICE_ID.test(id)) {
+    res.status(401).json({ error: { message: 'Lipsește identificatorul acestui dispozitiv. Reîncarcă pagina.' } });
+    return;
+  }
+  // Same shape as a verified JWT, so requireIdentity and every store keep working unchanged.
+  (req as unknown as { auth: unknown }).auth = {
+    payload: { iss: DEVICE_ISSUER, sub: `device|${id}` },
+    header: { alg: 'none' },
+    token: '',
+  };
+  next();
+};
+/**
+ * The identity guard for private routes. With explicit options (tests) it is always the Auth0 JWT
+ * check; otherwise FLOW_ACCOUNTS chooses: `local` (default, no sign-in) or `auth0`.
+ */
+export const jwtGuard = (options?: AuthOptions): RequestHandler =>
+  !options && config.accounts === 'local'
+    ? deviceGuard
+    : auth({
+        issuerBaseURL: config.auth0Issuer,
+        audience: config.auth0Audience,
+        tokenSigningAlg: 'RS256',
+        ...options,
+      });
 export const requireIdentity: RequestHandler = (req, res, next) => {
   const p = req.auth?.payload;
   // Client-credentials tokens aren't consumer accounts.

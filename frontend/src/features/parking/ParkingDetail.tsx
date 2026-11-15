@@ -38,6 +38,7 @@ import { BestTime } from '../car/BestTime';
 import '../car/car.css';
 import { ACCESS_LABEL, KIND_LABEL, priceText, stayLabel } from './recommendationLabels';
 import { FreeChance, ScoreBreakdown } from './ParkingFacts';
+import { accuracyLabel, locate, locateMessage } from '../../services/locate';
 
 type WalkState =
   | { state: 'loading' }
@@ -50,7 +51,6 @@ export interface Origin {
 }
 
 /** Same limit as live navigation: laptops locate by Wi-Fi at ±100–300 m. */
-const MAX_ORIGIN_ACCURACY_M = 300;
 
 type RouteState =
   | { state: 'no-origin' }
@@ -265,37 +265,23 @@ export function ParkingDetail({
   useEffect(() => () => onRoute(null), [onRoute]);
 
   const useMyLocation = () => {
-    if (!navigator.geolocation || !window.isSecureContext) {
-      setGpsMessage('Locația necesită HTTPS și un browser cu localizare.');
-      return;
-    }
     setLocating(true);
     setGpsMessage(null);
-    navigator.geolocation.getCurrentPosition(
-      (p) => {
-        setLocating(false);
-        if (p.coords.accuracy > MAX_ORIGIN_ACCURACY_M) {
-          setGpsMessage(
-            `Poziția are o precizie de ±${Math.round(p.coords.accuracy)} m, prea mare. Poți alege plecarea pe hartă.`,
-          );
-          return;
-        }
-        setChoice({
-          kind: 'gps',
-          origin: { name: 'Locația ta', coordinate: [p.coords.longitude, p.coords.latitude] },
-          accuracy: p.coords.accuracy,
-        });
-      },
-      (e) => {
-        setLocating(false);
-        setGpsMessage(
-          e.code === 1
-            ? 'Accesul la locație este blocat. Permite Locația din iconița de lângă adresa site-ului.'
-            : 'Nu am putut obține poziția. Poți alege plecarea pe hartă.',
-        );
-      },
-      { enableHighAccuracy: true, timeout: 10000, maximumAge: 60000 },
-    );
+    void locate().then((result) => {
+      setLocating(false);
+      if (!result.ok) {
+        setGpsMessage(locateMessage(result, 'Poți alege plecarea pe hartă.'));
+        return;
+      }
+      setChoice({
+        kind: 'gps',
+        origin: {
+          name: `Locația ta · ${result.accuracy > 100 ? 'aproximativ ' : ''}${accuracyLabel(result.accuracy)}`,
+          coordinate: result.coordinate,
+        },
+        accuracy: result.accuracy,
+      });
+    });
   };
 
   const turns = useMemo(

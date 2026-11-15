@@ -94,7 +94,7 @@ export function Passport({
       <div className="passport-kicker">
         <span className="flow-eyebrow">FLOW PASSPORT</span>
         <span>
-          <ShieldCheck size={14} /> Identitate prin Auth0
+          <ShieldCheck size={14} /> {id.mode === 'local' ? 'Profil pe acest dispozitiv, fără cont' : 'Identitate prin Auth0'}
         </span>
       </div>
       <section className="passport-hero">
@@ -570,6 +570,19 @@ function ProfileEditor({ profile }: { profile: Profile }) {
             </small>
             {form.voiceConsent && <ForgetVoiceMemory />}
           </section>
+          {id.mode === 'local' ? (
+          <section className="passport-card">
+            <ShieldCheck size={24} />
+            <h2>Fără cont, pe acest dispozitiv.</h2>
+            <p>
+              Nu ai nevoie de cont: profilul, monedele și memoria vocii sunt legate de acest browser
+              printr-un identificator aleator. Pe alt telefon sau browser începi un profil nou.
+            </p>
+            <a href="/confidentialitate">
+              Date și confidențialitate <ArrowUpRight size={14} />
+            </a>
+          </section>
+          ) : (
           <section className="passport-card">
             <ShieldCheck size={24} />
             <h2>Securitate prin Auth0.</h2>
@@ -595,6 +608,7 @@ function ProfileEditor({ profile }: { profile: Profile }) {
               Date și confidențialitate <ArrowUpRight size={14} />
             </a>
           </section>
+          )}
         </aside>
         <div className="passport-savebar">
           {error && (
@@ -628,9 +642,11 @@ function ProfileEditor({ profile }: { profile: Profile }) {
       <details className="passport-card passport-danger">
         <summary>Ștergerea datelor FLOW</summary>
         <p>
-          Șterge definitiv profilul, fotografia, preferințele, activitățile și monedele FLOW.
-          Identitatea Auth0 rămâne; la reconectare se creează un profil FLOW nou. Pentru ștergerea
-          identității Auth0 folosește contactul din pagina de confidențialitate.
+          Șterge definitiv profilul, fotografia, preferințele, activitățile, monedele FLOW și memoria
+          vocii.{' '}
+          {id.mode === 'local'
+            ? 'Browserul primește apoi un profil nou, gol.'
+            : 'Identitatea Auth0 rămâne; la reconectare se creează un profil FLOW nou. Pentru ștergerea identității Auth0 folosește contactul din pagina de confidențialitate.'}
         </p>
         <label className="identity-check">
           <input
