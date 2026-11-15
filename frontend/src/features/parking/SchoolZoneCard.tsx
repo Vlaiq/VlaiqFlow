@@ -24,11 +24,12 @@ export function SchoolZoneCard({ zone, onToggle }: { zone: ProtectedZone; onTogg
 
   // Collapsed by default: one line under the parking list; the explanation opens on tap.
   return (
-    <details className="school-shield" data-state={state} aria-labelledby={titleId}>
+    <details className="school-shield" data-state={state}>
       <summary className="school-shield-summary">
         <span className="school-shield-icon" aria-hidden="true"><School size={17} /></span>
         <span className="school-shield-summary-text">
-          <strong>School Shield</strong> · școală în apropiere, {summary}
+          <strong>School Shield</strong> · {main.kind === 'kindergarten' ? 'grădiniță' : 'școală'} în
+          apropiere, {summary}
         </span>
         <span className="school-shield-state" role="status">{status}</span>
         <Info size={16} aria-hidden="true" className="school-shield-more" />

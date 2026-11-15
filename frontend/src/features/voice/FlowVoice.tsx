@@ -416,9 +416,10 @@ function VoiceRuntime({ children }: { children: ReactNode }) {
         /* private mode: the choice holds for this page only */
       }
       if (!next) {
-        void stop();
+        // Clear an old failure first, so stopping lands on "idle" and turning it on again is clean.
         failure.current = null;
         setError(null);
+        void stop();
       }
     },
     [stop],
@@ -486,10 +487,6 @@ export function useVoiceRegistration(
     () => register?.(tools, begin, () => latest.current?.() ?? null),
     [register, tools, begin],
   );
-}
-/** Whether FLOW Voice is turned on, and the switch for it (menu). */
-export function useVoiceEnabled() {
-  return useContext(EnabledContext);
 }
 /**
  * What FLOW Voice is doing, the conversation and places to tap, shown only while it is in use.

@@ -73,10 +73,10 @@ export function ParkingRecommendations({
   const [attempt, setAttempt] = useState(0);
   const [result, setResult] = useState<State>({ state: 'loading' });
   const [moreOpen, setMoreOpen] = useState(false);
-  // A parking picked on the map past the first three keeps the whole list open.
-  const showAll =
-    moreOpen ||
-    (result.state === 'ok' && result.data.options.findIndex((o) => o.id === selectedId) >= VISIBLE);
+  // A parking picked on the map past the first three keeps the whole list open (and the toggle away).
+  const selectedHidden =
+    result.state === 'ok' && result.data.options.findIndex((o) => o.id === selectedId) >= VISIBLE;
+  const showAll = moreOpen || selectedHidden;
   const arriveAt = arriveIso(settings);
 
   const loc = destination.location;
@@ -274,7 +274,7 @@ export function ParkingRecommendations({
                 />
               ))}
             </ol>
-            {result.data.options.length > VISIBLE && (
+            {result.data.options.length > VISIBLE && !selectedHidden && (
               <button
                 type="button"
                 className="parking-show-more"

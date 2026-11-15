@@ -488,7 +488,7 @@ function CalibrationSection({ kappaKnown, kappaUnknown }: { kappaKnown: number; 
         săptămânii și aceeași oră). Prin metoda momentelor:
       </p>
       <p className="chance-formula">
-        μ = (1/N) Σ<sub>m</sub> p<sub>m</sub>    σ² = (1/N) Σ<sub>m</sub> (p<sub>m</sub> − μ)²    κ = μ(1 − μ) / σ² − 1
+        μ = (1/N) Σ<sub>m</sub> p<sub>m</sub>    σ² = (1/(N − 1)) Σ<sub>m</sub> (p<sub>m</sub> − μ)²    κ = μ(1 − μ) / σ² − 1
       </p>
       <p>
         Formula e corectă dacă p<sub>m</sub> este ocuparea reală a zonei. Dacă însă p<sub>m</sub> este numărat pe locuri
@@ -512,7 +512,7 @@ function CalibrationSection({ kappaKnown, kappaUnknown }: { kappaKnown: number; 
             numărarea, iar κ ar fi infinit. Peste limită, datele nu se potrivesc cu o distribuție Beta.
           </li>
           <li>
-            Cu puține zile, 1/N subestimează σ² și face modelul prea sigur pe el. Vom folosi 1/(N − 1) și cel puțin 20–30 de
+            Documentul folosește 1/N. Cu puține zile, 1/N subestimează σ² și face modelul prea sigur pe el, deci folosim 1/(N − 1) și cel puțin 20–30 de
             zile pe zonă și oră.
           </li>
         </ul>

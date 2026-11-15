@@ -770,7 +770,7 @@ function Explore({
                         </p>
                       )}
                       {demo && (
-                        <details className="explore-demo-note" role="note">
+                        <details className="explore-demo-note">
                           <summary>
                             <strong>DEMO</strong>
                             <span>Din Gara de Nord, zi lucrătoare la 10:00</span>
