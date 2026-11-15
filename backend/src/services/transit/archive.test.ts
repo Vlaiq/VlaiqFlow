@@ -3,7 +3,8 @@ import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
 
 const helper = fileURLToPath(new URL('../../../../scripts/lib/gtfs_archive.py', import.meta.url));
-const python = (script: string, input: unknown) => JSON.parse(execFileSync('python3', ['-c', `
+// JSON is UTF-8 on both sides; Windows Python must not decode stdin with a legacy code page.
+const python = (script: string, input: unknown) => JSON.parse(execFileSync(process.platform === 'win32' ? 'python' : 'python3', ['-X', 'utf8', '-c', `
 import importlib.util,json,sys,io,zipfile,tempfile,pathlib
 spec=importlib.util.spec_from_file_location('gtfs',sys.argv[1]); m=importlib.util.module_from_spec(spec); spec.loader.exec_module(m)
 x=json.load(sys.stdin)
@@ -20,6 +21,11 @@ with tempfile.TemporaryDirectory() as d:
    elif x['mode']=='bzip': z.writestr(name,data,compress_type=zipfile.ZIP_BZIP2)
    elif x['mode']=='utf8': z.writestr(name,b'\\xff')
    else: z.writestr(name,data)
+ # Windows ZipInfo normalizes its native separator. Restore raw malicious ZIP names
+ # in both headers so the same rejection assertion actually reaches the parser on every OS.
+ for name,data in x['entries']:
+  if chr(92) in name:
+   p.write_bytes(p.read_bytes().replace(name.replace(chr(92),'/').encode('utf-8'),name.encode('utf-8')))
  if x['mode']=='truncated': p.write_bytes(p.read_bytes()[:20])
  if x['mode']=='oversize': m.MAX_EXPANDED=1
  if x['mode']=='many': m.MAX_FILES=1
