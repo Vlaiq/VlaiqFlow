@@ -77,7 +77,7 @@ export function PrivacyScreen() {
         <span className="flow-eyebrow">CONFIDENȚIALITATE</span>
         <h1>Ce date folosim și de ce.</h1>
         <p>
-          {brand.product} are o pagină principală publică, fără reclame și fără analytics. Funcțiile interne necesită un cont. Nu vindem datele. Folosim doar ce este necesar ca să îți arătăm parcări, rute și
+          {brand.product} are o pagină principală publică, fără reclame și fără analytics. Harta, parcările, rutele, navigația și paginile despre date merg fără cont; profilul, portofelul, Motion, FLOW Buddy și FLOW Voice necesită un cont. Nu vindem datele. Folosim doar ce este necesar ca să îți arătăm parcări, rute și
           activitățile tale.
         </p>
       </div>
@@ -170,7 +170,7 @@ export function PrivacyScreen() {
       <details className="flow-help-card privacy-card privacy-english" lang="en">
         <summary>In English</summary>
         <p>
-          {brand.product} uses Auth0 accounts for internal features. The homepage remains public, with no ads or analytics. PostgreSQL stores your private profile, processed avatar, preferences and account wallet. Deleting FLOW data does not delete your Auth0 identity. Optional voice personalization sends only your nickname to ElevenLabs with consent. Your start point and destination are
+          {brand.product} uses Auth0 accounts for the profile, wallet, Motion, FLOW Buddy and FLOW Voice. The map, parkings, routes, navigation and data pages work without an account, with no ads or analytics. PostgreSQL stores your private profile, processed avatar, preferences and account wallet. Deleting FLOW data does not delete your Auth0 identity. Optional voice personalization sends only your nickname to ElevenLabs with consent. Your start point and destination are
           sent through our server to a routing provider (openrouteservice, FOSSGIS OSRM or the OSRM
           demo server) and cached in memory for a few minutes. Map tiles load directly from
           OpenFreeMap. For Motion activities, GPS points are evaluated on our server and then

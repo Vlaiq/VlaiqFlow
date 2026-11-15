@@ -41,7 +41,7 @@ No tenant configuration was changed remotely. Management credentials/CLI session
 | `/profile/edit`, `/settings` | Authenticated | Edit name/nickname/biography, avatar, preferences, voice consent, data deletion |
 | `/activities` | Authenticated | Passport activity timeline |
 | `/wallet`, `/motion`, `/challenges`, `/community` | Authenticated | Existing Motion experience under verified account ownership |
-| `/navigation`, `/city`, `/data`, `/sources`, parking-data/chance routes | Authenticated | Existing feature pages |
+| `/navigation`, `/city`, `/data`, `/sources`, parking-data/chance routes | Public (15 Nov) | Core trip and data explanations; CLAUDE.md rule 5 requires them to work when Auth0 is down, and judges run the DEMO without an account |
 | Static/PWA assets | Public | Required for startup and installation |
 
 All other internal paths receive the gateway when logged out; unknown paths show existing 404 when authenticated. Public homepage APIs (parkings, destinations, recommendations, journeys, public city snapshots and routing) remain available. Private APIs are `/api/me/**`, `/api/motion/**`, and `/api/flow-voice/**`. Team content GET is public; team access check/PATCH are protected.

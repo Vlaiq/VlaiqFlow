@@ -3,19 +3,32 @@ import { safeReturnTo, isProtectedRoute } from './redirects';
 import { ProfileInput, voicePersonalization } from '../../../../shared/src/identity';
 import { privateFetch, setTokenGetter } from './privateApi';
 describe('identity routes and bounded personalization', () => {
-  it('keeps the homepage/legal/callback public and protects every feature', () => {
-    for (const p of ['/', '/privacy', '/confidentialitate', '/auth/callback', '/team'])
+  it('keeps the core trip and the data pages public and protects every account feature', () => {
+    // CLAUDE.md rule 5: map → parkings → route → navigation works without Auth0.
+    for (const p of [
+      '/',
+      '/navigation',
+      '/privacy',
+      '/confidentialitate',
+      '/auth/callback',
+      '/team',
+      '/help',
+      '/data',
+      '/city',
+      '/sanse-parcare',
+      '/date-parcari',
+    ])
       expect(isProtectedRoute(p)).toBe(false);
     for (const p of [
       '/profile',
       '/profile/edit',
       '/wallet',
       '/motion',
-      '/navigation',
+      '/challenges',
+      '/community',
+      '/buddy',
       '/settings',
       '/activities',
-      '/city',
-      '/data',
     ])
       expect(isProtectedRoute(p)).toBe(true);
   });

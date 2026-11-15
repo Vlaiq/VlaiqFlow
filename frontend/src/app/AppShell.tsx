@@ -23,7 +23,6 @@ import { ThemeToggle } from '../components/ui';
 import { FlowCoin } from '../features/motion/FlowCoin';
 import { VoiceSetting } from '../features/voice/FlowVoice';
 import './shell.css';
-import { useIdentity } from '../features/identity/IdentityProvider';
 import { AccountMenu } from '../features/identity/AccountMenu';
 
 const entries = [
@@ -44,8 +43,7 @@ export function AppShell({
   const { location, navigate } = useAppRouter();
   const [menu, setMenu] = useState(false);
   const dialog = useRef<HTMLDialogElement>(null);
-  const identity = useIdentity();
-  const navigation = location.pathname === '/navigation' && identity.authenticated;
+  const navigation = location.pathname === '/navigation';
   useEffect(() => {
     setMenu(false);
     if (!['/', '/navigation'].includes(location.pathname)) window.scrollTo(0, 0);
