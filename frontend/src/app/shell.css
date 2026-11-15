@@ -772,6 +772,11 @@
   border: 0;
   background: transparent;
 }
+.explore-destination-heading > button {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
 .explore-panel details > summary {
   cursor: pointer;
   min-height: 38px;
@@ -1442,4 +1447,37 @@ html[data-theme='dark'] .flow-app .maplibregl-ctrl-icon {
 }
 .flow-parking-options[open] {
   padding-bottom: 14px;
+}
+
+/* Destination heading: short lines, details open on tap. */
+details.explore-demo-note {
+  display: block;
+  font-size: 12px;
+}
+details.explore-demo-note > summary {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 28px;
+  cursor: pointer;
+  color: rgb(var(--text));
+}
+details.explore-demo-note > p {
+  margin: 8px 0 0 !important;
+}
+.explore-place-source {
+  font-size: 11px;
+  color: rgb(var(--text-muted));
+}
+.explore-place-source > summary {
+  display: inline-flex;
+  min-height: 24px;
+  align-items: center;
+  cursor: pointer;
+}
+.explore-place-source > summary:focus-visible,
+details.explore-demo-note > summary:focus-visible {
+  outline: 3px solid rgb(var(--primary));
+  outline-offset: 2px;
+  border-radius: 6px;
 }

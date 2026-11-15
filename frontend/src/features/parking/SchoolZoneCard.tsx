@@ -1,5 +1,5 @@
 import { useId, useState } from 'react';
-import { Check, Copy, ExternalLink, School } from 'lucide-react';
+import { Check, Copy, ExternalLink, Info, School } from 'lucide-react';
 import { DECIDEM_URL, schoolLabel, schoolStreetProposal, type ProtectedZone } from '@vlaiq/shared';
 import { QualityBadge } from '../../components/QualityBadge';
 import './schoolShield.css';
@@ -14,12 +14,28 @@ export function SchoolZoneCard({ zone, onToggle }: { zone: ProtectedZone; onTogg
   const status = zone.optedOut ? 'Oprit pentru acest drum' : zone.applied ? 'Activ' : 'Inactiv';
   const proposal = schoolStreetProposal(zone);
 
+  const summary = zone.optedOut
+    ? 'oprit pentru acest drum'
+    : zone.applied
+      ? zone.excluded > 0
+        ? `${zone.excluded} ${zone.excluded === 1 ? 'parcare exclusă' : 'parcări excluse'}`
+        : 'nicio parcare exclusă'
+      : 'nu exclude parcări acum';
+
+  // Collapsed by default: one line under the parking list; the explanation opens on tap.
   return (
-    <section className="school-shield" data-state={state} aria-labelledby={titleId}>
+    <details className="school-shield" data-state={state} aria-labelledby={titleId}>
+      <summary className="school-shield-summary">
+        <span className="school-shield-icon" aria-hidden="true"><School size={17} /></span>
+        <span className="school-shield-summary-text">
+          <strong>School Shield</strong> · școală în apropiere, {summary}
+        </span>
+        <span className="school-shield-state" role="status">{status}</span>
+        <Info size={16} aria-hidden="true" className="school-shield-more" />
+        <span className="sr-only">Ce înseamnă?</span>
+      </summary>
       <header className="school-shield-heading">
-        <span className="school-shield-icon" aria-hidden="true"><School size={20} /></span>
         <div>
-          <p className="school-shield-eyebrow">School Shield</p>
           <h3 id={titleId}>{schoolLabel(main)}</h3>
           <p className="school-shield-meta">
             Punct OSM la aproximativ {main.distanceM} m de destinație
@@ -28,7 +44,6 @@ export function SchoolZoneCard({ zone, onToggle }: { zone: ProtectedZone; onTogg
         </div>
       </header>
       <div className="school-shield-badges">
-        <span className="school-shield-state" role="status">{status}</span>
         <QualityBadge quality={zone.quality} />
       </div>
 
@@ -80,7 +95,7 @@ export function SchoolZoneCard({ zone, onToggle }: { zone: ProtectedZone; onTogg
         </ul>
       </details>
       <Proposal key={`${proposal.title}\n${proposal.body}`} {...proposal} />
-    </section>
+    </details>
   );
 }
 

@@ -50,6 +50,8 @@ export interface TourStop {
   coordinate: Coordinate;
 }
 const NO_STOPS: TourStop[] = [];
+/** Parkings shown before "Arată încă…": the first three answer the question; the rest wait. */
+const VISIBLE = 3;
 
 /** SmartMatch results for the chosen destination (spec §6.5–6.6). Every number comes from the backend engine. */
 export function ParkingRecommendations({
@@ -70,6 +72,11 @@ export function ParkingRecommendations({
   const set = (patch: Partial<ParkingSettings>) => onSettings({ ...settings, ...patch });
   const [attempt, setAttempt] = useState(0);
   const [result, setResult] = useState<State>({ state: 'loading' });
+  const [moreOpen, setMoreOpen] = useState(false);
+  // A parking picked on the map past the first three keeps the whole list open.
+  const showAll =
+    moreOpen ||
+    (result.state === 'ok' && result.data.options.findIndex((o) => o.id === selectedId) >= VISIBLE);
   const arriveAt = arriveIso(settings);
 
   const loc = destination.location;
@@ -139,11 +146,6 @@ export function ParkingRecommendations({
           <h2 id="reco-title">Unde parchezi</h2>
         </div>
       </div>
-      <p className="parking-panel-description">
-        Comparăm parcările Timpark și OpenStreetMap din jurul destinației după mersul pe jos,
-        șansele estimate de loc și costul pentru {stayLabel(stay)}.
-      </p>
-
       <details className="flow-parking-options">
         <summary><SlidersHorizontal size={16} aria-hidden="true" /> Ajustează recomandările <span>Opțional</span></summary>
       <div
@@ -212,12 +214,6 @@ export function ParkingRecommendations({
       </details>
 
       <div className="mt-3" aria-live="polite">
-        {result.state === 'ok' && result.data.protectedZone && (
-          <SchoolZoneCard
-            zone={result.data.protectedZone}
-            onToggle={(on) => set({ schoolZone: on })}
-          />
-        )}
         {result.state === 'loading' && (
           <div className="parking-loading" role="status">
             <span className="parking-loading-track" />
@@ -242,6 +238,12 @@ export function ParkingRecommendations({
         {result.state === 'ok' && result.data.options.length === 0 && (
           <div className="rounded-xl border border-border p-3 text-xs">
             <p>Nicio parcare cunoscută la cel mult {maxWalk} min de mers pe jos.</p>
+            {result.data.protectedZone && (
+              <SchoolZoneCard
+                zone={result.data.protectedZone}
+                onToggle={(on) => set({ schoolZone: on })}
+              />
+            )}
             {maxWalk < 20 && (
               <button
                 type="button"
@@ -256,13 +258,8 @@ export function ParkingRecommendations({
 
         {result.state === 'ok' && result.data.options.length > 0 && (
           <>
-            {result.data.explanation && (
-              <p className="parking-explanation">
-                <SlidersHorizontal size={13} aria-hidden /> {result.data.explanation}
-              </p>
-            )}
             <ol className="flex flex-col gap-2">
-              {result.data.options.map((o, i) => (
+              {result.data.options.slice(0, showAll ? undefined : VISIBLE).map((o, i) => (
                 <OptionCard
                   key={o.id}
                   option={o}
@@ -277,6 +274,30 @@ export function ParkingRecommendations({
                 />
               ))}
             </ol>
+            {result.data.options.length > VISIBLE && (
+              <button
+                type="button"
+                className="parking-show-more"
+                aria-expanded={showAll}
+                onClick={() => setMoreOpen(!showAll)}
+              >
+                {showAll
+                  ? 'Arată mai puține'
+                  : `Arată încă ${result.data.options.length - VISIBLE} ${result.data.options.length - VISIBLE === 1 ? 'parcare' : 'parcări'}`}
+              </button>
+            )}
+            {result.data.protectedZone && (
+              <SchoolZoneCard
+                zone={result.data.protectedZone}
+                onToggle={(on) => set({ schoolZone: on })}
+              />
+            )}
+            {result.data.explanation && (
+              <details className="parking-explanation">
+                <summary>De ce această ordine?</summary>
+                <p>{result.data.explanation}</p>
+              </details>
+            )}
             <p className="parking-considered">
               Am analizat {result.data.considered} parcări la cel mult {maxWalk} min de mers. Șansele
               sunt estimate, nu locuri confirmate; durata nu include căutarea unui loc.
@@ -374,10 +395,7 @@ function OptionCard({
                 : 'Alege plecarea'}
           </dd>
         </div>
-        <div>
-          <dt>Capacitate</dt>
-          <dd>{o.capacity.value != null ? `~${o.capacity.value} locuri` : 'Necunoscută'}</dd>
-        </div>
+        {/* Capacity is in "Detalii și traseu", with its quality badge. */}
       </dl>
 
       {o.flags.length > 0 && (

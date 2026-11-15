@@ -546,3 +546,38 @@ html[data-theme='dark'] .parking-settings input {
   font-size: 10px;
   color: rgb(var(--text-muted));
 }
+
+/* "De ce această ordine?" opens on tap instead of a paragraph above the list. */
+details.parking-explanation {
+  display: block;
+  margin: 10px 0 0;
+  padding: 0 12px;
+}
+details.parking-explanation > summary {
+  min-height: 44px;
+  display: flex;
+  align-items: center;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+}
+details.parking-explanation > p {
+  margin: 0 0 10px;
+}
+.parking-show-more {
+  width: 100%;
+  min-height: 44px;
+  margin-top: 8px;
+  border: 1px dashed rgb(var(--border));
+  border-radius: 12px;
+  background: transparent;
+  color: rgb(var(--text));
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+}
+.parking-show-more:focus-visible,
+details.parking-explanation > summary:focus-visible {
+  outline: 3px solid rgb(var(--primary));
+  outline-offset: 2px;
+}

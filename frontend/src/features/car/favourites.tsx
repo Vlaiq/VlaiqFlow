@@ -105,7 +105,19 @@ export function FavouriteShortcuts({
 export function SaveFavourite({ place }: { place: Destination }) {
   const favs = useFavourites();
   const [message, setMessage] = useState<string | null>(null);
+  const [open, setOpen] = useState(false);
   if (!place.location) return null;
+  const saved = SLOTS.filter(({ id }) => favs[id]?.id === place.id).map(({ label }) => label);
+  // One small button; the three slots appear only when the user wants to save the place.
+  if (!open)
+    return (
+      <div className="place-favourites">
+        <button type="button" aria-expanded={false} onClick={() => setOpen(true)}>
+          <Star size={13} aria-hidden fill={saved.length ? 'currentColor' : 'none'} />
+          {saved.length ? `Salvat ca ${saved.join(', ')}` : 'Salvează'}
+        </button>
+      </div>
+    );
   return (
     <div className="place-favourites" role="group" aria-label="Salvează destinația">
       <span className="place-favourite-save">

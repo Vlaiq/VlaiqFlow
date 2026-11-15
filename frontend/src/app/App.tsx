@@ -746,21 +746,41 @@ function Explore({
                     <div className="explore-destination-heading">
                       <span>DRUMUL TĂU PRIN ORAȘ</span>
                       <h1>{destination.name}</h1>
-                      <p>
-                        {destination.location
-                          ? `${destination.precision === 'exact' ? 'Poziție exactă în sursă.' : destination.precision === 'street' ? 'Poziție la nivel de stradă, nu de număr poștal.' : 'Poziție aproximativă la nivel de cartier.'} Sursa: ${destination.locationSource ?? 'date locale'}.`
-                          : 'Poziția exactă nu este cunoscută. Nu calculăm rute pentru o locație inventată.'}
-                      </p>
-                      {demo && (
-                        <p className="explore-demo-note" role="note">
-                          <strong>DEMO</strong>
-                          <span>
-                            Plecare fixă din gara Timișoara Nord și sosire într-o zi lucrătoare la
-                            10:00, ca să vezi tarifele din programul plătit. Parcările, tarifele și
-                            rutele sunt reale; șansele de loc rămân estimate. Alege „Locația mea”
-                            sau un punct pe hartă ca să ieși din DEMO.
-                          </span>
+                      {/* Precision stays one short line; the source opens on tap. */}
+                      {destination.location ? (
+                        <details className="explore-place-source">
+                          <summary>
+                            {destination.precision === 'exact'
+                              ? 'Poziție exactă'
+                              : destination.precision === 'street'
+                                ? 'Poziție la nivel de stradă'
+                                : 'Poziție aproximativă (cartier)'}
+                          </summary>
+                          <p>
+                            {destination.precision === 'street'
+                              ? 'Nu la nivel de număr poștal. '
+                              : ''}
+                            Sursa: {destination.locationSource ?? 'date locale'}.
+                          </p>
+                        </details>
+                      ) : (
+                        <p>
+                          Poziția exactă nu este cunoscută. Nu calculăm rute pentru o locație
+                          inventată.
                         </p>
+                      )}
+                      {demo && (
+                        <details className="explore-demo-note" role="note">
+                          <summary>
+                            <strong>DEMO</strong>
+                            <span>Din Gara de Nord, zi lucrătoare la 10:00</span>
+                          </summary>
+                          <p>
+                            Parcările, tarifele și rutele sunt reale; șansele de loc rămân
+                            estimate. Alege „Locația mea” sau un punct pe hartă ca să ieși din
+                            DEMO.
+                          </p>
+                        </details>
                       )}
                       <SaveFavourite place={destination} />
                       <button

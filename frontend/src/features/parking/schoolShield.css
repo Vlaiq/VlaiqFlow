@@ -126,3 +126,23 @@
 @media (prefers-reduced-motion: reduce) {
   .school-shield :is(button, summary, a) { transition: none; }
 }
+
+/* Collapsed by default: one tappable line; the explanation opens under it. */
+.school-shield { padding: 0.5rem 0.75rem; margin-block: 0.75rem 0; }
+.school-shield[open] { padding-block-end: 1rem; }
+.school-shield > .school-shield-summary {
+  display: flex;
+  align-items: center;
+  gap: 0.625rem;
+  min-height: 44px;
+  list-style: none;
+  cursor: pointer;
+}
+.school-shield > .school-shield-summary::-webkit-details-marker { display: none; }
+.school-shield > .school-shield-summary:focus-visible { outline: 3px solid rgb(var(--primary)); outline-offset: 3px; border-radius: 8px; }
+.school-shield .school-shield-summary .school-shield-icon { width: 2rem; height: 2rem; border-radius: 0.625rem; }
+.school-shield-summary-text { flex: 1; min-width: 0; font-size: 0.8125rem; line-height: 1.4; color: rgb(var(--text-muted)); }
+.school-shield-summary-text strong { color: rgb(var(--text)); }
+.school-shield .school-shield-more { flex-shrink: 0; color: rgb(var(--text-muted)); }
+.school-shield[open] .school-shield-more { color: var(--app-accent-text); }
+.school-shield[open] > .school-shield-heading { margin-top: 0.75rem; padding-top: 0.75rem; border-top: 1px solid rgb(var(--border)); }
