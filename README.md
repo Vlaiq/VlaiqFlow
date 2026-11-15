@@ -163,3 +163,15 @@ Possible operators include Timpark for parking operations and the City Hall's di
 Code: [MIT](LICENSE). Data and assets keep their own terms: OpenStreetMap is ODbL, Natural Earth is public domain, fonts are OFL, and npm packages keep their notices. See `docs/third-party.md`.
 
 More documentation: [specification](docs/spec.md), [jury demo runbook](docs/jury-demo.md), [navigation](docs/navigation.md), [Green Switch](docs/green-switch.md), [Motion and privacy](docs/motion.md), [themes](docs/themes.md).
+
+## FLOW Identity
+
+Auth0 Universal Login protects internal features while `/` stays public. FLOW Passport stores profiles,
+processed avatars, supported SmartMatch preferences and account-owned Motion wallets in PostgreSQL.
+There is no admin dashboard. See [the identity architecture and deployment handoff](docs/flow-identity.md)
+and [the measured verification results](docs/flow-identity-verification.md).
+
+Set the public Auth0 values from each `.env.example`, provide a durable `DATABASE_URL`, and run
+`pnpm -F backend db:migrate` before using account features. Never deploy a localhost Auth0 callback
+configuration to production. Real Google/email/Passkey/MFA verification is a separate live release gate;
+local signed-token and synthetic SDK tests do not prove those flows.

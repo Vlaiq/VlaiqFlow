@@ -7,6 +7,9 @@ import './privacy.css';
  * update this page whenever a feature starts sending or storing personal data.
  */
 const flows: { what: string; where: string; kept: string }[] = [
+  { what: 'Identitate și autentificare', where: 'Auth0 (tenant în regiunea SUA) gestionează contul, parola, furnizorii sociali și Passkey. FLOW validează tokenul și identifică utilizatorul prin issuer + subject.', kept: 'Tokenurile sunt ținute în memoria aplicației. Auth0 gestionează sesiunea și datele de identitate după politica sa; ștergerea datelor FLOW nu șterge identitatea Auth0.' },
+  { what: 'Profil, fotografie și preferințe', where: 'Baza PostgreSQL a aplicației FLOW. Profilul este privat. Fotografiile sunt decodate și re-encodate WebP, fără metadatele originale.', kept: 'Până la ștergerea datelor FLOW din Setări. Copiile de siguranță au politica de retenție a operatorului; aceasta trebuie publicată înainte de producție.' },
+  { what: 'Nickname pentru FLOW Voice (opțional)', where: 'ElevenLabs primește doar nickname-ul dacă activezi personalizarea din Setări. Nu trimitem emailul, biografia sau istoricul activităților.', kept: 'Consimțământul este salvat în profil. Dezactivarea închide sesiunea vocală curentă; o conversație nouă nu mai primește nickname-ul.' },
   {
     what: 'FLOW Voice: microfonul și contextul minim al călătoriei',
     where:
@@ -27,12 +30,12 @@ const flows: { what: string; where: string; kept: string }[] = [
   {
     what: 'Activitățile Motion: punctele GPS ale unei activități',
     where: 'Trimise serverului FLOW doar când încheii activitatea, ca să verificăm distanța.',
-    kept: `Coordonatele nu se salvează. Păstrăm tipul activității, ora de start, distanța, durata, recompensa și o amprentă (hash) a observațiilor, fără locații. Portofelele fără activitate ${Math.round(MOTION_RULES.retentionDays / 30)} luni se șterg automat.`,
+    kept: `Coordonatele nu se salvează. Păstrăm tipul activității, ora de start, distanța, durata, recompensa și o amprentă (hash) a observațiilor, fără locații. Sumarele portofelelor fără activitate ${Math.round(MOTION_RULES.retentionDays / 30)} luni se elimină la următoarea accesare a portofelului. Profilul rămâne până îl ștergi.`,
   },
   {
     what: 'Cookie-ul motion_session',
-    where: 'Un identificator aleator, HttpOnly, trimis doar către /api/motion pe acest site.',
-    kept: 'Serverul păstrează doar amprenta lui (hash), nu valoarea. Cookie-ul expiră după un an sau la ștergerea portofelului.',
+    where: 'Cookie de la prototipul anterior. Portofelul autentificat folosește acum tokenul verificat, nu cookie-ul.',
+    kept: 'Datele vechi rămân separate; nu sunt importate automat în cont. Cookie-ul vechi expiră după un an. Importul nu este disponibil în această versiune.',
   },
   {
     what: 'Adresa IP',
@@ -71,8 +74,7 @@ export function PrivacyScreen() {
         <span className="flow-eyebrow">CONFIDENȚIALITATE</span>
         <h1>Ce date folosim și de ce.</h1>
         <p>
-          {brand.product} funcționează fără cont, fără reclame și fără analytics. Nu vindem date și
-          nu facem profiluri. Folosim doar ce este necesar ca să îți arătăm parcări, rute și
+          {brand.product} are o pagină principală publică, fără reclame și fără analytics. Funcțiile interne necesită un cont. Nu vindem datele. Folosim doar ce este necesar ca să îți arătăm parcări, rute și
           activitățile tale.
         </p>
       </div>
@@ -139,12 +141,12 @@ export function PrivacyScreen() {
         <h2>Drepturile tale</h2>
         <ul>
           <li>
-            <strong>Acces:</strong> tot ce păstrăm despre activitățile tale se vede în{' '}
+            <strong>Acces:</strong> profilul este în FLOW Passport, iar sumarele activităților se văd în{' '}
             <a href="/wallet">Portofel</a>.
           </li>
           <li>
             <strong>Ștergere:</strong> butonul „Șterge portofelul” din Portofel elimină imediat
-            soldul, istoricul și identificatorul de pe server.
+            soldul și istoricul Motion de pe server. Din Setări poți șterge și profilul, fotografia și preferințele. Identitatea Auth0 necesită o cerere separată către operator.
           </li>
           <li>
             <strong>Opoziție și restricționare:</strong> poți folosi harta și parcările fără Motion
@@ -165,12 +167,11 @@ export function PrivacyScreen() {
       <details className="flow-help-card privacy-card privacy-english" lang="en">
         <summary>In English</summary>
         <p>
-          {brand.product} has no accounts, ads or analytics. Your start point and destination are
+          {brand.product} uses Auth0 accounts for internal features. The homepage remains public, with no ads or analytics. PostgreSQL stores your private profile, processed avatar, preferences and account wallet. Deleting FLOW data does not delete your Auth0 identity. Optional voice personalization sends only your nickname to ElevenLabs with consent. Your start point and destination are
           sent through our server to a routing provider (openrouteservice, FOSSGIS OSRM or the OSRM
           demo server) and cached in memory for a few minutes. Map tiles load directly from
           OpenFreeMap. For Motion activities, GPS points are evaluated on our server and then
-          discarded; we keep only summaries (mode, start time, distance, duration, coins) linked to
-          a random cookie whose hash we store. Inactive wallets are deleted after{' '}
+          discarded; we keep only summaries (mode, start time, distance, duration, coins) linked to your verified Auth0 issuer and subject. Legacy browser wallets remain separate and are not automatically imported. Inactive wallet summaries are purged on the next access after{' '}
           {MOTION_RULES.retentionDays} days, and you can delete yours at any time from the Wallet.
           When you explicitly start FLOW Voice, microphone audio and minimal journey
           labels/preferences are processed by ElevenLabs; route geometry and GPS history stay in the

@@ -659,8 +659,7 @@ export function MotionScreen({
                   <p className="motion-disclaimer">
                     Recompense virtuale, fără valoare monetară.
                     <br />
-                    Portofel de prototip legat de acest browser. Fără sincronizare între
-                    dispozitive.
+                    Portofel legat de contul tău verificat, sincronizat între dispozitive.
                   </p>
                   {demoBalance > 0 && (
                     <div className="demo-wallet-balance">
@@ -718,7 +717,7 @@ export function MotionScreen({
                     </div>
                   )}
                   <DataSourceInfo
-                    source="Jurnalul de recompense al acestui browser · observații GPS evaluate pe server"
+                    source="Jurnalul de recompense al contului tău · observații GPS evaluate pe server"
                     quality="estimated"
                     updatedAt={wallet?.transactions[0]?.awardedAt}
                   >
@@ -908,7 +907,7 @@ export function MotionScreen({
         <ConfirmDialog
           open={eraseDialog}
           title="Ștergi portofelul?"
-          description="Soldul, istoricul activităților și identificatorul acestui browser vor fi șterse definitiv de pe server. Acțiunea nu poate fi anulată."
+          description="Soldul, istoricul activităților și datele acestui portofel vor fi șterse definitiv de pe server. Acțiunea nu poate fi anulată."
           confirmLabel="Șterge definitiv"
           cancelLabel="Păstrează portofelul"
           danger

@@ -21,8 +21,8 @@ export function createFlowVoiceRouter(
   },
 ) {
   const router = Router();
-  // FLOW has no user accounts. Require a same/allow-listed browser origin plus a non-simple
-  // request header, and bound both IP and process-wide provider work. This is not account auth.
+  // The app mounts this router behind JWT account authentication. Retain the allow-listed
+  // browser origin, explicit intent header and provider-work limits as additional controls.
   router.use((req, res, next) => {
     res.setHeader('Cache-Control', 'no-store');
     const origin = req.get('origin');

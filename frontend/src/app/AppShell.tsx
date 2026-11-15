@@ -22,6 +22,8 @@ import { useAppRouter } from './router';
 import { ThemeToggle } from '../components/ui';
 import { FlowCoin } from '../features/motion/FlowCoin';
 import './shell.css';
+import { useIdentity } from '../features/identity/IdentityProvider';
+import { AccountMenu } from '../features/identity/AccountMenu';
 
 const entries = [
   { href: '/', label: 'Explorează', Icon: Map },
@@ -41,7 +43,8 @@ export function AppShell({
   const { location, navigate } = useAppRouter();
   const [menu, setMenu] = useState(false);
   const dialog = useRef<HTMLDialogElement>(null);
-  const navigation = location.pathname === '/navigation';
+  const identity = useIdentity();
+  const navigation = location.pathname === '/navigation' && identity.authenticated;
   useEffect(() => {
     setMenu(false);
     if (!['/', '/navigation'].includes(location.pathname)) window.scrollTo(0, 0);
@@ -56,6 +59,11 @@ export function AppShell({
     '/challenges': 'Provocările tale',
     '/community': 'GREEN LEAGUE',
     '/wallet': 'Portofel FLOW',
+    '/profile': 'FLOW Passport',
+    '/profile/edit': 'Editează profilul',
+    '/settings': 'Setările contului',
+    '/activities': 'Activitățile mele',
+    '/team': 'Meet Team VLAIQ',
     '/city': 'Pentru Primărie',
     '/data': 'FLOW Data Trust',
     '/date-parcari': 'Datele de parcare',
@@ -93,12 +101,13 @@ export function AppShell({
               data-flow-wallet-target
               className="flow-wallet-button"
               onClick={() => navigate('/wallet')}
-              aria-label={`Deschide portofelul, ${balance ?? 0} FLOW Coins`}
+              aria-label={balance == null ? 'Deschide portofelul FLOW' : `Deschide portofelul, ${balance} FLOW Coins`}
             >
               <FlowCoin size={28} />
               <strong>{balance ?? '—'}</strong>
               <span>FLOW</span>
             </button>
+            <AccountMenu />
             <ThemeToggle />
             <button
               className="flow-icon-button"
@@ -140,7 +149,7 @@ export function AppShell({
           </div>
         </nav>
       )}
-      <div id="main-content" className="flow-main" tabIndex={-1}>
+      <div id="main-content" role="main" className="flow-main" tabIndex={-1}>
         {children}
       </div>
       {activityActive &&
@@ -168,6 +177,13 @@ export function AppShell({
           </button>
         </div>
         <nav aria-label="Instrumente și informații">
+          <a href="/team">
+            <Navigation2 />
+            <span>
+              Meet Team VLAIQ<small>Echipa din spatele călătoriei</small>
+            </span>
+            <ArrowRight size={17} />
+          </a>
           <a href="/navigation">
             <Compass />
             <span>
@@ -192,14 +208,16 @@ export function AppShell({
           <a href="/sanse-parcare">
             <Gauge />
             <span>
-              Cum calculăm șansele<small>Șansa de loc liber, explicată pas cu pas</small>
+              Cum calculăm șansele
+              <small>Șansa de loc liber, explicată pas cu pas</small>
             </span>
             <ArrowRight size={17} />
           </a>
           <a href="/date-parcari">
             <ParkingSquare />
             <span>
-              Datele de parcare<small>Fiecare valoare, sursa și cât de sigură e</small>
+              Datele de parcare
+              <small>Fiecare valoare, sursa și cât de sigură e</small>
             </span>
             <ArrowRight size={17} />
           </a>
@@ -213,7 +231,8 @@ export function AppShell({
           <a href="/help">
             <CircleHelp />
             <span>
-              Cum funcționează FLOW<small>Demo, confidențialitate și instalare</small>
+              Cum funcționează FLOW
+              <small>Demo, confidențialitate și instalare</small>
             </span>
             <ArrowRight size={17} />
           </a>
