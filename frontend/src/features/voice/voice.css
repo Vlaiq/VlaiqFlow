@@ -252,3 +252,58 @@
   border-color: rgb(var(--primary));
   color: rgb(var(--primary-fg));
 }
+
+/* Navigation: round talk button and a short-lived line of the conversation. */
+.flow-voice-mic {
+  width: 52px;
+  height: 52px;
+  border-radius: 50%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 2px solid rgb(255 255 255 / 0.25);
+  background: #17202ceb;
+  color: #c8d4e1;
+  box-shadow: 0 5px 20px #0004;
+}
+.flow-voice-mic[data-state='listening'],
+.flow-voice-mic[data-state='speaking'] {
+  background: rgb(var(--primary));
+  border-color: rgb(var(--primary));
+  color: rgb(var(--primary-fg));
+}
+.flow-voice-mic[data-state='speaking'] {
+  animation: flow-voice-speak 1.2s ease-in-out infinite;
+}
+.flow-voice-mic[data-state='connecting'] {
+  border-color: rgb(var(--primary));
+}
+.flow-voice-mic[data-state='error'] {
+  border-color: #f2a65a;
+}
+.flow-voice-bubble {
+  margin: 0;
+  max-width: min(420px, calc(100vw - 32px));
+  padding: 9px 13px;
+  border-radius: 14px;
+  background: #17202cf2;
+  color: #eef3f8;
+  font-size: 14px;
+  line-height: 1.4;
+  box-shadow: 0 6px 22px #0005;
+  overflow-wrap: anywhere;
+}
+.flow-voice-bubble > span {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #9fb3c4;
+  margin-right: 4px;
+}
+.flow-voice-bubble[data-who='user'] {
+  border: 1px solid rgb(var(--primary) / 0.6);
+}
+.flow-voice-bubble[data-who='error'] {
+  border: 1px solid #f2a65a;
+}

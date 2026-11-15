@@ -127,11 +127,8 @@ export class JourneyTools<Plan = unknown> {
             valid(); // No location/result state changes are permitted before this check.
             return this.adapter.commit(plan);
           }
-          if (this.adapter.context().navigation.active)
-            throw new FlowError(
-              'NAVIGATION_ACTIVE',
-              'Oprește navigația sau confirmă schimbarea în navigator.',
-            );
+          // During navigation the adapter decides: a new car route replaces the one being driven
+          // (the driver asked for it), anything else is refused with NAVIGATION_ACTIVE.
           return this.adapter.select(SelectInput.parse(raw), ctrl.signal);
         })(),
         new Promise<never>((_, reject) => {

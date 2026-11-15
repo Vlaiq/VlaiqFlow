@@ -501,8 +501,9 @@ function Explore({
       const href =
         journey?.parking &&
         carNavigationHref(journey, journeysRef.current, destinationRef.current?.name);
-      // The driver already said "hai să mergem": no countdown, go now.
-      if (href && journey?.parking && Date.now() - pendingGo.current < 60_000) {
+      // The driver already said "hai să mergem", or is driving and asked for another route: go now.
+      const driving = window.location.pathname === '/navigation';
+      if (href && journey?.parking && (driving || Date.now() - pendingGo.current < 60_000)) {
         pendingGo.current = 0;
         navigate(`${href}&start=${demoRef.current ? 'demo' : 'live'}`);
         return;
@@ -529,7 +530,7 @@ function Explore({
     setAutoNav(null);
     if (pending) navigate(pending.href);
   }, [navigate]);
-  useVoiceRegistration(planner.tools, planner.begin);
+  useVoiceRegistration(planner.tools, planner.begin, planner.summary);
   /** When the driver said "hai să mergem" before a route existed (cleared after a minute). */
   const pendingGo = useRef(0);
   const tell = useVoiceTell();
@@ -554,6 +555,21 @@ function Explore({
     const journeys = journeysRef.current;
     return journeys.find((j) => j.id === planner.selectedId) ?? journeys[0] ?? null;
   };
+  // Navigation tells FLOW Voice when it starts, arrives or stops, so the agent follows the trip.
+  useEffect(() => {
+    const onNavigation = (e: Event) => {
+      const { state, name } = (e as CustomEvent<{ state: string; name: string }>).detail;
+      tell(
+        state === 'started'
+          ? `Navigația a pornit spre ${name}.`
+          : state === 'arrived'
+            ? `Șoferul a ajuns la ${name}.`
+            : 'Navigația s-a oprit.',
+      );
+    };
+    window.addEventListener('flow-navigation', onNavigation);
+    return () => window.removeEventListener('flow-navigation', onNavigation);
+  }, [tell]);
   // The driver's own words: a travel mode they want, and permission to start ("hai să mergem").
   useVoiceHeard((text) => {
     const intent = readIntent(text);
@@ -565,7 +581,7 @@ function Explore({
     }
     if (!intent.go) return;
     if (window.location.pathname === '/navigation') {
-      window.dispatchEvent(new Event('flow-voice-go'));
+      window.dispatchEvent(new CustomEvent('flow-voice-go', { detail: { demo: !!demoRef.current } }));
       return;
     }
     if (autoNavRef.current) return goNavigate();

@@ -14,7 +14,6 @@ import {
   Compass,
   Flag,
   Layers,
-  Leaf,
   LoaderCircle,
   LocateFixed,
   MapPin,
@@ -30,7 +29,7 @@ import {
 import type { NavigationRoute } from '@vlaiq/shared';
 import { brand } from '@vlaiq/shared';
 import { useNavigation } from './useNavigation';
-import { VoiceCard } from '../voice/FlowVoice';
+import { VoiceBubble, VoiceCard, VoiceMicButton } from '../voice/FlowVoice';
 import { loadNavPlaces, type NavPlaces } from './places';
 import { arrivalWalkHref, handoffFromUrl } from './scenario';
 import { formatDistance, instruction } from './geometry';
@@ -135,14 +134,30 @@ function NavigationView({ places }: { places: NavPlaces }) {
     if (how === 'live') nav.startLive();
     else if (how === 'demo') nav.startDemo();
   }, [nav.mode, nav.route, nav.startLive, nav.startDemo]);
+  // FLOW Voice follows the trip: started, arrived, stopped.
+  const navState = active ? (nav.arrived ? 'arrived' : 'started') : 'stopped';
+  const lastNavState = useRef<string | null>(null);
+  useEffect(() => {
+    const previous = lastNavState.current;
+    lastNavState.current = navState;
+    if (previous === null || previous === navState) return;
+    window.dispatchEvent(
+      new CustomEvent('flow-navigation', {
+        detail: { state: navState, name: nav.destination.name },
+      }),
+    );
+  }, [navState, nav.destination.name]);
   // "Hai să mergem" said to FLOW Voice on the preview starts GPS navigation, like pressing Start.
   useEffect(() => {
-    const go = () => {
-      if (nav.mode === 'preview' && nav.route) nav.startLive();
+    const go = (e: Event) => {
+      if (nav.mode !== 'preview' || !nav.route) return;
+      // A trip planned in DEMO (fixed start) runs as the simulation, never from the real GPS.
+      if ((e as CustomEvent<{ demo?: boolean }>).detail?.demo) nav.startDemo();
+      else nav.startLive();
     };
     window.addEventListener('flow-voice-go', go);
     return () => window.removeEventListener('flow-voice-go', go);
-  }, [nav.mode, nav.route, nav.startLive]);
+  }, [nav.mode, nav.route, nav.startLive, nav.startDemo]);
   const backup = handoff.backup;
   // DEMO "parking full" offer: null = not shown, otherwise seconds left before it keeps the current route.
   const [offer, setOffer] = useState<number | null>(null);
@@ -236,7 +251,6 @@ function NavigationView({ places }: { places: NavPlaces }) {
           <span className={`mode-chip ${demo ? 'is-demo' : ''}`}>
             <i />
             {demo ? 'DEMO' : 'GPS LIVE'}
-            {demo && <span>· poziție simulată</span>}
           </span>
         )}
       </header>
@@ -249,12 +263,7 @@ function NavigationView({ places }: { places: NavPlaces }) {
             </span>{' '}
             CĂLĂTORIA TA <span className="preview-mode">AUTO</span>
           </div>
-          <h1>
-            Drumul tău.
-            <br />
-            <span>Mai simplu.</span>
-          </h1>
-          <p className="preview-description">Alege destinația. Noi îți arătăm drumul.</p>
+          <h1>{nav.destination.name}</h1>
           <VoiceCard compact />
           <div className="journey-inputs">
             <div className="journey-line">
@@ -329,10 +338,6 @@ function NavigationView({ places }: { places: NavPlaces }) {
               </div>
             )}
           </div>
-          <div className="preview-footnote">
-            <Leaf size={15} />
-            <span>Un drum mai clar. Un oraș mai respirabil.</span>
-          </div>
           <button
             className="start-navigation"
             disabled={nav.loading || nav.mode === 'acquiring'}
@@ -353,9 +358,6 @@ function NavigationView({ places }: { places: NavPlaces }) {
           >
             <Play size={15} fill="currentColor" /> Încearcă experiența DEMO <span>Fără GPS</span>
           </button>
-          <p className="gps-disclosure">
-            Start folosește poziția ta reală. DEMO simulează deplasarea pe ruta selectată.
-          </p>
         </section>
       )}
 
@@ -388,6 +390,9 @@ function NavigationView({ places }: { places: NavPlaces }) {
               </div>
             )}
           </section>
+          <div className="nav-voice-bubble">
+            <VoiceBubble />
+          </div>
           <div
             className={`speedometer ${demo ? 'demo-speed' : ''}`}
             aria-label={
@@ -405,9 +410,8 @@ function NavigationView({ places }: { places: NavPlaces }) {
             )}
           </div>
           {demo && (
-            <div className="demo-playback panel">
+            <div className="demo-playback panel" aria-label="Control simulare DEMO">
               <span className="demo-live-dot" />
-              <span>SIMULARE PE TRASEU REAL</span>
               <button
                 className="icon-button demo-speed-toggle"
                 onClick={() => nav.setPlayback(nav.playback === 1 ? 2 : nav.playback === 2 ? 4 : 1)}
@@ -439,8 +443,12 @@ function NavigationView({ places }: { places: NavPlaces }) {
                 <RotateCcw size={17} />
               </button>
               {backup && !nav.switched && !nav.arrived && offer == null && (
-                <button className="demo-scenario" onClick={showFull}>
-                  Simulează: parcarea s-a umplut
+                <button
+                  className="demo-scenario"
+                  onClick={showFull}
+                  aria-label="Simulează: parcarea s-a umplut"
+                >
+                  Parcare plină
                 </button>
               )}
             </div>
@@ -522,16 +530,6 @@ function NavigationView({ places }: { places: NavPlaces }) {
             className={`trip-bar panel ${expanded ? 'expanded' : ''}`}
             aria-label="Detalii călătorie"
           >
-            <VoiceCard compact environment={demo ? 'demo' : 'live'} />
-            {!nav.muted && (
-              <button
-                className="nav-repeat"
-                onClick={nav.repeatInstruction}
-                aria-label="Repetă ultima indicație validă"
-              >
-                Repetă indicația
-              </button>
-            )}
             <button
               className="trip-expand"
               aria-expanded={expanded}
@@ -573,7 +571,6 @@ function NavigationView({ places }: { places: NavPlaces }) {
                   </div>
                 </div>
                 <p>{nav.route?.source} · durată estimată, fără trafic live.</p>
-                <p>Navigație în prim-plan · prototip. Respectă indicatoarele rutiere.</p>
               </div>
             )}
           </section>
@@ -581,40 +578,7 @@ function NavigationView({ places }: { places: NavPlaces }) {
       )}
 
       <aside className="map-tools" aria-label="Comenzi hartă">
-        <button
-          className={`icon-button map-tool ${nav.follow && active ? 'enabled' : ''}`}
-          aria-label="Recentrează harta și urmărește vehiculul"
-          onClick={() => {
-            nav.setFollow(true);
-            setRecenter((v) => v + 1);
-          }}
-        >
-          <LocateFixed size={21} />
-        </button>
-        <button
-          className="icon-button map-tool compass-tool"
-          aria-label="Nord în sus și perspectivă 2D"
-          onClick={() => {
-            nav.setPerspective(false);
-            nav.setFollow(true);
-            setRecenter((v) => v + 1);
-          }}
-        >
-          <Compass size={22} />
-          <span>N</span>
-        </button>
-        <button
-          className={`icon-button map-tool ${nav.perspective && active ? 'enabled' : ''}`}
-          aria-label={nav.perspective ? 'Activează perspectiva 2D' : 'Activează perspectiva 3D'}
-          onClick={() => {
-            nav.setPerspective(!nav.perspective);
-            nav.setFollow(true);
-            setRecenter((v) => v + 1);
-          }}
-        >
-          <Layers size={19} />
-          <span>{nav.perspective && active ? '3D' : '2D'}</span>
-        </button>
+        {active && <VoiceMicButton />}
         {active && (
           <button
             className="icon-button map-tool"
@@ -627,6 +591,40 @@ function NavigationView({ places }: { places: NavPlaces }) {
             {nav.muted ? <VolumeX size={20} /> : <Volume2 size={20} />}
           </button>
         )}
+        <button
+          className={`icon-button map-tool ${nav.follow && active ? 'enabled' : ''}`}
+          aria-label="Recentrează harta și urmărește vehiculul"
+          onClick={() => {
+            nav.setFollow(true);
+            setRecenter((v) => v + 1);
+          }}
+        >
+          <LocateFixed size={21} />
+        </button>
+        {!active && <button
+          className="icon-button map-tool compass-tool"
+          aria-label="Nord în sus și perspectivă 2D"
+          onClick={() => {
+            nav.setPerspective(false);
+            nav.setFollow(true);
+            setRecenter((v) => v + 1);
+          }}
+        >
+          <Compass size={22} />
+          <span>N</span>
+        </button>}
+        <button
+          className={`icon-button map-tool ${nav.perspective && active ? 'enabled' : ''}`}
+          aria-label={nav.perspective ? 'Activează perspectiva 2D' : 'Activează perspectiva 3D'}
+          onClick={() => {
+            nav.setPerspective(!nav.perspective);
+            nav.setFollow(true);
+            setRecenter((v) => v + 1);
+          }}
+        >
+          <Layers size={19} />
+          <span>{nav.perspective && active ? '3D' : '2D'}</span>
+        </button>
       </aside>
 
       {!nav.follow && active && (
@@ -671,10 +669,7 @@ function NavigationView({ places }: { places: NavPlaces }) {
           {nav.mode === 'acquiring' && <button onClick={nav.stop}>Anulează</button>}
         </div>
       )}
-      <div className="nav-map-caption">
-        <span className="status-dot" />
-        {active ? 'FĂRĂ DATE DE TRAFIC LIVE' : 'OPENSTREETMAP · RUTE REALE'}
-      </div>
+      {/* OpenStreetMap credit is in the map attribution itself. */}
     </main>
   );
 }

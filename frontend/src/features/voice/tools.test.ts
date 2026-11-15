@@ -155,18 +155,14 @@ describe('FLOW tools: runtime contract and concurrency', () => {
     await Promise.resolve();
     expect(adapter.commit).not.toHaveBeenCalled();
   });
-  it('blocks route replacement while navigation is active and reports map false truthfully', async () => {
+  it('lets the adapter decide route changes during navigation and reports map false truthfully', async () => {
     const { tools, state, adapter } = setup();
     state.navigation.active = true;
     const input = { comparison_id: 'comparison', journey_id: 'journey' };
-    expect(JSON.parse(await tools.call('select_and_explain_journey', input)).error.code).toBe(
-      'NAVIGATION_ACTIVE',
-    );
-    expect(adapter.select).not.toHaveBeenCalled();
-    state.navigation.active = false;
     expect(
       JSON.parse(await tools.call('select_and_explain_journey', input)).data.map_highlighted,
     ).toBe(false);
+    expect(adapter.select).toHaveBeenCalledTimes(1);
   });
   it.each([
     'MISSING_ORIGIN',

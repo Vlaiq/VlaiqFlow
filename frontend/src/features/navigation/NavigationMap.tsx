@@ -6,7 +6,6 @@ import type { Fix, Mode } from './useNavigation';
 import { sample } from './geometry';
 import {
   addCountyScope,
-  CountyControl,
   isInTimisCounty,
   TIMIS_COUNTY_BOUNDS,
 } from '../map/countyScope';
@@ -202,10 +201,6 @@ export function NavigationMap(props: Props) {
       if (isInTimisCounty([e.lngLat.lng, e.lngLat.lat]))
         latest.current.onPick([e.lngLat.lng, e.lngLat.lat]);
     });
-    m.addControl(
-      new CountyControl(() => ({ top: 100, left: 60, bottom: 200, right: 60 }), 190),
-      'bottom-left',
-    );
     const observer = new ResizeObserver(() => {
       m.resize();
       const p = latest.current;

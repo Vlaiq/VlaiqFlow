@@ -428,6 +428,12 @@ export function useFlowPlanner(props: Inputs) {
           throw new FlowError('STALE_CONTEXT', 'Comparația a expirat. Recalculează.');
         const journey = s.value?.journeys.find((j) => j.id === selection.journey_id);
         if (!journey) throw new FlowError('NO_MATCH', 'Călătoria nu aparține comparației curente.');
+        // While driving, only another car route can replace the one being navigated.
+        if (navigationState.read().active && !journey.parking)
+          throw new FlowError(
+            'NAVIGATION_ACTIVE',
+            'Navigația cu mașina e pornită. Oprește-o întâi ca să alegi mersul pe jos sau bicicleta.',
+          );
         changed();
         setManualId(journey.id);
         s.selectedId = journey.id;
@@ -518,6 +524,34 @@ export function useFlowPlanner(props: Inputs) {
       const origin = await locate(here, new AbortController().signal);
       latest.current.props.setOrigin(origin);
       return origin;
+    },
+    /** What the app already knows about the trip, told to FLOW Voice when a session connects. */
+    summary: () => {
+      const c = adapterRef.current!.context();
+      const modeName = (m: Mode) =>
+        m === 'driving' ? 'cu mașina' : m === 'cycling' ? 'cu bicicleta' : 'pe jos';
+      const parts: string[] = [];
+      if (c.destination) parts.push(`destinația: ${c.destination.label}`);
+      if (c.origin) parts.push(`plecarea: ${c.origin.label}`);
+      if (spokenMode.current) parts.push(`șoferul vrea doar ${modeName(spokenMode.current)}`);
+      const j = c.selected_journey;
+      if (j)
+        parts.push(
+          `ruta aleasă: ${modeName(j.journey_mode)}${j.parking ? `, cu parcare la ${j.parking.name}` : ''}${
+            j.duration_minutes != null ? `, aproximativ ${Math.round(j.duration_minutes)} minute` : ''
+          }`,
+        );
+      if (c.navigation.active)
+        parts.push(
+          `navigația este pornită${
+            c.navigation.remaining_distance_meters != null
+              ? `, mai sunt ${(c.navigation.remaining_distance_meters / 1000).toFixed(1)} km`
+              : ''
+          }`,
+        );
+      return parts.length
+        ? `Contextul aplicației, deja stabilit cu șoferul (nu îl mai întreba): ${parts.join('; ')}.`
+        : null;
     },
     choose: (d: Destination) => {
       setChoices([]);

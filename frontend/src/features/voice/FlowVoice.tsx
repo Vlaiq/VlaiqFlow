@@ -19,7 +19,7 @@ import { z } from 'zod';
 import type { Destination } from '@vlaiq/shared';
 import { FLOW_AGENT } from '../../../../shared/src/flowVoice';
 import { useAppRouter } from '../../app/router';
-import { registerConversationGate } from './speech';
+import { navigationSpeech, registerConversationGate } from './speech';
 import './voice.css';
 
 interface ToolSession {
@@ -53,7 +53,7 @@ interface VoiceContextValue {
   toggleOutput(): void;
   /** Tells a connected agent about something the user did on screen; no-op when not connected. */
   tell(text: string): void;
-  register(tools: ToolSession, begin: () => void): () => void;
+  register(tools: ToolSession, begin: () => void, summary?: () => string | null): () => void;
 }
 const Context = createContext<VoiceContextValue | null>(null);
 // Planner registration must not subscribe the map subtree to high-frequency VAD/UI updates.
@@ -86,7 +86,11 @@ function VoiceRuntime({ children }: { children: ReactNode }) {
   const [outputMuted, setOutputMuted] = useState(false);
   const [activity, setActivity] = useState(0);
   const [transcript, setTranscript] = useState<TranscriptLine[]>([]);
-  const registration = useRef<{ tools: ToolSession; begin: () => void } | null>(null);
+  const registration = useRef<{
+    tools: ToolSession;
+    begin: () => void;
+    summary?: () => string | null;
+  } | null>(null);
   const active = useRef<{ id: number; controller: AbortController; tools: ToolSession } | null>(
     null,
   );
@@ -107,6 +111,8 @@ function VoiceRuntime({ children }: { children: ReactNode }) {
   inputRef.current = input;
   /** Last moment the driver's microphone picked up speech or the agent answered. */
   const lastVoice = useRef(0);
+  const lastUserAt = useRef(0);
+  const lastAgentAt = useRef(0);
   const held = useRef<{ micWasMuted: boolean } | null>(null);
   const controlsRef = useRef(controls);
   controlsRef.current = controls;
@@ -120,14 +126,17 @@ function VoiceRuntime({ children }: { children: ReactNode }) {
         controlsRef.current.sendContextualUpdate(text);
     },
   });
-  const register = useCallback((tools: ToolSession, begin: () => void) => {
-    const entry = { tools, begin };
+  const register = useCallback(
+    (tools: ToolSession, begin: () => void, summary?: () => string | null) => {
+    const entry = { tools, begin, summary };
     registration.current = entry;
     return () => {
       tools.end();
       if (registration.current === entry) registration.current = null;
     };
-  }, []);
+  },
+    [],
+  );
   const stop = useCallback(() => {
     if (closing.current) return closing.current.promise;
     const previous = active.current;
@@ -166,19 +175,23 @@ function VoiceRuntime({ children }: { children: ReactNode }) {
   useEffect(
     () =>
       registerConversationGate({
-        busy: () =>
-          (stateRef.current === 'listening' || stateRef.current === 'speaking') &&
-          (speakingRef.current || Date.now() - lastVoice.current < 1500),
+        // Busy while either side talks, while FLOW is still answering the driver, and for a
+        // few seconds after: an instruction never lands in the middle of a conversation.
+        busy: () => {
+          if (stateRef.current !== 'listening' && stateRef.current !== 'speaking') return false;
+          const now = Date.now();
+          const awaitingAnswer =
+            lastUserAt.current > lastAgentAt.current && now - lastUserAt.current < 8000;
+          return speakingRef.current || awaitingAnswer || now - lastVoice.current < 3500;
+        },
+        // Only the microphone pauses during an instruction (so FLOW does not hear it as the
+        // driver). FLOW's own voice is never muted: if it starts talking, the instruction stops.
         hold: (on) => {
-          const conversation = rawRef.current;
-          if (!conversation) return;
           if (on && !held.current) {
             held.current = { micWasMuted: inputRef.current.isMuted };
             inputRef.current.setMuted(true);
-            conversation.setVolume({ volume: 0 });
           } else if (!on && held.current) {
             inputRef.current.setMuted(held.current.micWasMuted);
-            conversation.setVolume({ volume: outputMutedRef.current ? 0 : 1 });
             held.current = null;
           }
         },
@@ -196,13 +209,17 @@ function VoiceRuntime({ children }: { children: ReactNode }) {
     stop();
     setTranscript([]);
   }, [location.pathname, stop]);
+  // End the session only when the app really unmounts. Depending on \`stop\` here would end a live
+  // conversation whenever the SDK hands out a new endSession function on a re-render.
+  const stopRef = useRef(stop);
+  stopRef.current = stop;
   useEffect(() => {
     mounted.current = true;
     return () => {
       mounted.current = false;
-      stop();
+      void stopRef.current();
     };
-  }, [stop]);
+  }, []);
   const start = useCallback(async () => {
     if (active.current || closing.current || !registration.current) return;
     if (!window.isSecureContext || !navigator.mediaDevices?.getUserMedia) {
@@ -218,7 +235,6 @@ function VoiceRuntime({ children }: { children: ReactNode }) {
     failure.current = null;
     setState('connecting');
     setError(null);
-    setTranscript([]);
     setOutputMuted(false);
     const fail = (message: string) => {
       if (!valid()) return;
@@ -270,6 +286,10 @@ function VoiceRuntime({ children }: { children: ReactNode }) {
             // The agent must be heard, like a car navigator: never start a session silent.
             rawRef.current?.setVolume({ volume: 1 });
             setState('listening');
+            // A new session starts from what the app already knows (trip planned on the home
+            // screen, navigation in progress), so the agent does not ask again.
+            const summary = registration.current?.summary?.();
+            if (summary) controls.sendContextualUpdate(summary);
           }
         },
         onDisconnect: () => {
@@ -280,6 +300,12 @@ function VoiceRuntime({ children }: { children: ReactNode }) {
           }
         },
         onModeChange: ({ mode }) => {
+          if (mode === 'speaking') {
+            lastVoice.current = Date.now();
+            lastAgentAt.current = Date.now();
+            // FLOW always wins: an instruction that is playing stops at once.
+            if (held.current) navigationSpeech.cancel();
+          }
           if (valid()) setState(mode === 'speaking' ? 'speaking' : 'listening');
         },
         onMessage: ({ message, role, event_id }) => {
@@ -287,6 +313,8 @@ function VoiceRuntime({ children }: { children: ReactNode }) {
           if (!valid() || !text) return;
           const line: TranscriptLine = { id: event_id, who: role === 'user' ? 'user' : 'agent', text };
           lastVoice.current = Date.now();
+          if (line.who === 'user') lastUserAt.current = Date.now();
+          else lastAgentAt.current = Date.now();
           if (line.who === 'user') listeners.current.forEach((listener) => listener(text));
           setTranscript((lines) =>
             lines.some((l) => l.id === line.id && l.who === line.who)
@@ -372,9 +400,18 @@ export function useVoiceHeard(listener: (text: string) => void) {
 export function useVoiceTell() {
   return useContext(HeardContext)?.tell ?? (() => {});
 }
-export function useVoiceRegistration(tools: ToolSession, begin: () => void) {
+export function useVoiceRegistration(
+  tools: ToolSession,
+  begin: () => void,
+  summary?: () => string | null,
+) {
   const register = useContext(RegistrationContext);
-  useEffect(() => register?.(tools, begin), [register, tools, begin]);
+  const latest = useRef(summary);
+  latest.current = summary;
+  useEffect(
+    () => register?.(tools, begin, () => latest.current?.() ?? null),
+    [register, tools, begin],
+  );
 }
 export function VoiceCard({
   compact = false,
@@ -503,5 +540,50 @@ export function VoiceCard({
         </p>
       )}
     </section>
+  );
+}
+/** Round "talk" button for the navigation screen: one tap starts or stops FLOW Voice. */
+export function VoiceMicButton({ className = '' }: { className?: string }) {
+  const voice = useContext(Context);
+  if (!voice) return null;
+  const connected = voice.state === 'listening' || voice.state === 'speaking';
+  const busy = voice.state === 'connecting' || voice.state === 'disconnecting';
+  return (
+    <button
+      type="button"
+      className={`flow-voice-mic ${className}`}
+      data-state={voice.state}
+      aria-pressed={connected}
+      aria-label={
+        connected || busy ? 'Oprește FLOW Voice' : 'Vorbește cu FLOW Voice'
+      }
+      disabled={voice.state === 'disconnecting'}
+      onClick={connected || busy ? voice.stop : voice.start}
+    >
+      {busy ? <AudioLines size={20} /> : connected ? <Mic size={20} /> : <MicOff size={20} />}
+    </button>
+  );
+}
+/** The last thing said in the conversation (or a voice error), shown briefly over the map. */
+export function VoiceBubble() {
+  const voice = useContext(Context);
+  const last = voice?.transcript.at(-1) ?? null;
+  const [shown, setShown] = useState<string | null>(null);
+  const message = voice?.error ?? (last ? `${last.who}-${last.id}` : null);
+  useEffect(() => {
+    if (!message) return;
+    setShown(message);
+    const t = window.setTimeout(() => setShown(null), 6000);
+    return () => window.clearTimeout(t);
+  }, [message]);
+  if (!voice || !shown) return null;
+  return (
+    <p className="flow-voice-bubble" role="status" data-who={voice.error ? 'error' : last?.who}>
+      {voice.error ?? (
+        <>
+          <span>{last?.who === 'user' ? 'Tu' : 'FLOW'}</span> {last?.text}
+        </>
+      )}
+    </p>
   );
 }

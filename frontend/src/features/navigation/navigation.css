@@ -1503,3 +1503,21 @@ html[data-theme='light'] .navigation-screen .demo-scenario {
     padding: 4px 10px;
   }
 }
+
+/* Waze-style: the conversation shows as one short line under the turn card. */
+.nav-voice-bubble {
+  position: absolute;
+  top: calc(var(--nav-bubble-top, 224px) + env(safe-area-inset-top));
+  left: 26px;
+  z-index: 4;
+  pointer-events: none;
+}
+.map-tools .flow-voice-mic {
+  align-self: center;
+}
+@media (max-width: 640px) {
+  .nav-voice-bubble {
+    left: 16px;
+    right: 16px;
+  }
+}
