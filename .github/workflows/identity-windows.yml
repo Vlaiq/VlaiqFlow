@@ -4,6 +4,7 @@ on:
     paths:
       - 'scripts/identity-*'
       - 'scripts/start-identity-acceptance.mjs'
+      - 'scripts/test-identity-launcher.mjs'
       - 'backend/scripts/**'
       - 'backend/src/config.ts'
       - 'backend/src/index.ts'
@@ -26,10 +27,34 @@ jobs:
       - name: Install the repository's pinned package manager
         run: npm.cmd install --global pnpm@12.18.0
       - run: pnpm.cmd install --frozen-lockfile
+      - name: Start isolated native PostgreSQL 17 (loopback, disposable CI cluster)
+        shell: pwsh
+        run: |
+          $pg = 'C:\Program Files\PostgreSQL\17\bin'
+          $data = Join-Path $env:RUNNER_TEMP 'flow-identity-pg'
+          & "$pg\postgres.exe" --version
+          & "$pg\initdb.exe" -D $data -U flow_ci_bootstrap -A trust --encoding=UTF8 --no-locale
+          if ($LASTEXITCODE -ne 0) { throw 'PostgreSQL initialization failed' }
+          & "$pg\pg_ctl.exe" -D $data -l (Join-Path $env:RUNNER_TEMP 'flow-pg.log') -o '-h 127.0.0.1 -p 55432' -w start
+          if ($LASTEXITCODE -ne 0) { throw 'PostgreSQL startup failed' }
+          & "$pg\psql.exe" -h 127.0.0.1 -p 55432 -U flow_ci_bootstrap -d postgres -v ON_ERROR_STOP=1 -c 'CREATE ROLE flow_identity_app LOGIN NOSUPERUSER NOCREATEDB NOCREATEROLE NOREPLICATION NOBYPASSRLS'
+          & "$pg\createdb.exe" -h 127.0.0.1 -p 55432 -U flow_ci_bootstrap -O flow_identity_app flow_identity
+          & "$pg\createdb.exe" -h 127.0.0.1 -p 55432 -U flow_ci_bootstrap flow_identity_test
+          'DATABASE_URL=postgresql://flow_identity_app@127.0.0.1:55432/flow_identity' | Out-File $env:GITHUB_ENV -Append -Encoding utf8
+          'IDENTITY_TEST_DATABASE_URL=postgresql://flow_ci_bootstrap@127.0.0.1:55432/flow_identity_test' | Out-File $env:GITHUB_ENV -Append -Encoding utf8
       - name: Native paths, literal arguments, ports and descendant process cleanup
         run: node --test scripts/identity-operator.test.mjs
       - name: Hidden-input and connectivity contract tests (no real tokens)
         run: pnpm.cmd -F backend exec vitest run scripts/lib
+      - name: Full suite, including actual PostgreSQL integration
+        run: pnpm.cmd test
+      - name: Actual launcher startup and owned process cleanup
+        run: node scripts/test-identity-launcher.mjs
       - run: pnpm.cmd typecheck
       - run: pnpm.cmd build
-      # No real Auth0 identity, TTY/Windows Hello, PostgreSQL or microphone is certified by this job.
+      - name: Stop only the disposable CI database
+        if: always()
+        shell: pwsh
+        run: |
+          & 'C:\Program Files\PostgreSQL\17\bin\pg_ctl.exe' -D (Join-Path $env:RUNNER_TEMP 'flow-identity-pg') -m fast -w stop
+      # No real Auth0 identity, desktop TTY/Windows Hello or microphone is certified by this job.

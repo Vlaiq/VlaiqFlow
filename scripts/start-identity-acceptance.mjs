@@ -27,10 +27,15 @@ function stop(code) {
       console.error('A service could not be stopped. Inspect owned Node processes/ports before restarting.');
       process.exitCode = 1;
     }
+    if (process.connected) process.disconnect();
   })();
 }
 process.once('SIGINT', () => void stop(0));
 process.once('SIGTERM', () => void stop(0));
+// Used by the native Windows CI smoke test; no HTTP shutdown endpoint is exposed.
+process.on('message', message => {
+  if (process.connected && message?.type === 'flow-acceptance-stop') void stop(0);
+});
 function run(name, cwd, entry, args, service = false) {
   const cmd = nodeCommand(entry, args);
   const child = spawn(cmd.executable, cmd.args, {
