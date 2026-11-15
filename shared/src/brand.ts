@@ -16,5 +16,5 @@ export const privacyContact = {
   controller: null as string | null,
   email: null as string | null,
   domain: 'vlaiqflow.ro',
-  updatedAt: '2026-11-14',
+  updatedAt: '2026-11-15',
 };

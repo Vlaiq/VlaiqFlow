@@ -1,3 +1,4 @@
+import { privateFetch } from '../identity/privateApi';
 import type { NavigationSpeechEvent } from '../../../../shared/src/flowVoice';
 
 export interface SpeechScope {
@@ -189,7 +190,7 @@ const base = (import.meta.env.VITE_API_URL ?? '').replace(/\/$/, '');
 export const navigationSpeech = new SpeechArbiter({
   now: Date.now,
   synthesize: async (event, signal) => {
-    const response = await fetch(`${base}/api/flow-voice/speech`, {
+    const response = await privateFetch(`${base}/api/flow-voice/speech`, {
       method: 'POST',
       cache: 'no-store',
       headers: { 'Content-Type': 'application/json', 'X-Flow-Voice': '1' },

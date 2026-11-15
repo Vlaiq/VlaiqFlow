@@ -1,3 +1,6 @@
+import { useIdentity } from '../identity/IdentityProvider';
+import { privateFetch } from '../identity/privateApi';
+import { voicePersonalization } from '../../../../shared/src/identity';
 import {
   createContext,
   useCallback,
@@ -74,13 +77,14 @@ export function FlowVoiceProvider({ children }: { children: ReactNode }) {
   );
 }
 function VoiceRuntime({ children }: { children: ReactNode }) {
+  const identity = useIdentity();
   const controls = useConversationControls();
   const raw = useRawConversation();
   const rawRef = useRef(raw);
   rawRef.current = raw;
   const input = useConversationInput();
   const { isSpeaking } = useConversationMode();
-  const { location } = useAppRouter();
+  const { location, navigate } = useAppRouter();
   const [state, setState] = useState<State>('idle');
   const [error, setError] = useState<string | null>(null);
   const [outputMuted, setOutputMuted] = useState(false);
@@ -221,6 +225,7 @@ function VoiceRuntime({ children }: { children: ReactNode }) {
     };
   }, []);
   const start = useCallback(async () => {
+    if (!identity.authenticated) { navigate('/profile'); return; }
     if (active.current || closing.current || !registration.current) return;
     if (!window.isSecureContext || !navigator.mediaDevices?.getUserMedia) {
       setError('Microfonul necesită HTTPS și un browser compatibil.');
@@ -252,7 +257,7 @@ function VoiceRuntime({ children }: { children: ReactNode }) {
       stream.getTracks().forEach((track) => track.stop());
       if (!valid()) return;
       const base = (import.meta.env.VITE_API_URL ?? '').replace(/\/$/, '');
-      const response = await fetch(`${base}/api/flow-voice/session`, {
+      const response = await privateFetch(`${base}/api/flow-voice/session`, {
         method: 'POST',
         cache: 'no-store',
         headers: { 'Content-Type': 'application/json', 'X-Flow-Voice': '1' },
@@ -280,6 +285,7 @@ function VoiceRuntime({ children }: { children: ReactNode }) {
         conversationToken: token.conversationToken,
         connectionType: 'webrtc',
         clientTools: entry.tools.handlers(),
+
         onConnect: () => {
           if (valid()) {
             clearTimeout(timer.current);
@@ -288,6 +294,9 @@ function VoiceRuntime({ children }: { children: ReactNode }) {
             setState('listening');
             // A new session starts from what the app already knows (trip planned on the home
             // screen, navigation in progress), so the agent does not ask again.
+            const personal = voicePersonalization(identity.profile);
+            // Data-only context: the pinned agent forbids first-message overrides.
+            if (personal) controls.sendContextualUpdate(JSON.stringify({ user_profile: { preferred_name: personal.nickname }, voice_personalization_consent: true }));
             const summary = registration.current?.summary?.();
             if (summary) controls.sendContextualUpdate(summary);
           }
@@ -351,7 +360,7 @@ function VoiceRuntime({ children }: { children: ReactNode }) {
               : 'FLOW Voice nu este disponibil acum. Poți continua manual și reîncerca.',
       );
     }
-  }, [controls.startSession, stop]);
+  }, [controls.startSession, stop, identity.profile, identity.authenticated, navigate]);
   const toggleOutput = () => {
     const next = !outputMuted;
     setOutputMuted(next);

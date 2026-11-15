@@ -21,7 +21,10 @@ const Activity = z.object({
   evaluation: MotionEvaluation.optional(),
   digest: z.string().optional(),
 });
-const Owner = z.object({ activities: z.array(Activity), ledger: z.array(MotionTransaction) });
+const Owner = z.object({
+  activities: z.array(Activity),
+  ledger: z.array(MotionTransaction),
+});
 const Database = z.record(Owner);
 const day = (timestamp: number) =>
   new Intl.DateTimeFormat('en-CA', {
@@ -38,11 +41,21 @@ const RETENTION_MS = MOTION_RETENTION_DAYS * 86400000;
 export class MotionStore {
   private data: z.infer<typeof Database>;
   constructor(
-    private file: string,
+    private file: string | null,
     now = Date.now(),
   ) {
-    this.data = existsSync(file) ? Database.parse(JSON.parse(readFileSync(file, 'utf8'))) : {};
+    this.data =
+      file && existsSync(file) ? Database.parse(JSON.parse(readFileSync(file, 'utf8'))) : {};
     this.purgeInactive(now);
+  }
+  static fromSnapshot(snapshot: unknown) {
+    const store = new MotionStore(null);
+    store.data = Database.parse(snapshot);
+    store.purgeInactive();
+    return store;
+  }
+  snapshot() {
+    return structuredClone(this.data);
   }
   /** Deletes wallets whose last activity or reward is older than the retention period. */
   purgeInactive(now = Date.now()) {
@@ -62,7 +75,7 @@ export class MotionStore {
     this.save(next);
     return stale.length;
   }
-  /** Right to erasure: removes every activity and reward of this browser wallet. */
+  /** Right to erasure: removes every activity and reward for this wallet owner. */
   erase(owner: string) {
     if (!this.data[owner]) return false;
     const next = structuredClone(this.data);
@@ -71,6 +84,10 @@ export class MotionStore {
     return true;
   }
   private save(next: z.infer<typeof Database>) {
+    if (!this.file) {
+      this.data = next;
+      return;
+    }
     mkdirSync(dirname(this.file), { recursive: true, mode: 0o700 });
     writeFileSync(`${this.file}.tmp`, JSON.stringify(next), { mode: 0o600 });
     renameSync(`${this.file}.tmp`, this.file);
@@ -88,13 +105,21 @@ export class MotionStore {
       todayActivities: daily.length,
     };
   }
+  activities(owner: string) {
+    return (this.data[owner]?.activities ?? []).map(({ digest, ...summary }) => summary).reverse();
+  }
   start(owner: string, mode: MotionMode, now = Date.now()) {
     this.purgeInactive(now);
     const next = structuredClone(this.data);
     const user = (next[owner] ??= { activities: [], ledger: [] });
     for (const activity of user.activities)
       if (activity.state === 'recording') activity.state = 'cancelled';
-    const activity = { id: randomUUID(), mode, startedAt: now, state: 'recording' as const };
+    const activity = {
+      id: randomUUID(),
+      mode,
+      startedAt: now,
+      state: 'recording' as const,
+    };
     user.activities.push(activity);
     this.save(next);
     return { id: activity.id, startedAt: now };
@@ -115,7 +140,10 @@ export class MotionStore {
     if (!activity || !user) throw new Error('Activitate inexistentă.');
     if (activity.state === 'cancelled') throw new Error('Activitatea a fost anulată.');
     if (activity.evaluation)
-      return { evaluation: activity.evaluation, wallet: this.wallet(owner, now) };
+      return {
+        evaluation: activity.evaluation,
+        wallet: this.wallet(owner, now),
+      };
     let evaluation = evaluateMotion(activity.mode, points);
     const digest = createHash('sha256').update(JSON.stringify(points)).digest('hex');
     if (
@@ -132,7 +160,10 @@ export class MotionStore {
       };
     }
     const remaining = Math.max(0, MOTION_RULES.dailyCap - this.wallet(owner, now).dailyEarned);
-    evaluation = { ...evaluation, coins: Math.min(evaluation.coins, remaining) };
+    evaluation = {
+      ...evaluation,
+      coins: Math.min(evaluation.coins, remaining),
+    };
     if (evaluation.status === 'eligible' && remaining === 0)
       evaluation.reason = 'Activitate eligibilă. Limita zilnică de 80 FLOW Coins a fost atinsă.';
     activity.evaluation = evaluation;

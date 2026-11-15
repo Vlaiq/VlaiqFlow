@@ -7,6 +7,7 @@ import { App } from './app/App';
 import { AppBoundary } from './components/AppBoundary';
 import { ThemeProvider } from './app/theme';
 import { AppRouter } from './app/router';
+import { IdentityProvider } from './features/identity/IdentityProvider';
 import { registerPwa } from './app/pwa';
 
 registerPwa();
@@ -16,7 +17,9 @@ createRoot(document.getElementById('root')!).render(
     <ThemeProvider>
       <AppBoundary>
         <AppRouter>
-          <App />
+          <IdentityProvider>
+            <App />
+          </IdentityProvider>
         </AppRouter>
       </AppBoundary>
     </ThemeProvider>

@@ -37,3 +37,13 @@ System fallbacks remain available; no proprietary font or copied interface artwo
 |---|---|---|---|
 | [ElevenLabs React/client SDK](https://github.com/elevenlabs/packages) | Authenticated FLOW Voice conversations and client tool transport | MIT (npm packages include license) | Preserve package notices; backend-only API key, user-initiated microphone, provider terms apply to the connected workspace |
 | [LiveKit client](https://github.com/livekit/client-sdk-js) | WebRTC transport used by the official ElevenLabs SDK | Apache-2.0 | Preserve package license/NOTICE; verify WebRTC connectivity on target devices |
+
+### FLOW Identity
+
+- `@auth0/auth0-react` / Auth0 SPA SDK — MIT, official PKCE/Universal Login integration.
+- `express-oauth2-jwt-bearer` — MIT, official Express access-token validation.
+- `pg` — MIT, parameterized PostgreSQL access.
+- `sharp` — Apache-2.0 (libvips LGPL-2.1-or-later and bundled codec notices apply), safe avatar decoding/re-encoding. Retain package notices when redistributing.
+- `jose` — MIT, development tests only; local RS256 signing is never an authentication bypass in the product.
+
+The image crop UI uses browser Canvas and original application code. Team/initials artwork uses existing branding and lucide icons. No generated human portraits or unsupplied team identities were introduced.
