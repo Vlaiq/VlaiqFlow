@@ -2,6 +2,8 @@
 
 Your city. Your identity. Your journey.
 
+Windows operators: [exact PowerShell setup and acceptance](flow-identity-windows-acceptance.md). The latest pass preserves the original 631 tests and adds operator/security coverage, direct Node startup, process-tree cleanup, connectivity diagnostics and hidden in-memory token entry. See `flow-identity-verification.md` for measured counts and Windows CI scope. No real account flow is implied by Windows CI or metadata checks.
+
 **Final acceptance update:** the original 628 tests were preserved and rerun; three local discovery/JWKS tests bring the total to 631. Actual Auth0 access is still blocked before reaching the tenant. Use [the live acceptance runbook](flow-identity-live-acceptance.md) for the ready-to-run real-SDK launcher, owned-account browser steps, native 401/403/200 token probe, current voice candidate limitations, HTTPS audit and dependable jury fallback. The production voice pin remains unchanged. This document's original implementation evidence and conditional live script remain below.
 
 ## Repository audit and selected baseline

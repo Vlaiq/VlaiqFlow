@@ -18,6 +18,18 @@ on:
 permissions:
   contents: read
 jobs:
+  windows-auth0-connectivity:
+    runs-on: windows-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24.22.1'
+      - run: npm.cmd install --global pnpm@12.18.0
+      - run: pnpm.cmd install --frozen-lockfile
+      - name: Public Auth0 discovery and JWKS over verified TLS (no credentials)
+        run: pnpm.cmd identity:connectivity
   windows-operator:
     runs-on: windows-latest
     timeout-minutes: 15

@@ -2,6 +2,10 @@
 
 15 November 2026, Europe/Bucharest. Starting revision: `2a2adb0`, draft PR #1.
 
+**Windows 10/11 operators:** use [the self-contained PowerShell guide](flow-identity-windows-acceptance.md). The launcher now checks ports/PostgreSQL, uses direct Node entry points, and cleans owned process trees. Real tokens use hidden in-memory terminal input; the old Unix token-file workflow has been removed. Latest Windows CI and acceptance status are in `flow-identity-verification.md`.
+
+The later Windows CI mission verified real Auth0 **public discovery/JWKS** through both Node transports and all 648 tests with native PostgreSQL and launcher startup/cleanup. This is independent of the cloud failure below. It does not complete user signup/login, token exchange or real-token validation; those owner gates remain open.
+
 **Current release decision: keep the PR in draft.** The app and local PostgreSQL checks pass. This environment's proxy rejects CONNECT to the actual Auth0 tenant with HTTP 403 before reaching Auth0. Discovery and JWKS both fail; this is not evidence of a tenant outage or a bad account. The shared browser also failed to open a tab (`Browser Use could not read requirements`); an independent fresh headless Chromium navigation failed with `ERR_TUNNEL_CONNECTION_FAILED`. There is no connected Auth0 management tool or authenticated CLI. No real user signup/login/token exchange, email, Google, passkey, MFA or native contributor assignment has been verified in this run.
 
 Use this runbook on a computer whose browser **and backend** can reach `dev-3a2ijpzkw4p8cng6.us.auth0.com`. Browser access alone cannot fix backend JWKS access. In the managed environment, an administrator must allow the exact tenant host; Google login also needs the provider hosts used by its redirects. Preserve TLS validation and the configured proxy. Do not work around the policy with a different network route.
@@ -82,24 +86,19 @@ Separately inspect **Security → Multi-factor Auth** and the plan's factor enti
 
 `pnpm -F backend identity:verify-live` tests the **running app**, including team PATCH 401 without a token. It never substitutes a local signing key.
 
-For A/B, take a fresh API **access** token locally from your own browser's Network → `/api/me` → Request Headers → Authorization. Copy only the token after `Bearer ` into the **local hidden terminal prompt** below; never paste it in chat, the command line, a JWT website or a screenshot. This step requires a real completed browser login. The test cannot obtain an account on your behalf.
+For A/B, take a fresh API **access** token locally from your own browser's Network → `/api/me` → Request Headers → Authorization. Copy only the token after `Bearer ` into the verifier's **local hidden terminal prompt**; never paste it in chat, the command line, a JWT website or a screenshot. This step requires a real completed browser login. The test cannot obtain an account on your behalf.
 
-```sh
-umask 077
-flow_token_path="$(mktemp)"
-IFS= read -r -s -p 'Paste the access token locally (hidden): ' flow_access_token
-printf '%s' "$flow_access_token" > "$flow_token_path"
-unset flow_access_token
-printf '\n'
-# Run A first; repeat with B's fresh token and change ordinary to contributor.
-IDENTITY_ACCEPTANCE_EXPECT=ordinary \
-IDENTITY_ACCEPTANCE_TOKEN_FILE="$flow_token_path" \
-pnpm -F backend identity:verify-live
-rm -f "$flow_token_path"
-unset flow_token_path
+```powershell
+$env:IDENTITY_ACCEPTANCE_EXPECT = 'ordinary'
+pnpm.cmd -F backend identity:verify-live
+# Repeat with B's fresh token; copy only into the hidden prompt, never this command.
+$env:IDENTITY_ACCEPTANCE_EXPECT = 'contributor'
+pnpm.cmd -F backend identity:verify-live
+Set-Clipboard -Value ''
+Remove-Item Env:IDENTITY_ACCEPTANCE_EXPECT
 ```
 
-Run these Bash commands in your own terminal, where the clipboard/token stays private. Ensure shell tracing is off. The file must have mode 600. For another deployment, set `IDENTITY_ACCEPTANCE_API` to its exact HTTPS API origin. The probe refuses redirects, fallback grants and a different tenant/audience. It runs the production middleware's real discovery/JWKS verification, checks `/api/me` 200, then checks access and PATCH. Expected A: **403**; expected B: **200** with a native Auth0 permission. B re-saves the exact public presentation, exercising the write without changing jury text; coordinate the test so nobody edits that presentation concurrently. A profile read can create the normal first account row. The probe prints no token, subject, nickname, biography or photo. Delete the temporary file even if a test fails.
+These are native PowerShell commands. On POSIX, use `IDENTITY_ACCEPTANCE_EXPECT=ordinary pnpm -F backend identity:verify-live` (or contributor). The interactive TTY prompt disables echo, bounds input and restores terminal state on completion/cancellation. Token files, argument input and redirected/piped input are refused; no NTFS mode-bit assumption remains. For another deployment, set `IDENTITY_ACCEPTANCE_API` to its exact HTTPS API origin. The probe refuses redirects, fallback grants and a different tenant/audience. It runs the production middleware's real discovery/JWKS verification, checks `/api/me` 200, then checks access and PATCH. Expected A: **403**; expected B: **200** with a native Auth0 permission. B re-saves the exact public presentation, exercising the write without changing jury text; coordinate against concurrent editing. A profile read can create the normal first account row. No token, subject, nickname, biography or photo is printed. Keep terminal recording off and clear the clipboard afterward.
 
 No real-token PASS output was produced in this environment. Successful local-key tests are labeled separately in the verification report.
 
