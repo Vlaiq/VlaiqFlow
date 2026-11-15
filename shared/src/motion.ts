@@ -36,11 +36,21 @@ export const MotionTransaction = z.object({
   source: z.literal('browser-gps-plausibility'),
   reason: z.string(),
 });
+export const EducationTransaction = z.object({
+  id: z.string().uuid(), source: z.literal('education'), coins: z.number().int().positive().max(5),
+  awardedAt: z.number(), missionId: z.string().min(1).max(60), definitionVersion: z.number().int().positive(),
+  idempotencyKey: z.string().max(120), reason: z.string(),
+});
+export const CosmeticTransaction = z.object({
+  id: z.string().uuid(), source: z.literal('cosmetic'), coins: z.number().int().negative(),
+  awardedAt: z.number(), cosmeticId: z.string().min(1).max(60), idempotencyKey: z.string().max(120), reason: z.string(),
+});
+export const WalletTransaction = z.discriminatedUnion('source', [MotionTransaction, EducationTransaction, CosmeticTransaction]);
 export const MotionWallet = z.object({
   balance: z.number().int(),
   lifetime: z.number().int(),
   dailyEarned: z.number().int(),
-  transactions: z.array(MotionTransaction),
+  transactions: z.array(WalletTransaction),
   todayActivities: z.number().int(),
 });
 export type MotionWallet = z.infer<typeof MotionWallet>;

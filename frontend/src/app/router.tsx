@@ -23,6 +23,7 @@ const RouterContext = createContext<{
 export function AppRouter({ children }: { children: ReactNode }) {
   const [location, setLocation] = useState(read);
   const navigate = useCallback((href: string, replace = false) => {
+    if (!window.dispatchEvent(new Event('flow-before-navigate', { cancelable: true }))) return;
     const url = new URL(href, window.location.origin);
     if (url.origin !== window.location.origin) {
       window.location.assign(url);
@@ -33,10 +34,16 @@ export function AppRouter({ children }: { children: ReactNode }) {
     setLocation(read());
   }, []);
   useEffect(() => {
-    const pop = () => setLocation(read());
+    const pop = () => {
+      if (!window.dispatchEvent(new Event('flow-before-navigate', { cancelable: true }))) {
+        window.history.pushState(null, '', location.pathname + location.search);
+        return;
+      }
+      setLocation(read());
+    };
     window.addEventListener('popstate', pop);
     return () => window.removeEventListener('popstate', pop);
-  }, []);
+  }, [location]);
   const value = useMemo(() => ({ location, navigate }), [location, navigate]);
   return (
     <RouterContext.Provider value={value}>

@@ -10,8 +10,11 @@ import { cityRouter } from './routes/city';
 import { destinationsRouter } from './routes/destinations';
 import { recommendationsRouter } from './routes/recommendations';
 import { motionRouter } from './routes/motion';
+import { identityRouter, teamRouter } from './routes/identity';
+import { jwtGuard, requireIdentity } from './middleware/identity';
 import { journeyRouter } from './routes/journeys';
 import { createFlowVoiceRouter } from './routes/flowVoice';
+import { createIntegratedBuddyRouter } from './features/buddy/integration';
 import { existsSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 
@@ -33,7 +36,10 @@ const limited = (limit: number) =>
     legacyHeaders: false,
     handler: (_req, res) => {
       const body: ApiError = {
-        error: { code: 'RATE_LIMITED', message: 'Prea multe cereri de la această rețea. Încearcă din nou într-un minut.' },
+        error: {
+          code: 'RATE_LIMITED',
+          message: 'Prea multe cereri de la această rețea. Încearcă din nou într-un minut.',
+        },
       };
       res.status(429).json(body);
     },
@@ -48,12 +54,17 @@ app.use('/api/navigation', navigationRouter);
 app.use('/api/city', cityRouter);
 app.use('/api/destinations', destinationsRouter);
 app.use('/api/recommendations', recommendationsRouter);
-app.use('/api/motion', motionRouter);
+app.use('/api/me', identityRouter);
+app.use('/api/team', teamRouter);
+app.use('/api/motion', jwtGuard(), requireIdentity, motionRouter);
 app.use('/api/journeys', journeyRouter);
-app.use('/api/flow-voice', createFlowVoiceRouter());
+app.use('/api/flow-voice', jwtGuard(), requireIdentity, createFlowVoiceRouter());
+app.use('/api/buddy', createIntegratedBuddyRouter());
 
 app.use('/api', (_req, res) => {
-  const body: ApiError = { error: { code: 'NOT_FOUND', message: 'Unknown endpoint' } };
+  const body: ApiError = {
+    error: { code: 'NOT_FOUND', message: 'Unknown endpoint' },
+  };
   res.status(404).json(body);
 });
 
@@ -77,12 +88,37 @@ if (process.env.NODE_ENV === 'production' && existsSync(`${frontendDirectory}/in
 
 // Never leak stack traces to clients.
 const onError: ErrorRequestHandler = (err, _req, res, _next) => {
-  console.error(err);
-  const body: ApiError = { error: { code: 'UNAVAILABLE', message: 'Internal error' } };
+  const status = [400, 401, 403, 413, 415, 503].includes(err.status) ? err.status : 500;
+  // Never log bearer tokens, provider payloads, request bodies or database connection strings.
+  if (status === 500)
+    console.error('API request failed', {
+      code: typeof err.code === 'string' ? err.code : 'INTERNAL',
+    });
+  res.setHeader('Cache-Control', 'no-store');
+  if (status === 401) res.setHeader('WWW-Authenticate', 'Bearer');
+  if (status !== 500) {
+    res.status(status).json({
+      error: {
+        code: status === 401 ? 'UNAUTHORIZED' : 'UNAVAILABLE',
+        message:
+          status === 401
+            ? 'Sesiunea a expirat. Conectează-te din nou.'
+            : status === 413
+              ? 'Fișierul este prea mare.'
+              : status === 503
+                ? 'Datele contului nu sunt disponibile. Verifică baza de date și reîncearcă.'
+                : 'Cererea nu poate fi procesată.',
+      },
+    });
+    return;
+  }
+  const body: ApiError = {
+    error: { code: 'UNAVAILABLE', message: 'Serviciul nu este disponibil. Reîncearcă.' },
+  };
   res.status(500).json(body);
 };
 app.use(onError);
 
-app.listen(config.port, () => {
+app.listen(config.port, config.host, () => {
   console.log(`VLAIQ backend listening on http://localhost:${config.port}`);
 });

@@ -11,6 +11,7 @@ import {
   LoaderCircle,
   Map,
   Pause,
+  Palette,
   Play,
   Route,
   ShieldCheck,
@@ -177,6 +178,11 @@ export function MotionScreen({
   useEffect(() => {
     void loadWallet();
   }, [loadWallet]);
+  useEffect(() => {
+    const reload = () => { void loadWallet(); };
+    window.addEventListener('flow-buddy-wallet-committed', reload);
+    return () => window.removeEventListener('flow-buddy-wallet-committed', reload);
+  }, [loadWallet]);
   const onReward = useCallback((result: MotionResult) => {
     pendingWallet.current = result.wallet;
   }, []);
@@ -248,15 +254,16 @@ export function MotionScreen({
   }, [controlledTab]);
   const ModeIcon = Icons[activity.mode];
   const todayComplete = (wallet?.todayActivities ?? 0) > 0;
-  const distance = wallet?.transactions.reduce((s, t) => s + t.distance, 0) ?? 0;
-  const seconds = wallet?.transactions.reduce((s, t) => s + t.seconds, 0) ?? 0;
+  const physicalTransactions = wallet?.transactions.filter(t => t.source === 'browser-gps-plausibility') ?? [];
+  const distance = physicalTransactions.reduce((s, t) => s + t.distance, 0);
+  const seconds = physicalTransactions.reduce((s, t) => s + t.seconds, 0);
   const weekly = Array.from({ length: 7 }, (_, i) => {
     const date = new Date();
     date.setDate(date.getDate() - 6 + i);
     return {
       day: date.toLocaleDateString('ro-RO', { weekday: 'short' }).slice(0, 2),
       value:
-        wallet?.transactions
+        physicalTransactions
           .filter((t) => new Date(t.awardedAt).toDateString() === date.toDateString())
           .reduce((s, t) => s + t.distance, 0) ?? 0,
     };
@@ -607,7 +614,7 @@ export function MotionScreen({
                   </div>
                   <div className="weekly-footer">
                     <span>
-                      <strong>{wallet?.transactions.length ?? 0}</strong> activități recompensate
+                      <strong>{physicalTransactions.length}</strong> activități recompensate
                     </span>
                     <span>
                       <strong>{Math.floor(seconds / 60)}</strong> minute în mișcare
@@ -646,7 +653,7 @@ export function MotionScreen({
                   </p>
                   <div className="wallet-limit">
                     <span>
-                      {wallet?.dailyEarned ?? 0} / {MOTION_RULES.dailyCap} coins astăzi
+                      {wallet?.dailyEarned ?? 0} / {MOTION_RULES.dailyCap} coins Motion astăzi
                     </span>
                     <div>
                       <i
@@ -659,8 +666,7 @@ export function MotionScreen({
                   <p className="motion-disclaimer">
                     Recompense virtuale, fără valoare monetară.
                     <br />
-                    Portofel de prototip legat de acest browser. Fără sincronizare între
-                    dispozitive.
+                    Portofel legat de contul tău verificat, sincronizat între dispozitive.
                   </p>
                   {demoBalance > 0 && (
                     <div className="demo-wallet-balance">
@@ -670,7 +676,7 @@ export function MotionScreen({
                 </section>
                 <section className="wallet-history motion-panel">
                   <div className="motion-section-label">
-                    <span>{wallet?.transactions.length ?? 0} ACTIVITĂȚI</span>
+                    <span>{wallet?.transactions.length ?? 0} TRANZACȚII</span>
                   </div>
                   <h2>Istoricul mișcării</h2>
                   {!wallet?.transactions.length ? (
@@ -689,16 +695,16 @@ export function MotionScreen({
                   ) : (
                     <div className="transaction-list">
                       {wallet.transactions.map((t) => {
-                        const Icon = Icons[t.mode];
+                        const Icon = t.source === 'browser-gps-plausibility' ? Icons[t.mode] : t.source === 'education' ? Sparkles : Palette;
                         return (
                           <article key={t.id}>
                             <span className="transaction-icon">
                               <Icon size={20} />
                             </span>
                             <div>
-                              <strong>{motionNames[t.mode]}</strong>
+                              <strong>{t.source === 'browser-gps-plausibility' ? motionNames[t.mode] : t.source === 'education' ? 'Lecție FLOW Buddy' : 'Buddy Workshop'}</strong>
                               <p>
-                                {meters(t.distance)} ·{' '}
+                                {t.source === 'browser-gps-plausibility' ? `${meters(t.distance)} · ` : ''}
                                 {new Date(t.awardedAt).toLocaleDateString('ro-RO', {
                                   day: 'numeric',
                                   month: 'short',
@@ -706,10 +712,10 @@ export function MotionScreen({
                                   minute: '2-digit',
                                 })}
                               </p>
-                              <small>GPS evaluat · prototip</small>
+                              <small>{t.source === 'browser-gps-plausibility' ? 'GPS evaluat · prototip' : t.source === 'education' ? 'Recompensă educațională · validată pe server' : t.reason}</small>
                             </div>
                             <span className="transaction-value">
-                              +{t.coins}
+                              {t.coins > 0 ? '+' : ''}{t.coins}
                               <FlowCoin size={25} />
                             </span>
                           </article>
@@ -718,7 +724,7 @@ export function MotionScreen({
                     </div>
                   )}
                   <DataSourceInfo
-                    source="Jurnalul de recompense al acestui browser · observații GPS evaluate pe server"
+                    source="Jurnalul contului tău · mișcare, lecții și accesorii"
                     quality="estimated"
                     updatedAt={wallet?.transactions[0]?.awardedAt}
                   >
@@ -908,7 +914,7 @@ export function MotionScreen({
         <ConfirmDialog
           open={eraseDialog}
           title="Ștergi portofelul?"
-          description="Soldul, istoricul activităților și identificatorul acestui browser vor fi șterse definitiv de pe server. Acțiunea nu poate fi anulată."
+          description="Soldul, istoricul activităților și datele acestui portofel vor fi șterse definitiv de pe server. Acțiunea nu poate fi anulată."
           confirmLabel="Șterge definitiv"
           cancelLabel="Păstrează portofelul"
           danger

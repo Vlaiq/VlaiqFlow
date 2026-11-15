@@ -11,7 +11,8 @@ function visit(directory) {
   for (const entry of readdirSync(directory, { withFileTypes: true })) {
     const path = join(directory, entry.name);
     if (entry.isDirectory()) visit(path);
-    else if (/\.(?:js|css|woff2?)$/.test(entry.name) && !entry.name.endsWith('.map')) assets.push(path);
+    else if (/\.(?:js|css|woff2?)$/.test(entry.name) && !entry.name.endsWith('.map'))
+      assets.push(path);
   }
 }
 visit(join(dist, 'assets'));
@@ -20,11 +21,23 @@ const hash = createHash('sha256').update(readFileSync(join(dist, 'index.html')))
 for (const path of assets) hash.update(readFileSync(path));
 const template = readFileSync(source, 'utf8');
 hash.update(template);
-for (const name of ['offline.html', 'manifest.webmanifest', 'icon.svg', 'icons/icon-192.png', 'icons/icon-512.png', 'icons/icon-maskable-512.png', 'icons/apple-touch-icon.png']) {
+for (const name of [
+  'offline.html',
+  'manifest.webmanifest',
+  'icon.svg',
+  'icons/icon-192.png',
+  'icons/icon-512.png',
+  'icons/icon-maskable-512.png',
+  'icons/apple-touch-icon.png',
+]) {
   hash.update(readFileSync(join(dist, name)));
 }
 const version = `vlaiq-shell-${hash.digest('hex').slice(0, 16)}`;
-const paths = assets.map(path => `/${relative(dist, path).replaceAll('\\', '/')}`);
+// Buddy's character and optional audio stay truly lazy on the public homepage, even during
+// service-worker installation. The existing static fetch handler caches them after first use.
+const paths = assets
+  .filter((path) => !/^(?:Buddy|buddy-|audio-)/.test(path.split(/[\\/]/).at(-1)))
+  .map((path) => `/${relative(dist, path).replaceAll('\\', '/')}`);
 const worker = template
   .replace("const VERSION = 'vlaiq-shell-v1';", `const VERSION = ${JSON.stringify(version)};`)
   .replace('const BUILT_FILES = [];', `const BUILT_FILES = ${JSON.stringify(paths)};`);

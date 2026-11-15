@@ -3,5 +3,5 @@
   "compilerOptions": {
     "types": ["node"]
   },
-  "include": ["src", "../scripts/verify-ors.ts"]
+  "include": ["src", "scripts", "../scripts/verify-ors.ts"]
 }

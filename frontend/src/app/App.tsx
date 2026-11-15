@@ -45,6 +45,9 @@ import { useParkedCar } from '../features/car/carStore';
 import { FavouriteShortcuts, SaveFavourite, SLOTS } from '../features/car/favourites';
 import { StopPicker } from '../features/parking/StopPicker';
 import type { TourStop } from '../features/parking/ParkingRecommendations';
+import { useIdentity } from '../features/identity/IdentityProvider';
+import { AuthGateway } from '../features/identity/AuthGateway';
+import { isProtectedRoute } from '../features/identity/redirects';
 import { motionApi } from '../features/motion/motionApi';
 import { api } from '../services/api';
 import { AppShell } from './AppShell';
@@ -94,6 +97,8 @@ const NavigationScreen = lazy(() =>
 const MotionScreen = lazy(() =>
   import('../features/motion/MotionScreen').then((m) => ({ default: m.MotionScreen })),
 );
+const BuddyRoute = lazy(() => import('../features/buddy/BuddyRoute').then(m => ({ default: m.BuddyRoute })));
+const BuddyDiscovery = lazy(() => import('../features/buddy/BuddyDiscovery').then(m => ({ default: m.BuddyDiscovery })));
 const CityScreen = lazy(() =>
   import('../features/city/CityScreen').then((m) => ({ default: m.CityScreen })),
 );
@@ -111,6 +116,8 @@ const chancePaths = ['/sanse-parcare', '/parking-chance'];
 const PrivacyScreen = lazy(() =>
   import('../features/trust/PrivacyScreen').then((m) => ({ default: m.PrivacyScreen })),
 );
+const Passport = lazy(() => import('../features/identity/Passport').then(m => ({ default: m.Passport })));
+const TeamPage = lazy(() => import('../features/identity/TeamPage').then(m => ({ default: m.TeamPage })));
 const privacyPaths = ['/confidentialitate', '/privacy'];
 /** DEMO scenario: real places from the local snapshot, never invented coordinates. */
 const DEMO_ORIGIN = { id: 'place-osm-node-9322434969', name: 'Timișoara Nord' }; // railway station, OSM
@@ -130,6 +137,7 @@ export function App() {
 }
 
 function AppContent() {
+  const identity = useIdentity();
   const { location, navigate } = useAppRouter();
   const path = location.pathname;
   const motionVisible = motionPaths.includes(path);
@@ -143,6 +151,7 @@ function AppContent() {
   }, [motionVisible]);
   useEffect(() => {
     let alive = true;
+    if (!identity.authenticated) { setBalance(null); return; }
     void motionApi
       .wallet()
       .then((w) => {
@@ -152,7 +161,7 @@ function AppContent() {
     return () => {
       alive = false;
     };
-  }, []);
+  }, [identity.authenticated, identity.accountKey]);
   const startActivity = useCallback(
     (mode: 'walk' | 'cycle', context?: ActiveJourneyContext) => {
       if (activityActive) {
@@ -179,12 +188,17 @@ function AppContent() {
       Pregătim experiența FLOW…
     </div>
   );
+  if (isProtectedRoute(path) && (!identity.authenticated || identity.loading)) return (
+    <AppShell balance={null} activityActive={false}><AuthGateway /></AppShell>
+  );
   return (
     <AppShell balance={balance} activityActive={activityActive}>
       {path !== '/' && path !== '/navigation' && <VoiceFloating />}
       <div hidden={path !== '/'}>
         <Explore onStartActivity={startActivity} />
       </div>
+      {path === '/challenges' && <Suspense fallback={loading}><BuddyDiscovery onOpen={() => navigate('/buddy')} /></Suspense>}
+      {path === '/buddy' && <Suspense fallback={loading}><BuddyRoute onWalletChange={setBalance} /></Suspense>}
       {(motionVisited || motionVisible) && (
         <div hidden={!motionVisible}>
           {journey && (
@@ -260,6 +274,13 @@ function AppContent() {
         </Suspense>
       )}
       {path === '/help' && <Help />}
+      {['/profile', '/profile/edit', '/settings', '/activities'].includes(path) && (
+        <Suspense fallback={loading}>
+          <Passport key={path} editing={path === '/profile/edit' || path === '/settings'} activitiesOnly={path === '/activities'} />
+        </Suspense>
+      )}
+      {path === '/team' && <Suspense fallback={loading}><TeamPage /></Suspense>}
+      {path === '/auth/callback' && <div className="flow-page" role="status">{identity.error ?? 'Încheiem autentificarea…'}</div>}
       {![
         '/',
         ...motionPaths,
@@ -270,7 +291,7 @@ function AppContent() {
         '/city',
         '/data',
         '/sources',
-        '/help',
+        '/help', '/team', '/auth/callback', '/profile', '/profile/edit', '/settings', '/activities', '/buddy',
       ].includes(path) && (
         <section className="flow-unknown">
           <strong>404</strong>
@@ -291,6 +312,7 @@ function Explore({
   onStartActivity: (mode: 'walk' | 'cycle', journey?: ActiveJourneyContext) => void;
 }) {
   const { theme } = useTheme();
+  const identity = useIdentity();
   const [loadAttempt, setLoadAttempt] = useState(0);
   const parkings = useLoad<ParkingsResponse>(api.parkings, loadAttempt),
     timpark = useLoad<TimparkSnapshot>(api.timpark, loadAttempt),
@@ -305,6 +327,9 @@ function Explore({
   const [driveRoute, setDriveRoute] = useState<Coordinate[] | null>(null);
   const [walkRoute, setWalkRoute] = useState<Coordinate[] | null>(null);
   const [parkingSettings, setParkingSettings] = useState<ParkingSettings>(DEFAULT_PARKING_SETTINGS);
+  useEffect(() => {
+    if (identity.profile) setParkingSettings(s => ({ ...s, ...identity.profile!.preferences }));
+  }, [identity.profile?.preferences.mode, identity.profile?.preferences.maxWalkMinutes, identity.profile?.preferences.schoolZone]);
   const [journeySelection, setJourneySelection] = useState<JourneyMapSelection | null>(null);
   const [stops, setStops] = useState<TourStop[]>([]);
   const [carWalk, setCarWalk] = useState<Coordinate[] | null>(null);
@@ -1019,7 +1044,7 @@ function Help() {
             în fundal le pune în pauză.
           </p>
           <p>
-            Portofelul de prototip este legat de browser și nu este un cont sincronizat. Traseele
+            Portofelul FLOW este legat de contul verificat și sincronizat prin baza de date. Traseele
             GPS nu sunt publicate.
           </p>
           <p>

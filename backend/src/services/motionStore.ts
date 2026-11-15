@@ -7,11 +7,12 @@ import {
   MOTION_RULES,
   MotionEvaluation,
   MotionMode,
-  MotionTransaction,
+  WalletTransaction,
   type MotionPoint,
   type MotionResult,
   type MotionWallet,
 } from '@vlaiq/shared';
+import { COSMETICS, MissionId } from '../../../shared/src/buddy/contracts';
 
 const Activity = z.object({
   id: z.string().uuid(),
@@ -21,7 +22,10 @@ const Activity = z.object({
   evaluation: MotionEvaluation.optional(),
   digest: z.string().optional(),
 });
-const Owner = z.object({ activities: z.array(Activity), ledger: z.array(MotionTransaction) });
+const Owner = z.object({
+  activities: z.array(Activity),
+  ledger: z.array(WalletTransaction),
+});
 const Database = z.record(Owner);
 const day = (timestamp: number) =>
   new Intl.DateTimeFormat('en-CA', {
@@ -38,11 +42,21 @@ const RETENTION_MS = MOTION_RETENTION_DAYS * 86400000;
 export class MotionStore {
   private data: z.infer<typeof Database>;
   constructor(
-    private file: string,
+    private file: string | null,
     now = Date.now(),
   ) {
-    this.data = existsSync(file) ? Database.parse(JSON.parse(readFileSync(file, 'utf8'))) : {};
+    this.data =
+      file && existsSync(file) ? Database.parse(JSON.parse(readFileSync(file, 'utf8'))) : {};
     this.purgeInactive(now);
+  }
+  static fromSnapshot(snapshot: unknown) {
+    const store = new MotionStore(null);
+    store.data = Database.parse(snapshot);
+    store.purgeInactive();
+    return store;
+  }
+  snapshot() {
+    return structuredClone(this.data);
   }
   /** Deletes wallets whose last activity or reward is older than the retention period. */
   purgeInactive(now = Date.now()) {
@@ -62,7 +76,7 @@ export class MotionStore {
     this.save(next);
     return stale.length;
   }
-  /** Right to erasure: removes every activity and reward of this browser wallet. */
+  /** Right to erasure: removes every activity and reward for this wallet owner. */
   erase(owner: string) {
     if (!this.data[owner]) return false;
     const next = structuredClone(this.data);
@@ -71,6 +85,10 @@ export class MotionStore {
     return true;
   }
   private save(next: z.infer<typeof Database>) {
+    if (!this.file) {
+      this.data = next;
+      return;
+    }
     mkdirSync(dirname(this.file), { recursive: true, mode: 0o700 });
     writeFileSync(`${this.file}.tmp`, JSON.stringify(next), { mode: 0o600 });
     renameSync(`${this.file}.tmp`, this.file);
@@ -78,15 +96,41 @@ export class MotionStore {
   }
   wallet(owner: string, now = Date.now()): MotionWallet {
     const transactions = this.data[owner]?.ledger ?? [];
-    const daily = transactions.filter((t) => day(t.awardedAt) === day(now));
+    const daily = transactions.filter((t) => t.source === 'browser-gps-plausibility' && day(t.awardedAt) === day(now));
     const balance = transactions.reduce((sum, t) => sum + t.coins, 0);
     return {
       balance,
-      lifetime: balance,
+      lifetime: transactions.reduce((sum, t) => sum + Math.max(0, t.coins), 0),
       transactions: [...transactions].reverse(),
       dailyEarned: daily.reduce((s, t) => s + t.coins, 0),
       todayActivities: daily.length,
     };
+  }
+  activities(owner: string) {
+    return (this.data[owner]?.activities ?? []).map(({ digest, ...summary }) => summary).reverse();
+  }
+  /** Called only inside the same locked account transaction as Buddy progress. */
+  buddyCredit(owner: string, coins: number, key: string, now = Date.now()) {
+    const match = /^buddy:([a-z-]+):v(\d+)$/.exec(key);
+    const missionId = MissionId.parse(match?.[1]);
+    const version = Number(match?.[2]);
+    if (coins !== 5 || version !== 1) throw new Error('Invalid educational reward');
+    const next = structuredClone(this.data), user = next[owner] ??= { activities: [], ledger: [] };
+    if (user.ledger.some(t => 'idempotencyKey' in t && t.idempotencyKey === key)) throw Object.assign(new Error('Lecție deja recompensată.'), { status: 409 });
+    const utcDay = new Date(now).toISOString().slice(0, 10);
+    const earned = user.ledger.filter(t => t.source === 'education' && new Date(t.awardedAt).toISOString().slice(0, 10) === utcDay).reduce((n,t) => n + t.coins, 0);
+    if (earned + coins > 20) throw Object.assign(new Error('Limita educațională a fost atinsă.'), { status: 409 });
+    user.ledger.push({ id: randomUUID(), source: 'education', coins, awardedAt: now, missionId, definitionVersion: version, idempotencyKey: key, reason: 'Lecție FLOW Buddy validată determinist pe server.' });
+    this.save(next);
+  }
+  buddySpend(owner: string, coins: number, key: string, now = Date.now()) {
+    const item = COSMETICS.find(c => key === `buddy:cosmetic:${c.id}`);
+    if (!item || item.price <= 0 || coins !== item.price) throw new Error('Invalid cosmetic price');
+    if (this.wallet(owner, now).balance < coins) throw Object.assign(new Error('Nu ai suficiente FLOW Coins.'), { status: 409 });
+    const next = structuredClone(this.data), user = next[owner] ??= { activities: [], ledger: [] };
+    if (user.ledger.some(t => 'idempotencyKey' in t && t.idempotencyKey === key)) throw Object.assign(new Error('Accesoriu deja cumpărat.'), { status: 409 });
+    user.ledger.push({ id: randomUUID(), source: 'cosmetic', coins: -coins, awardedAt: now, cosmeticId: item.id, idempotencyKey: key, reason: `Buddy Workshop · ${item.name}` });
+    this.save(next);
   }
   start(owner: string, mode: MotionMode, now = Date.now()) {
     this.purgeInactive(now);
@@ -94,7 +138,12 @@ export class MotionStore {
     const user = (next[owner] ??= { activities: [], ledger: [] });
     for (const activity of user.activities)
       if (activity.state === 'recording') activity.state = 'cancelled';
-    const activity = { id: randomUUID(), mode, startedAt: now, state: 'recording' as const };
+    const activity = {
+      id: randomUUID(),
+      mode,
+      startedAt: now,
+      state: 'recording' as const,
+    };
     user.activities.push(activity);
     this.save(next);
     return { id: activity.id, startedAt: now };
@@ -115,7 +164,10 @@ export class MotionStore {
     if (!activity || !user) throw new Error('Activitate inexistentă.');
     if (activity.state === 'cancelled') throw new Error('Activitatea a fost anulată.');
     if (activity.evaluation)
-      return { evaluation: activity.evaluation, wallet: this.wallet(owner, now) };
+      return {
+        evaluation: activity.evaluation,
+        wallet: this.wallet(owner, now),
+      };
     let evaluation = evaluateMotion(activity.mode, points);
     const digest = createHash('sha256').update(JSON.stringify(points)).digest('hex');
     if (
@@ -132,7 +184,10 @@ export class MotionStore {
       };
     }
     const remaining = Math.max(0, MOTION_RULES.dailyCap - this.wallet(owner, now).dailyEarned);
-    evaluation = { ...evaluation, coins: Math.min(evaluation.coins, remaining) };
+    evaluation = {
+      ...evaluation,
+      coins: Math.min(evaluation.coins, remaining),
+    };
     if (evaluation.status === 'eligible' && remaining === 0)
       evaluation.reason = 'Activitate eligibilă. Limita zilnică de 80 FLOW Coins a fost atinsă.';
     activity.evaluation = evaluation;

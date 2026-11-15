@@ -3,4 +3,6 @@ packages:
   - backend
   - shared
 allowBuilds:
+  browser-tabs-lock: false
   esbuild: true
+  protobufjs: false

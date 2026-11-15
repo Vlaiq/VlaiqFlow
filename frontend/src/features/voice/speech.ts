@@ -1,3 +1,4 @@
+import { privateFetch } from '../identity/privateApi';
 import type { NavigationSpeechEvent } from '../../../../shared/src/flowVoice';
 
 export interface SpeechScope {
@@ -176,6 +177,11 @@ export function registerConversationGate(gate: ConversationGate) {
     if (conversationGate === gate) conversationGate = null;
   };
 }
+/** A second companion must wait until the existing voice owner has actually released audio. */
+export function acquireConversationGate(gate: ConversationGate) {
+  if (conversationGate) return null;
+  return registerConversationGate(gate);
+}
 /** Prefer a female Romanian browser voice when the FLOW Voice clip is unavailable. */
 function fallbackVoice(locale: 'ro' | 'en') {
   const voices = window.speechSynthesis?.getVoices() ?? [];
@@ -189,7 +195,7 @@ const base = (import.meta.env.VITE_API_URL ?? '').replace(/\/$/, '');
 export const navigationSpeech = new SpeechArbiter({
   now: Date.now,
   synthesize: async (event, signal) => {
-    const response = await fetch(`${base}/api/flow-voice/speech`, {
+    const response = await privateFetch(`${base}/api/flow-voice/speech`, {
       method: 'POST',
       cache: 'no-store',
       headers: { 'Content-Type': 'application/json', 'X-Flow-Voice': '1' },
