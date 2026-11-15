@@ -11,7 +11,6 @@ import {
   ChevronDown,
   ChevronUp,
   CircleHelp,
-  Compass,
   Flag,
   Layers,
   LoaderCircle,
@@ -29,7 +28,7 @@ import {
 import type { NavigationRoute } from '@vlaiq/shared';
 import { brand } from '@vlaiq/shared';
 import { useNavigation } from './useNavigation';
-import { VoiceBubble, VoiceCard, VoiceMicButton } from '../voice/FlowVoice';
+import { VoiceBubble, VoiceMicButton } from '../voice/FlowVoice';
 import { loadNavPlaces, type NavPlaces } from './places';
 import { arrivalWalkHref, handoffFromUrl } from './scenario';
 import { formatDistance, instruction } from './geometry';
@@ -264,7 +263,7 @@ function NavigationView({ places }: { places: NavPlaces }) {
             CĂLĂTORIA TA <span className="preview-mode">AUTO</span>
           </div>
           <h1>{nav.destination.name}</h1>
-          <VoiceCard compact />
+          <VoiceBubble />
           <div className="journey-inputs">
             <div className="journey-line">
               <span className="origin-dot" />
@@ -578,19 +577,18 @@ function NavigationView({ places }: { places: NavPlaces }) {
       )}
 
       <aside className="map-tools" aria-label="Comenzi hartă">
-        {active && <VoiceMicButton />}
-        {active && (
-          <button
-            className="icon-button map-tool"
-            aria-label={
-              nav.muted ? 'Activează indicațiile vocale' : 'Dezactivează indicațiile vocale'
-            }
-            aria-pressed={!nav.muted}
-            onClick={() => nav.setMuted(!nav.muted)}
-          >
-            {nav.muted ? <VolumeX size={20} /> : <Volume2 size={20} />}
-          </button>
-        )}
+        {/* Same four buttons, same size and order, before and during the drive. */}
+        <VoiceMicButton className="icon-button map-tool" />
+        <button
+          className="icon-button map-tool"
+          aria-label={
+            nav.muted ? 'Activează indicațiile vocale' : 'Dezactivează indicațiile vocale'
+          }
+          aria-pressed={!nav.muted}
+          onClick={() => nav.setMuted(!nav.muted)}
+        >
+          {nav.muted ? <VolumeX size={20} /> : <Volume2 size={20} />}
+        </button>
         <button
           className={`icon-button map-tool ${nav.follow && active ? 'enabled' : ''}`}
           aria-label="Recentrează harta și urmărește vehiculul"
@@ -601,18 +599,6 @@ function NavigationView({ places }: { places: NavPlaces }) {
         >
           <LocateFixed size={21} />
         </button>
-        {!active && <button
-          className="icon-button map-tool compass-tool"
-          aria-label="Nord în sus și perspectivă 2D"
-          onClick={() => {
-            nav.setPerspective(false);
-            nav.setFollow(true);
-            setRecenter((v) => v + 1);
-          }}
-        >
-          <Compass size={22} />
-          <span>N</span>
-        </button>}
         <button
           className={`icon-button map-tool ${nav.perspective && active ? 'enabled' : ''}`}
           aria-label={nav.perspective ? 'Activează perspectiva 2D' : 'Activează perspectiva 3D'}

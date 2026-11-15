@@ -1521,3 +1521,25 @@ html[data-theme='light'] .navigation-screen .demo-scenario {
     right: 16px;
   }
 }
+
+/* All map buttons share one size and shape; the talk button only changes colour when FLOW is on. */
+.navigation-screen .map-tools .flow-voice-mic {
+  width: 46px;
+  height: 46px;
+  border-radius: 14px;
+  border: 1px solid var(--nav-border);
+  box-shadow: 0 5px 20px #0003;
+}
+.navigation-screen .map-tools .flow-voice-mic[data-state='listening'],
+.navigation-screen .map-tools .flow-voice-mic[data-state='speaking'] {
+  background: rgb(var(--primary));
+  border-color: rgb(var(--primary));
+  color: rgb(var(--primary-fg));
+}
+.navigation-screen .map-tools .flow-voice-mic[data-state='connecting'] {
+  border-color: rgb(var(--primary));
+}
+.route-preview .flow-voice-bubble {
+  margin: 0 0 12px;
+  max-width: none;
+}

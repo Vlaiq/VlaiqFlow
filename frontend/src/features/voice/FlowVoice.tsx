@@ -14,11 +14,10 @@ import {
   useConversationMode,
   useRawConversation,
 } from '@elevenlabs/react';
-import { Mic, MicOff, Volume2, VolumeX, Square, AudioLines, RotateCcw } from 'lucide-react';
+import { Mic, MicOff, Square, AudioLines, RotateCcw } from 'lucide-react';
 import { z } from 'zod';
 import type { Destination } from '@vlaiq/shared';
 import { FLOW_AGENT } from '../../../../shared/src/flowVoice';
-import { useAppRouter } from '../../app/router';
 import { navigationSpeech, registerConversationGate } from './speech';
 import './voice.css';
 
@@ -35,11 +34,37 @@ class VoiceUnavailable extends Error {
 }
 /** One line of the conversation, kept in memory only and cleared on the next start or page change. */
 export interface TranscriptLine {
-  id: number;
+  /** Session and event, so lines from different sessions never collide. */
+  id: string;
   who: 'user' | 'agent';
   text: string;
 }
-const TRANSCRIPT_LINES = 8;
+const TRANSCRIPT_LINES = 12;
+const TRANSCRIPT_KEY = 'vlaiq-voice-transcript';
+/** The conversation survives page changes and reloads in this browser tab (sessionStorage only). */
+function loadTranscript(): TranscriptLine[] {
+  try {
+    const raw = window.sessionStorage.getItem(TRANSCRIPT_KEY);
+    const parsed = raw ? (JSON.parse(raw) as unknown) : [];
+    return Array.isArray(parsed)
+      ? parsed
+          .filter(
+            (l): l is TranscriptLine =>
+              !!l &&
+              typeof l.id === 'string' &&
+              (l.who === 'user' || l.who === 'agent') &&
+              typeof l.text === 'string',
+          )
+          .slice(-TRANSCRIPT_LINES)
+      : [];
+  } catch {
+    return [];
+  }
+}
+/** Voice-style tags the agent speaks with ("[happy]", "[calm]") are not part of the text. */
+const cleanAgentText = (text: string) => text.replace(/[[a-z][a-z _-]{1,24}]s*/gi, '').trim();
+/** Speech recognised as noise ("...") is not something the driver said. */
+const isNoise = (text: string) => !/[p{L}p{N}]/u.test(text);
 interface VoiceContextValue {
   state: State;
   transcript: TranscriptLine[];
@@ -64,8 +89,7 @@ interface Heard {
   tell(text: string): void;
 }
 const HeardContext = createContext<Heard | null>(null);
-/** Pages where FLOW Voice stays connected while the driver moves between them. */
-const VOICE_PAGES = ['/', '/navigation'];
+
 export function FlowVoiceProvider({ children }: { children: ReactNode }) {
   return (
     <ConversationProvider>
@@ -80,12 +104,20 @@ function VoiceRuntime({ children }: { children: ReactNode }) {
   rawRef.current = raw;
   const input = useConversationInput();
   const { isSpeaking } = useConversationMode();
-  const { location } = useAppRouter();
   const [state, setState] = useState<State>('idle');
   const [error, setError] = useState<string | null>(null);
   const [outputMuted, setOutputMuted] = useState(false);
   const [activity, setActivity] = useState(0);
-  const [transcript, setTranscript] = useState<TranscriptLine[]>([]);
+  const [transcript, setTranscript] = useState<TranscriptLine[]>(loadTranscript);
+  const transcriptRef = useRef(transcript);
+  transcriptRef.current = transcript;
+  useEffect(() => {
+    try {
+      window.sessionStorage.setItem(TRANSCRIPT_KEY, JSON.stringify(transcript));
+    } catch {
+      /* private mode: the conversation still shows for this page */
+    }
+  }, [transcript]);
   const registration = useRef<{
     tools: ToolSession;
     begin: () => void;
@@ -198,17 +230,8 @@ function VoiceRuntime({ children }: { children: ReactNode }) {
       }),
     [],
   );
-  // The session stays connected between the planner and navigation (the driver keeps talking);
-  // any other page ends it. A query change on the same page never does.
-  const lastPath = useRef(location.pathname);
-  useEffect(() => {
-    const from = lastPath.current;
-    lastPath.current = location.pathname;
-    if (from === location.pathname) return;
-    if (VOICE_PAGES.includes(from) && VOICE_PAGES.includes(location.pathname)) return;
-    stop();
-    setTranscript([]);
-  }, [location.pathname, stop]);
+  // The session and the conversation stay across every page: the driver can switch screens and
+  // FLOW still knows what was said. One button (on any page) ends it.
   // End the session only when the app really unmounts. Depending on \`stop\` here would end a live
   // conversation whenever the SDK hands out a new endSession function on a re-render.
   const stopRef = useRef(stop);
@@ -285,11 +308,23 @@ function VoiceRuntime({ children }: { children: ReactNode }) {
             clearTimeout(timer.current);
             // The agent must be heard, like a car navigator: never start a session silent.
             rawRef.current?.setVolume({ volume: 1 });
+            // One button controls FLOW Voice: a session always starts listening.
+            if (inputRef.current.isMuted) inputRef.current.setMuted(false);
             setState('listening');
             // A new session starts from what the app already knows (trip planned on the home
             // screen, navigation in progress), so the agent does not ask again.
             const summary = registration.current?.summary?.();
-            if (summary) controls.sendContextualUpdate(summary);
+            const recent = transcriptRef.current
+              .slice(-6)
+              .map((l) => `${l.who === 'user' ? 'Șoferul' : 'FLOW'}: ${l.text}`)
+              .join(' | ');
+            const context = [
+              summary,
+              recent && `Conversația de până acum (continuă de aici, nu o lua de la capăt): ${recent}`,
+            ]
+              .filter(Boolean)
+              .join(' ');
+            if (context) controls.sendContextualUpdate(context);
           }
         },
         onDisconnect: () => {
@@ -309,9 +344,11 @@ function VoiceRuntime({ children }: { children: ReactNode }) {
           if (valid()) setState(mode === 'speaking' ? 'speaking' : 'listening');
         },
         onMessage: ({ message, role, event_id }) => {
-          const text = message.trim();
-          if (!valid() || !text) return;
-          const line: TranscriptLine = { id: event_id, who: role === 'user' ? 'user' : 'agent', text };
+          const who = role === 'user' ? 'user' : 'agent';
+          const text = who === 'agent' ? cleanAgentText(message) : message.trim();
+          // Noise heard as "..." is neither shown nor treated as the driver talking.
+          if (!valid() || !text || isNoise(text)) return;
+          const line: TranscriptLine = { id: `${id}-${event_id}`, who, text };
           lastVoice.current = Date.now();
           if (line.who === 'user') lastUserAt.current = Date.now();
           else lastAgentAt.current = Date.now();
@@ -437,9 +474,7 @@ export function VoiceCard({
         : voice.state === 'speaking'
           ? 'Vorbește'
           : connected
-            ? voice.muted
-              ? 'Microfon oprit'
-              : 'Ascultă'
+            ? 'Ascultă'
             : voice.state === 'error'
               ? 'Conexiune indisponibilă'
               : 'Spune unde vrei să ajungi';
@@ -479,28 +514,6 @@ export function VoiceCard({
           <span>{connected || busy ? 'Oprește' : 'Pornește'}</span>
         </button>
       </div>
-      {connected && (
-        <div className="flow-voice-controls">
-          <button
-            onClick={voice.toggleMic}
-            aria-pressed={voice.muted}
-            aria-label={
-              voice.muted ? 'Activează microfonul FLOW Voice' : 'Oprește microfonul FLOW Voice'
-            }
-          >
-            {voice.muted ? <MicOff size={17} /> : <Mic size={17} />} Microfon
-          </button>
-          <button
-            onClick={voice.toggleOutput}
-            aria-pressed={voice.outputMuted}
-            aria-label={
-              voice.outputMuted ? 'Activează redarea copilotului' : 'Oprește redarea copilotului'
-            }
-          >
-            {voice.outputMuted ? <VolumeX size={17} /> : <Volume2 size={17} />} Redare
-          </button>
-        </div>
-      )}
       {voice.transcript.length > 0 && (
         <ol className="flow-voice-transcript" aria-label="Conversația cu FLOW Voice" aria-live="polite">
           {voice.transcript.map((line) => (
@@ -585,5 +598,19 @@ export function VoiceBubble() {
         </>
       )}
     </p>
+  );
+}
+/**
+ * On pages without their own voice controls, a live conversation stays visible as one floating mic,
+ * so the driver can always see that FLOW Voice is on and switch it off.
+ */
+export function VoiceFloating() {
+  const voice = useContext(Context);
+  if (!voice || voice.state === 'idle' || voice.state === 'error') return null;
+  return (
+    <div className="flow-voice-floating">
+      <VoiceBubble />
+      <VoiceMicButton />
+    </div>
   );
 }

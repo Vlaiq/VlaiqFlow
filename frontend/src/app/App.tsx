@@ -53,6 +53,7 @@ import { useTheme } from './theme';
 import {
   FlowVoiceProvider,
   VoiceCard,
+  VoiceFloating,
   useVoiceHeard,
   useVoiceRegistration,
   useVoiceTell,
@@ -179,6 +180,7 @@ function AppContent() {
   );
   return (
     <AppShell balance={balance} activityActive={activityActive}>
+      {path !== '/' && path !== '/navigation' && <VoiceFloating />}
       <div hidden={path !== '/'}>
         <Explore onStartActivity={startActivity} />
       </div>

@@ -307,3 +307,13 @@
 .flow-voice-bubble[data-who='error'] {
   border: 1px solid #f2a65a;
 }
+
+.flow-voice-floating {
+  position: fixed;
+  right: 16px;
+  bottom: calc(88px + env(safe-area-inset-bottom));
+  z-index: 40;
+  display: flex;
+  align-items: flex-end;
+  gap: 10px;
+}
