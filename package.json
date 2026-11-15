@@ -10,8 +10,10 @@
   "scripts": {
     "dev": "pnpm -r --parallel dev",
     "identity:acceptance": "node scripts/start-identity-acceptance.mjs",
+    "identity:connectivity": "pnpm -F backend identity:connectivity",
+    "test:identity-operator": "node --test scripts/identity-operator.test.mjs",
     "build": "pnpm -F frontend build",
-    "test": "pnpm -r test",
+    "test": "pnpm -r test && pnpm test:identity-operator",
     "typecheck": "pnpm -r typecheck",
     "data:parkings": "node scripts/fetch-osm-parkings.mjs",
     "data:city": "node scripts/fetch-city-data.mjs",

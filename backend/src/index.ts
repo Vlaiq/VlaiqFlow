@@ -117,6 +117,6 @@ const onError: ErrorRequestHandler = (err, _req, res, _next) => {
 };
 app.use(onError);
 
-app.listen(config.port, () => {
+app.listen(config.port, config.host, () => {
   console.log(`VLAIQ backend listening on http://localhost:${config.port}`);
 });

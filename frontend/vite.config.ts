@@ -32,7 +32,7 @@ export default defineConfig({
     port: 5173,
     host: true, // reachable from a phone on the same Wi-Fi for testing
     proxy: {
-      '/api': 'http://localhost:8787',
+      '/api': 'http://127.0.0.1:8787',
     },
   },
 });

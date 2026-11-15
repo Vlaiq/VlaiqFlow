@@ -9,7 +9,8 @@
     "test": "vitest run --passWithNoTests",
     "typecheck": "tsc -p tsconfig.json",
     "db:migrate": "tsx scripts/migrate.ts",
-    "identity:verify-live": "tsx scripts/verify-live-identity.ts"
+    "identity:verify-live": "tsx scripts/verify-live-identity.ts",
+    "identity:connectivity": "tsx scripts/check-auth0-connectivity.ts"
   },
   "dependencies": {
     "@vlaiq/shared": "workspace:*",

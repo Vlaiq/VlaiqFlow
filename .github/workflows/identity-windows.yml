@@ -1,0 +1,35 @@
+name: Identity Windows operator checks
+on:
+  pull_request:
+    paths:
+      - 'scripts/identity-*'
+      - 'scripts/start-identity-acceptance.mjs'
+      - 'backend/scripts/**'
+      - 'backend/src/config.ts'
+      - 'backend/src/index.ts'
+      - 'frontend/vite.config.ts'
+      - '**/package.json'
+      - 'pnpm-lock.yaml'
+      - '.github/workflows/identity-windows.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  windows-operator:
+    runs-on: windows-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24.22.1'
+      - name: Install the repository's pinned package manager
+        run: npm.cmd install --global pnpm@12.18.0
+      - run: pnpm.cmd install --frozen-lockfile
+      - name: Native paths, literal arguments, ports and descendant process cleanup
+        run: node --test scripts/identity-operator.test.mjs
+      - name: Hidden-input and connectivity contract tests (no real tokens)
+        run: pnpm.cmd -F backend exec vitest run scripts/lib
+      - run: pnpm.cmd typecheck
+      - run: pnpm.cmd build
+      # No real Auth0 identity, TTY/Windows Hello, PostgreSQL or microphone is certified by this job.

@@ -1,8 +1,7 @@
 // Run locally after Universal Login. Never paste a token into chat or command arguments.
 // Reuses the production JWT guard: HTTPS issuer discovery + JWKS, RS256, exp and audience.
 import express, { type ErrorRequestHandler } from 'express';
-import { open, lstat } from 'node:fs/promises';
-import { constants } from 'node:fs';
+import { readPrivateToken } from './lib/privateToken';
 import { jwtGuard, requireIdentity } from '../src/middleware/identity';
 import { config } from '../src/config';
 import { Profile, TeamPresentation } from '../../shared/src/identity';
@@ -40,20 +39,9 @@ async function main() {
     console.log('PASS: real running API rejects missing tokens with 401. No Auth0 authentication claimed.');
     return;
   }
-  const file = process.env.IDENTITY_ACCEPTANCE_TOKEN_FILE;
-  if (!file) throw new Error('Set IDENTITY_ACCEPTANCE_TOKEN_FILE to a local private file; never pass a token as an argument.');
-  const info = await lstat(file);
-  if (!info.isFile() || info.isSymbolicLink() || (info.mode & 0o077) !== 0)
-    throw new Error('Token file must be a regular private file (chmod 600).');
-  const handle = await open(file, constants.O_RDONLY | constants.O_NOFOLLOW);
-  let token: string;
-  try {
-    const opened = await handle.stat();
-    if (!opened.isFile() || (opened.mode & 0o077) !== 0 || opened.size > 20000)
-      throw new Error('Invalid token file.');
-    token = (await handle.readFile('utf8')).trim();
-  } finally { await handle.close(); }
-  if (!/^[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+$/.test(token)) throw new Error('Expected a JWT access token only.');
+  if (process.env.IDENTITY_ACCEPTANCE_TOKEN_FILE || process.argv.length > 2)
+    throw new Error('Use hidden local terminal entry; token files and arguments are refused.');
+  let token = await readPrivateToken();
   const validator = express();
   validator.get('/', jwtGuard(), requireIdentity, (req, res) => res.json({
     validated: true,
@@ -82,11 +70,14 @@ async function main() {
     // Re-save the exact public presentation: exercises the write without changing jury content.
     requireStatus(await request('/api/team', token, 'PATCH', team), expected === 'contributor' ? 200 : 403, 'Team PATCH');
     console.log(`PASS: real Auth0 RS256 issuer/JWKS/audience/expiry validation; profile 200; ${expected} team PATCH ${expected === 'contributor' ? 200 : 403}. No tokens or personal fields logged.`);
-  } finally { await new Promise<void>((resolve) => server.close(() => resolve())); }
+  } finally {
+    token = '';
+    await new Promise<void>((resolve) => server.close(() => resolve()));
+  }
 }
 main().catch((error) => {
   // Never print upstream bodies, the token, claims, connection strings or request headers.
-  console.error(error instanceof Error && /^(Public team|Missing token|Set IDENTITY|Token file|Invalid token|Expected |Actual Auth0|Verified Auth0|Real account|Contributor access|Team PATCH|Validator)/.test(error.message)
+  console.error(error instanceof Error && /^(Public team|Missing token|Use |Token entry|Terminal input|Invalid or oversized|Expected |Actual Auth0|Verified Auth0|Real account|Contributor access|Team PATCH|Validator)/.test(error.message)
     ? error.message : 'Acceptance failed. Check connectivity, migration and a fresh Auth0 access token locally.');
   process.exitCode = 1;
 });

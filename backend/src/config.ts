@@ -9,6 +9,7 @@ const optionalSecret = z
 const Env = z.object({
   // Not "PORT": tools that launch the frontend set PORT, and the backend must not pick it up.
   API_PORT: z.coerce.number().int().positive().default(8787),
+  API_HOST: z.enum(['127.0.0.1', '0.0.0.0', '::1', '::']).default('0.0.0.0'),
   CORS_ORIGINS: z.string().default('http://localhost:5173'),
   ORS_API_KEY: optionalSecret,
   GEMINI_API_KEY: optionalSecret,
@@ -49,6 +50,7 @@ const env = Env.parse(process.env);
 
 export const config = {
   port: env.API_PORT,
+  host: env.API_HOST,
   corsOrigins: env.CORS_ORIGINS.split(',')
     .map((o) => o.trim())
     .filter(Boolean),
