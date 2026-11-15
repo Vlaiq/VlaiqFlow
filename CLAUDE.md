@@ -70,6 +70,7 @@ API request and response types are defined **once** in `shared/src/schemas` (zod
 - `pnpm data:parkings` — regenerate `shared/src/data/parkings.osm.json` from OpenStreetMap
 - `pnpm data:city` — refresh the City Hall snapshots (Timpark, street register, landmarks, neighbourhoods); restart the backend afterwards
 - `pnpm data:osm-places` — refresh OSM named streets and major places (one Overpass query); restart the backend afterwards
+- `pnpm data:osm-pois` — refresh every named OSM place in Timișoara (shops, restaurants, pharmacies, stops, the airport…) used by search and FLOW Voice (one Overpass query); restart the backend afterwards
 - `pnpm data:schools` — refresh OSM schools and kindergartens for the school drop-off zones (spec §6.16); restart the backend afterwards
 - `pnpm data:demo-routes` — with `pnpm dev` running, save the real DEMO routes (Gara de Nord → Piața Victoriei parkings) used when the routing provider is down (spec §6.23); restart the backend afterwards
 - `pnpm -F backend start` — run the backend without watch (production on Vultr)

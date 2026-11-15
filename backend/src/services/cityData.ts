@@ -35,6 +35,7 @@ const pois = load('pois.json', PoisSnapshot);
 const neighbourhoods = load('neighbourhoods.json', NeighbourhoodsSnapshot);
 const osmStreets = load('osm-streets.json', OsmStreetsSnapshot);
 const osmPlaces = load('osm-places.json', OsmPlacesSnapshot);
+const osmPois = load('osm-pois.json', OsmPlacesSnapshot);
 const schools = load('schools.osm.json', OsmSchoolsSnapshot);
 
 if (timpark) {
@@ -51,6 +52,8 @@ function buildDestinationsResponse(): DestinationsResponse | null {
     osmStreets: osmStreets?.data.streets ?? [],
     osmPlaces: [
       ...(osmPlaces?.data.places ?? []),
+      // Everyday named places (shops, restaurants, pharmacies, stops…), deduplicated with the above.
+      ...(osmPois?.data.places ?? []),
       // Named schools and kindergartens are searchable destinations too (§6.16).
       ...(schools?.data.schools ?? []).flatMap((s) =>
         s.name ? [{ id: s.id, name: s.name, category: s.kind, lat: s.lat, lng: s.lng }] : [],
@@ -64,6 +67,7 @@ function buildDestinationsResponse(): DestinationsResponse | null {
     timpark && { name: 'Geometria străzilor Timpark', source: timpark.source, fetchedAt: timpark.fetchedAt },
     osmStreets && { name: 'Geometria străzilor (OpenStreetMap)', source: osmStreets.source, fetchedAt: osmStreets.fetchedAt },
     osmPlaces && { name: 'Locuri importante (OpenStreetMap)', source: osmPlaces.source, fetchedAt: osmPlaces.fetchedAt },
+    osmPois && { name: 'Locuri din oraș: magazine, restaurante, servicii, stații (OpenStreetMap)', source: osmPois.source, fetchedAt: osmPois.fetchedAt },
     schools && { name: 'Școli și grădinițe (OpenStreetMap)', source: schools.source, fetchedAt: schools.fetchedAt },
   ].filter((s): s is DestinationsResponse['sources'][number] => Boolean(s));
   console.log(`[city] destinations: ${destinations.length}`);

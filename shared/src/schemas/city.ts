@@ -54,9 +54,22 @@ export type OsmStreet = z.infer<typeof OsmStreet>;
 export const OsmStreetsSnapshot = osmSnapshot(z.object({ streets: z.array(OsmStreet) }));
 export type OsmStreetsSnapshot = z.infer<typeof OsmStreetsSnapshot>;
 
-export const PlaceCategory = z.enum(['mall', 'station', 'bus_station', 'hospital', 'university', 'stadium', 'park', 'school', 'kindergarten']);
+export const PlaceCategory = z.enum([
+  'mall', 'station', 'bus_station', 'hospital', 'university', 'stadium', 'park', 'school', 'kindergarten',
+  // Everyday places from the OpenStreetMap places export (pnpm data:osm-pois).
+  'supermarket', 'shop', 'food', 'pharmacy', 'health', 'bank', 'fuel', 'charging', 'market', 'worship',
+  'culture', 'public', 'stop', 'hotel', 'attraction', 'sport', 'office', 'airport',
+]);
 export type PlaceCategory = z.infer<typeof PlaceCategory>;
-export const OsmPlace = z.object({ id: z.string(), name: z.string(), category: PlaceCategory, lat: z.number(), lng: z.number() });
+export const OsmPlace = z.object({
+  id: z.string(),
+  name: z.string(),
+  category: PlaceCategory,
+  lat: z.number(),
+  lng: z.number(),
+  /** Brand, alternative or former names from OSM, also searchable. */
+  aliases: z.array(z.string()).optional(),
+});
 export type OsmPlace = z.infer<typeof OsmPlace>;
 export const OsmPlacesSnapshot = osmSnapshot(z.object({ places: z.array(OsmPlace) }));
 export type OsmPlacesSnapshot = z.infer<typeof OsmPlacesSnapshot>;

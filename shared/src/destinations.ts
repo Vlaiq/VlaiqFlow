@@ -108,6 +108,24 @@ export const PLACE_CATEGORY_RO: Record<OsmPlace['category'], string> = {
   park: 'Parc',
   school: 'Școală / liceu',
   kindergarten: 'Grădiniță',
+  supermarket: 'Supermarket',
+  shop: 'Magazin',
+  food: 'Restaurant / cafenea',
+  pharmacy: 'Farmacie',
+  health: 'Clinică / cabinet medical',
+  bank: 'Bancă',
+  fuel: 'Benzinărie',
+  charging: 'Încărcare mașini electrice',
+  market: 'Piață',
+  worship: 'Lăcaș de cult',
+  culture: 'Cultură (teatru, cinema, muzeu)',
+  public: 'Instituție publică',
+  stop: 'Stație de transport public',
+  hotel: 'Cazare',
+  attraction: 'Obiectiv turistic',
+  sport: 'Sport',
+  office: 'Birou / firmă',
+  airport: 'Aeroport',
 };
 
 /** Same name and category within 400 m → one destination (OSM often maps a building and its campus). */
@@ -173,7 +191,8 @@ export function buildDestinations({
 
   // Major places from OpenStreetMap that the register does not list (malls, stations, hospitals…).
   for (const p of dedupePlaces(osmPlaces)) {
-    if (!insideCity([p.lng, p.lat])) continue;
+    // The airport is outside the municipality but is a destination everyone means.
+    if (p.category !== 'airport' && !insideCity([p.lng, p.lat])) continue;
     const hood = neighbourhoodAt([p.lng, p.lat], neighbourhoods);
     out.push({
       id: `place-${p.id}`,
@@ -182,7 +201,7 @@ export function buildDestinations({
       nameEn: null,
       detail: hood ? hood.properties.name : null,
       category: p.category,
-      aliases: [],
+      aliases: p.aliases ?? [],
       location: { lat: p.lat, lng: p.lng },
       precision: 'exact',
       locationSource: 'OpenStreetMap',

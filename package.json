@@ -16,6 +16,7 @@
     "data:city": "node scripts/fetch-city-data.mjs",
     "data:osm-places": "node scripts/fetch-osm-places.mjs",
     "data:schools": "node scripts/fetch-osm-schools.mjs",
-    "data:demo-routes": "node scripts/fetch-demo-routes.mjs"
+    "data:demo-routes": "node scripts/fetch-demo-routes.mjs",
+    "data:osm-pois": "node scripts/fetch-osm-pois.mjs"
   }
 }
