@@ -32,6 +32,7 @@ import {
 } from './journeyContract';
 import { navigationState } from './navigationState';
 import { navigationSpeech } from './speech';
+import type { JourneySnapshot } from '../../../../shared/src/journeyBuddy';
 
 const SPOKEN_HERE =
   /^(?:de la |din |de )?(?:locatia mea|pozitia mea|locatia curenta|aici|unde sunt|unde ma aflu)$/;
@@ -71,6 +72,7 @@ function locate(
 const placeLabel = (d: Destination) => `${d.name}${d.detail ? ` · ${d.detail}` : ''}`;
 
 interface Inputs {
+  suspended?: boolean;
   origin: Origin | null;
   destination: Destination | null;
   places: Destination[] | null;
@@ -145,7 +147,7 @@ export function useFlowPlanner(props: Inputs) {
     previous.current = signature;
     revision.current++;
   }
-  const result = useCompleteJourneys(input, attempt, published);
+  const result = useCompleteJourneys(props.suspended ? null : input, attempt, props.suspended ? null : published);
   const value = result.state === 'ok' ? result.value : null;
   const comparisonRef = useRef<{
     value: CompleteJourneyResponse;
@@ -160,7 +162,7 @@ export function useFlowPlanner(props: Inputs) {
           if (old?.value === value && old.signature === signature) return old.comparison;
           const comparison = contractComparison(
             value,
-            `flow-${sessionId.current}-${crypto.randomUUID()}`,
+            value.handoff ? `${value.handoff.id}:${value.handoff.revision}` : `flow-${sessionId.current}-${crypto.randomUUID()}`,
             props.demo ? 'demo' : 'live',
             props.origin.name.startsWith('Locația mea') ? 'Locația curentă' : props.origin.name,
             props.destination.name,
@@ -358,7 +360,7 @@ export function useFlowPlanner(props: Inputs) {
           ...(arriveIso(s.props.settings) ? { arriveAt: arriveIso(s.props.settings) } : {}),
           ...(mode ? { modes: [modeCategory[mode]] } : {}),
         });
-        const raw = await fetchCompleteJourneys(input, signal).catch((e: unknown) => {
+        const raw = await fetchCompleteJourneys(input, signal, true).catch((e: unknown) => {
           // No route right now: still show the place the user asked for.
           if (!signal.aborted) showDestination();
           throw e;
@@ -558,6 +560,15 @@ export function useFlowPlanner(props: Inputs) {
       props.setDestination(d);
     },
     result,
+    input,
+    restore: (snapshot: JourneySnapshot, id: string | null, preferred: JourneyPreference = snapshot.input.preference) => {
+      changed();
+      mapAck.current = null;
+      setPublished(snapshot);
+      setPreference(preferred);
+      setTemporaryMode(snapshot.input.modes.length === 1 ? ({ car_park_walk: 'driving', walk: 'walking', cycle: 'cycling' } as const)[snapshot.input.modes[0]!] : null);
+      setManualId(id);
+    },
     preference,
     selectedId,
     comparisonId: comparison?.comparison_id,

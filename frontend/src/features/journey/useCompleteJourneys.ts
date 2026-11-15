@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { CompleteJourneyResponse, type CompleteJourneyRequest } from '@vlaiq/shared';
 import { apiFetch } from '../../services/http';
+import { journeySessionHeaders } from './journeyHandoff';
 export type CompleteLoad =
   | { state: 'idle' | 'loading' }
   | { state: 'error'; message: string }
@@ -10,10 +11,11 @@ const BASE = (import.meta.env.VITE_API_URL ?? '').replace(/\/$/, '');
 export async function fetchCompleteJourneys(
   input: CompleteJourneyRequest,
   signal: AbortSignal,
+  handoff = false,
 ): Promise<CompleteJourneyResponse> {
   const res = await apiFetch(`${BASE}/api/journeys/complete`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: { 'Content-Type': 'application/json', ...(handoff ? journeySessionHeaders() : {}) },
     cache: 'no-store',
     body: JSON.stringify(input),
     signal,
@@ -54,7 +56,7 @@ export function useCompleteJourneys(
     );
     let alive = true;
     setResult({ state: 'loading' });
-    fetchCompleteJourneys(JSON.parse(key), ctrl.signal)
+    fetchCompleteJourneys(JSON.parse(key), ctrl.signal, true)
       .then((value) => {
         if (alive) setResult({ state: 'ok', value });
       })

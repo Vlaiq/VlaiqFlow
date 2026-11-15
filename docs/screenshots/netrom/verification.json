@@ -1,0 +1,40 @@
+{
+  "date": "2026-11-15",
+  "local_browser": {
+    "fixtures": "Synthetic Auth0 SDK/accounts/providers; real signed RS256, application, handoff handlers and MapLibre",
+    "roundTrip": {
+      "selectedId": "fixture-cycle",
+      "selectedRevision": "22df4448-3a24-47d3-aee9-20a15f97851a",
+      "features": [
+        {
+          "id": "fixture-cycle",
+          "revision": "22df4448-3a24-47d3-aee9-20a15f97851a",
+          "mode": "cycle"
+        }
+      ]
+    },
+    "loginReturn": "PASS: same reference survives full-page SDK callback simulation",
+    "otherAccount": "PASS: 403",
+    "expiry": "PASS: 409, no selection",
+    "recalculation": "PASS: original inputs preserved; explicit calculation creates a fresh reference",
+    "noEligible": "PASS: exact empty-set message; adjusting limit allows original walking option",
+    "geminiOutage": "PASS: facts and exact map selection remain available",
+    "changedComparison": "PASS: obsolete selection blocked",
+    "pageErrors": []
+  },
+  "live_providers_browser": {
+    "identity": "LOCAL RS256 TEST ACCOUNT, NOT REAL AUTH0 LOGIN",
+    "basemap": "blank fixture; actual MapLibre + municipal layers",
+    "providers": "REAL HeiGIT and real Timpark/OSM local snapshots",
+    "gemini": "gemini",
+    "modelNarrative": "Opțiunea selectată respectă limita maximă stabilită pentru deplasarea pe jos, având duratele estimate de parcurs calculate prin serviciul de navigare. În plus, această alternativă nu implică tarife de parcare cu proveniență specifică și nici date privind disponibilitatea live a locurilor.",
+    "options": 5,
+    "explainedOptionId": "flow-df4e8e4d7a815b91",
+    "drawnOptionIds": [
+      "flow-df4e8e4d7a815b91"
+    ],
+    "revision": "6a7216e0-438c-4c27-9ecc-c5fe3458fcf6",
+    "elapsedMs": 25449,
+    "pageErrors": []
+  }
+}

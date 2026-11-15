@@ -730,7 +730,7 @@ export function MapView({
     const comparisonId = journey?.comparisonId;
     const journeyId = journey?.value.id;
     for (const feature of data.features)
-      feature.properties = { ...feature.properties, comparisonId, journeyId };
+      feature.properties = { ...feature.properties, comparisonId, journeyId, revision: journey?.revision };
     if (comparisonId && journeyId) onJourneyRendered?.(comparisonId, journeyId, false);
     const acknowledge = () => {
       if (

@@ -3,10 +3,20 @@ import { AuthGateway } from '../identity/AuthGateway';
 import { useAppRouter } from '../../app/router';
 import { accountBuddy } from './accountClient';
 import { BuddyScreen } from './BuddyScreen';
+import { BuddyJourney } from './BuddyJourney';
+import { referenceFromSearch } from '../journey/journeyHandoff';
 export function BuddyRoute({ onWalletChange }: { onWalletChange(balance: number): void }) {
   const id = useIdentity(),
-    { navigate } = useAppRouter();
+    { navigate, location } = useAppRouter();
   if (!id.authenticated) return <AuthGateway />;
+  if (new URLSearchParams(location.search).has('journey')) {
+    try {
+      const reference = referenceFromSearch(location.search);
+      return <BuddyJourney key={`${id.accountKey}:${reference.id}:${reference.revision}`} reference={reference} />;
+    } catch {
+      return <div className="flow-page"><p role="alert">Referința comparației este invalidă. Recalculează drumul.</p><a href="/">Înapoi la hartă</a></div>;
+    }
+  }
   if (id.profileLoading)
     return (
       <div className="flow-page" role="status">

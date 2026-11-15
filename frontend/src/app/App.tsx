@@ -1,3 +1,4 @@
+import { pendingJourney, restoreJourney, saveJourneyHandoff, settingsFromJourney } from '../features/journey/journeyHandoff';
 import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   ArrowLeft,
@@ -310,6 +311,8 @@ function Explore({
 }) {
   const { theme } = useTheme();
   const identity = useIdentity();
+  const [handoffError, setHandoffError] = useState<string | null>(null);
+  const [validatedReturn, setValidatedReturn] = useState<string | null>(null);
   const [loadAttempt, setLoadAttempt] = useState(0);
   const parkings = useLoad<ParkingsResponse>(api.parkings, loadAttempt),
     timpark = useLoad<TimparkSnapshot>(api.timpark, loadAttempt),
@@ -325,7 +328,7 @@ function Explore({
   const [walkRoute, setWalkRoute] = useState<Coordinate[] | null>(null);
   const [parkingSettings, setParkingSettings] = useState<ParkingSettings>(DEFAULT_PARKING_SETTINGS);
   useEffect(() => {
-    if (identity.profile) setParkingSettings(s => ({ ...s, ...identity.profile!.preferences }));
+    if (identity.profile && !new URLSearchParams(window.location.search).has('journey')) setParkingSettings(s => ({ ...s, ...identity.profile!.preferences }));
   }, [identity.profile?.preferences.mode, identity.profile?.preferences.maxWalkMinutes, identity.profile?.preferences.schoolZone]);
   const [journeySelection, setJourneySelection] = useState<JourneyMapSelection | null>(null);
   const [stops, setStops] = useState<TourStop[]>([]);
@@ -507,6 +510,7 @@ function Explore({
     panelRef.current?.scrollTo({ top: 0 });
   }, [arrivalWalk, closeDetail]);
   const planner = useFlowPlanner({
+    suspended: new URLSearchParams(location.search).has('journey') && validatedReturn !== location.search,
     origin,
     destination,
     places: knownPlaces,
@@ -540,6 +544,45 @@ function Explore({
       );
     },
   });
+  const restoreRef = useRef(planner.restore);
+  restoreRef.current = planner.restore;
+  useEffect(() => {
+    if (location.pathname !== '/' || !new URLSearchParams(location.search).has('journey')) return;
+    const controller = new AbortController();
+    setHandoffError(null);
+    setValidatedReturn(null);
+    setJourneySelection(null);
+    if (!identity.authenticated) {
+      if (!identity.loading) setHandoffError('Conectează-te din nou în Buddy pentru această comparație.');
+      return;
+    }
+    restoreJourney(location.search, controller.signal).then(restored => {
+      if (controller.signal.aborted) return;
+      setOrigin(restored.origin);
+      setDestination(restored.destination);
+      setParkingSettings(settingsFromJourney(restored.snapshot.input));
+      setDemo(null); setDetailId(null); setDriveRoute(null); setArrivalRoute(null);
+      setPlannerView('journey'); setExpanded(true);
+      restoreRef.current(restored.snapshot, restored.optionId, restored.preference);
+      setValidatedReturn(location.search);
+    }).catch(e => {
+      if (!controller.signal.aborted) {
+        try {
+          const saved = pendingJourney(location.search);
+          setOrigin(saved.origin); setDestination(saved.destination);
+          setParkingSettings(settingsFromJourney(saved.input));
+          setPlannerView('journey'); setExpanded(true);
+        } catch { /* A missing local handoff asks the user to choose the trip again. */ }
+        setJourneySelection(null);
+        setHandoffError(e.message);
+      }
+    });
+    return () => controller.abort();
+  }, [location.pathname, location.search, identity.authenticated, identity.loading]);
+  useEffect(() => {
+    if (validatedReturn && planner.result.state === 'ok')
+      panelRef.current?.querySelector('.journey-option.selected')?.scrollIntoView({ block: 'center' });
+  }, [validatedReturn, planner.result.state]);
   const journeysRef = useRef<CompleteJourney[]>([]);
   journeysRef.current = planner.result.state === 'ok' ? planner.result.value.journeys : [];
   const destinationRef = useRef(destination);
@@ -632,6 +675,7 @@ function Explore({
   const detail = detailIndex >= 0 ? options[detailIndex]! : null;
   return (
     <section className="explore-screen" aria-label="Explorează Timișul">
+      {handoffError && <div className="journey-handoff-error" role="alert"><p>{handoffError}</p><button onClick={() => { navigate('/', true); setHandoffError(null); planner.retry(); }}>Recalculează comparația</button></div>}
       <MapView
         parkings={parkingList}
         timpark={timparkData}
@@ -640,7 +684,7 @@ function Explore({
         route={detail ? driveRoute : null}
         walkRoute={detail ? walkRoute : (arrivalRoute ?? carWalk)}
         car={car?.coordinate ?? null}
-        journey={detail || arrivalRoute ? null : journeySelection}
+        journey={detail || arrivalRoute || (new URLSearchParams(location.search).has('journey') && validatedReturn !== location.search) ? null : journeySelection}
         onJourneyRendered={planner.acknowledge}
         selectedRecommendationId={selectedId}
         focusRecommendation={focus}
@@ -917,7 +961,12 @@ function Explore({
                       }
                     />}
                     {plannerView === 'journey' && <GreenSwitch
-                      result={planner.result}
+                      onAskBuddy={() => {
+                        if (!origin || !planner.input || planner.result.state !== 'ok') return;
+                        try { navigate(saveJourneyHandoff(origin, destination, planner.result.value, planner.preference, planner.input)); }
+                        catch { setHandoffError('Nu putem păstra referința. Permite stocarea de sesiune și recalculează.'); }
+                      }}
+                      result={new URLSearchParams(location.search).has('journey') && validatedReturn !== location.search ? { state: 'idle' } : planner.result}
                       preference={planner.preference}
                       onPreference={planner.onPreference}
                       selectedId={planner.selectedId}

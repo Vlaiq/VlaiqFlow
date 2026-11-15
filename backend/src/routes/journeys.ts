@@ -3,6 +3,7 @@ import { JourneyComparisonRequest } from '../../../shared/src/schemas/journey';
 import { compareJourneys } from '../services/journeys';
 import { CompleteJourneyRequest } from '@vlaiq/shared';
 import { completeJourneys } from '../services/completeJourneys';
+import { HandoffError, journeyHandoffs, validJourneySession } from '../services/journeyHandoffs';
 
 export const journeyRouter = Router();
 journeyRouter.post('/complete', async (req, res) => {
@@ -28,8 +29,14 @@ journeyRouter.post('/complete', async (req, res) => {
     });
   res.setHeader('Cache-Control', 'no-store');
   try {
-    res.json(await completeJourneys(input.data));
-  } catch {
+    const session = req.get('X-Flow-Journey-Session');
+    if (session !== undefined && !validJourneySession(session))
+      return res.status(400).json({ error: { message: 'Sesiune de călătorie invalidă.' } });
+    const ticket = session ? journeyHandoffs.begin(session) : undefined;
+    const value = await completeJourneys(input.data);
+    res.json(session ? journeyHandoffs.publish(session, input.data, value, ticket) : value);
+  } catch (error) {
+    if (error instanceof HandoffError) return res.status(error.status).json({ error: { message: error.message } });
     res.status(503).json({
       error: {
         code: 'UNAVAILABLE',

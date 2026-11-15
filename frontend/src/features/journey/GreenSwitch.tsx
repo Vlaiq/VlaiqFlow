@@ -41,6 +41,7 @@ export interface JourneyMapSelection {
   value: CompleteJourney;
   legId: string | null;
   comparisonId?: string;
+  revision?: string;
 }
 interface Props {
   result: CompleteLoad;
@@ -59,6 +60,7 @@ interface Props {
   /** Opens the parking preview for a SmartMatch option id, when the list has it. */
   onOpenParking?: (parkingId: string) => void;
   onStartActivity: (mode: 'walk' | 'cycle', journey?: ActiveJourneyContext) => void;
+  onAskBuddy?: () => void;
 }
 const amount = (p: NonNullable<CompleteJourney['parking']>) =>
   `${formatAmountRo(p.fee.minorUnits! / 100)} ${p.fee.currency ?? ''}`.trim();
@@ -99,6 +101,7 @@ export function GreenSwitch({
   onStartActivity,
   onInspectRoute,
   onOpenParking,
+  onAskBuddy,
 }: Props) {
   const [legId, setLegId] = useState<string | null>(null);
   const [parkingOpen, setParkingOpen] = useState(false);
@@ -112,7 +115,7 @@ export function GreenSwitch({
     setParkingOpen(false);
   }, [value]);
   useEffect(() => {
-    callback.current(selected ? { value: selected, legId, comparisonId } : null);
+    callback.current(selected ? { value: selected, legId, comparisonId, revision: value?.handoff?.revision } : null);
   }, [selected, legId, comparisonId]);
   useEffect(() => () => callback.current(null), []);
   function select(j: CompleteJourney) {
@@ -206,6 +209,7 @@ export function GreenSwitch({
       )}
       {value && (
         <>
+          {!!value.journeys.length && value.handoff && onAskBuddy && <button className="journey-primary-action" onClick={onAskBuddy}>Întreabă-l pe Buddy despre drumul acesta</button>}
           <p className="journey-preference-hint">{value.rankings[preference].explanation}</p>
           <div className="journey-options" role="group" aria-label="Călătorii calculate">
             {value.journeys.map((j) => {
@@ -214,6 +218,8 @@ export function GreenSwitch({
               return (
                 <button
                   key={j.id}
+                  data-option-id={j.id}
+                  data-revision={value.handoff?.revision}
                   data-category={j.category}
                   className={`journey-option ${active ? 'selected' : ''}`}
                   aria-pressed={active}

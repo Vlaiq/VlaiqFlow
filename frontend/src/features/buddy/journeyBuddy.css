@@ -1,0 +1,58 @@
+.buddy-journey {
+  max-width: 850px;
+  padding: 32px;
+  margin: auto;
+  color: var(--app-text);
+}
+.buddy-journey > a {
+  display: block;
+  margin-bottom: 24px;
+}
+.buddy-journey-intro {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+.buddy-journey-intro .buddy-robot {
+  margin: 0;
+}
+.buddy-journey h1 {
+  font-size: clamp(26px, 4vw, 42px);
+}
+.buddy-journey form {
+  display: grid;
+  gap: 12px;
+  margin: 24px 0;
+}
+.buddy-journey input {
+  width: 100%;
+  padding: 14px;
+  border: 1px solid rgb(var(--border));
+  border-radius: 12px;
+  color: inherit;
+  background: rgb(var(--surface));
+}
+.buddy-journey-answer {
+  border: 2px solid #32966a;
+  padding: 20px;
+  border-radius: 18px;
+  margin: 24px 0;
+}
+.buddy-journey li {
+  margin: 16px 0;
+}
+.buddy-journey li p {
+  margin: 8px 0;
+}
+.buddy-journey small {
+  opacity: 0.85;
+}
+.buddy-journey summary {
+  cursor: pointer;
+  font-weight: 600;
+}
+@media (max-width: 600px) {
+  .buddy-journey {
+    padding: 20px 16px;
+  }
+}

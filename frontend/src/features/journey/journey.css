@@ -749,3 +749,17 @@
     max-height: min(70%, calc(100% - 78px));
   }
 }
+.journey-handoff-error {
+  position: absolute;
+  z-index: 40;
+  top: 18px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: min(650px, calc(100% - 32px));
+  padding: 18px;
+  border: 2px solid rgb(var(--primary));
+  border-radius: 16px;
+  background: rgb(var(--surface));
+  box-shadow: var(--app-shadow);
+}
+.journey-handoff-error button { margin-top: 8px; text-decoration: underline; }

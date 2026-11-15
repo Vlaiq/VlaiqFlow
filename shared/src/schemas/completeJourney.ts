@@ -194,6 +194,11 @@ const ranking = z.object({
 });
 export const CompleteJourneyResponse = z
   .object({
+    handoff: z.object({
+      id: z.string().uuid(),
+      revision: z.string().uuid(),
+      expiresAt: z.string().datetime(),
+    }).strict().optional(),
     journeys: z.array(CompleteJourney).max(5),
     rankings: z.object({ fastest: ranking, balanced: ranking, green: ranking }),
     unavailable: z.array(z.object({ category: JourneyCategory, reason: z.string() })),
