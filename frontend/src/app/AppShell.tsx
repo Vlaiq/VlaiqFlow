@@ -21,6 +21,7 @@ import { brand } from '@vlaiq/shared';
 import { useAppRouter } from './router';
 import { ThemeToggle } from '../components/ui';
 import { FlowCoin } from '../features/motion/FlowCoin';
+import { VoiceSetting } from '../features/voice/FlowVoice';
 import './shell.css';
 
 const entries = [
@@ -225,6 +226,7 @@ export function AppShell({
             <ArrowRight size={17} />
           </a>
         </nav>
+        <VoiceSetting />
         <div className="flow-menu-footer">
           {brand.tagline}
           <span>Timișoara · Județul Timiș</span>

@@ -317,3 +317,109 @@
   align-items: flex-end;
   gap: 10px;
 }
+
+/* Explore: the optional mic sits next to the destination search; the panel opens under it. */
+.explore-search-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.flow-voice-mic.is-inline {
+  width: 44px;
+  height: 44px;
+  flex-shrink: 0;
+  border: 1px solid rgb(var(--border));
+  background: rgb(var(--surface-2));
+  color: rgb(var(--text));
+  box-shadow: none;
+}
+.flow-voice-mic.is-inline:focus-visible {
+  outline: 3px solid rgb(var(--primary));
+  outline-offset: 2px;
+}
+.explore-search .flow-voice {
+  margin-top: 10px;
+  background: rgb(var(--surface-2));
+}
+.explore-search .flow-voice-transcript {
+  max-height: 140px;
+}
+.explore-search .flow-voice-transcript li {
+  background: rgb(var(--surface));
+}
+.flow-voice.is-compact .flow-voice-mark {
+  width: 30px;
+  height: 30px;
+  border-radius: 9px;
+}
+
+/* Menu: FLOW Voice is opt-in. */
+.flow-voice-setting {
+  display: flex;
+  align-items: center;
+  gap: 15px;
+  margin-top: 12px;
+  padding: 14px;
+  border: 1px solid rgb(var(--border));
+  border-radius: 14px;
+  cursor: pointer;
+  font-size: 14px;
+}
+.flow-voice-setting > svg {
+  width: 21px;
+  height: 21px;
+  flex-shrink: 0;
+  color: rgb(var(--primary));
+}
+.flow-voice-setting > span {
+  flex: 1;
+  min-width: 0;
+}
+.flow-voice-setting small {
+  display: block;
+  margin-top: 3px;
+  font-size: 11px;
+  line-height: 1.5;
+  color: rgb(var(--text-muted));
+}
+.flow-voice-setting input {
+  appearance: none;
+  position: relative;
+  width: 44px;
+  height: 26px;
+  flex-shrink: 0;
+  border-radius: 13px;
+  border: 1px solid rgb(var(--border));
+  background: rgb(var(--surface-2));
+  cursor: pointer;
+  transition: background 0.15s;
+}
+.flow-voice-setting input::after {
+  content: '';
+  position: absolute;
+  top: 3px;
+  left: 3px;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: rgb(var(--text-muted));
+  transition: transform 0.15s;
+}
+.flow-voice-setting input:checked {
+  background: rgb(var(--primary));
+  border-color: rgb(var(--primary));
+}
+.flow-voice-setting input:checked::after {
+  transform: translateX(18px);
+  background: rgb(var(--primary-fg));
+}
+.flow-voice-setting input:focus-visible {
+  outline: 3px solid rgb(var(--primary));
+  outline-offset: 2px;
+}
+@media (prefers-reduced-motion: reduce) {
+  .flow-voice-setting input,
+  .flow-voice-setting input::after {
+    transition: none;
+  }
+}

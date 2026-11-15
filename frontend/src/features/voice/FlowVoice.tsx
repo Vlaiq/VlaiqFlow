@@ -3,6 +3,7 @@ import {
   useCallback,
   useContext,
   useEffect,
+  useMemo,
   useRef,
   useState,
   type ReactNode,
@@ -14,7 +15,7 @@ import {
   useConversationMode,
   useRawConversation,
 } from '@elevenlabs/react';
-import { Mic, MicOff, Square, AudioLines, RotateCcw } from 'lucide-react';
+import { Mic, MicOff, AudioLines } from 'lucide-react';
 import { z } from 'zod';
 import type { Destination } from '@vlaiq/shared';
 import { FLOW_AGENT } from '../../../../shared/src/flowVoice';
@@ -89,6 +90,20 @@ interface Heard {
   tell(text: string): void;
 }
 const HeardContext = createContext<Heard | null>(null);
+/** FLOW Voice is optional: off until the user turns it on from the menu (remembered per browser). */
+interface Enabled {
+  enabled: boolean;
+  setEnabled(next: boolean): void;
+}
+const EnabledContext = createContext<Enabled>({ enabled: false, setEnabled: () => {} });
+const ENABLED_KEY = 'vlaiq-voice-enabled';
+function loadEnabled() {
+  try {
+    return window.localStorage.getItem(ENABLED_KEY) === '1';
+  } catch {
+    return false;
+  }
+}
 
 export function FlowVoiceProvider({ children }: { children: ReactNode }) {
   return (
@@ -109,6 +124,9 @@ function VoiceRuntime({ children }: { children: ReactNode }) {
   const [outputMuted, setOutputMuted] = useState(false);
   const [activity, setActivity] = useState(0);
   const [transcript, setTranscript] = useState<TranscriptLine[]>(loadTranscript);
+  const [enabled, setEnabledState] = useState(loadEnabled);
+  const enabledRef = useRef(enabled);
+  enabledRef.current = enabled;
   const transcriptRef = useRef(transcript);
   transcriptRef.current = transcript;
   useEffect(() => {
@@ -244,7 +262,7 @@ function VoiceRuntime({ children }: { children: ReactNode }) {
     };
   }, []);
   const start = useCallback(async () => {
-    if (active.current || closing.current || !registration.current) return;
+    if (!enabledRef.current || active.current || closing.current || !registration.current) return;
     if (!window.isSecureContext || !navigator.mediaDevices?.getUserMedia) {
       setError('Microfonul necesită HTTPS și un browser compatibil.');
       setState('error');
@@ -389,12 +407,30 @@ function VoiceRuntime({ children }: { children: ReactNode }) {
       );
     }
   }, [controls.startSession, stop]);
+  const setEnabled = useCallback(
+    (next: boolean) => {
+      setEnabledState(next);
+      try {
+        window.localStorage.setItem(ENABLED_KEY, next ? '1' : '0');
+      } catch {
+        /* private mode: the choice holds for this page only */
+      }
+      if (!next) {
+        void stop();
+        failure.current = null;
+        setError(null);
+      }
+    },
+    [stop],
+  );
+  const enabledValue = useMemo(() => ({ enabled, setEnabled }), [enabled, setEnabled]);
   const toggleOutput = () => {
     const next = !outputMuted;
     setOutputMuted(next);
     rawRef.current?.setVolume({ volume: next ? 0 : 1 });
   };
   return (
+    <EnabledContext.Provider value={enabledValue}>
     <HeardContext.Provider value={heard.current}>
     <RegistrationContext.Provider value={register}>
       <Context.Provider
@@ -424,6 +460,7 @@ function VoiceRuntime({ children }: { children: ReactNode }) {
       </Context.Provider>
     </RegistrationContext.Provider>
     </HeardContext.Provider>
+    </EnabledContext.Provider>
   );
 }
 /** Calls `listener` with each sentence the driver says to FLOW Voice. */
@@ -450,22 +487,30 @@ export function useVoiceRegistration(
     [register, tools, begin],
   );
 }
-export function VoiceCard({
-  compact = false,
+/** Whether FLOW Voice is turned on, and the switch for it (menu). */
+export function useVoiceEnabled() {
+  return useContext(EnabledContext);
+}
+/**
+ * What FLOW Voice is doing, the conversation and places to tap, shown only while it is in use.
+ * The microphone button next to the search starts and stops it; this panel has no controls.
+ */
+export function VoicePanel({
   environment = 'live',
   choices = [],
   onChoose,
 }: {
-  compact?: boolean;
   environment?: 'live' | 'demo';
   /** Places to tap when a spoken destination matched several. */
   choices?: { id: string; label: string; place: Destination }[];
   onChoose?: (place: Destination) => void;
 }) {
   const voice = useContext(Context);
-  if (!voice) return null;
+  const { enabled } = useContext(EnabledContext);
+  if (!voice || !enabled) return null;
   const connected = voice.state === 'listening' || voice.state === 'speaking';
-  const busy = voice.state === 'connecting' || voice.state === 'disconnecting';
+  const showChoices = choices.length > 0 && !!onChoose;
+  if (voice.state === 'idle' && !showChoices) return null;
   const label =
     voice.state === 'connecting'
       ? 'Se conectează…'
@@ -474,23 +519,19 @@ export function VoiceCard({
         : voice.state === 'speaking'
           ? 'Vorbește'
           : connected
-            ? 'Ascultă'
+            ? 'Ascultă — spune unde vrei să ajungi'
             : voice.state === 'error'
               ? 'Conexiune indisponibilă'
-              : 'Spune unde vrei să ajungi';
+              : 'Oprit';
   return (
-    <section
-      className={`flow-voice ${compact ? 'is-compact' : ''}`}
-      aria-label="FLOW Voice"
-      data-state={voice.state}
-    >
+    <section className="flow-voice is-compact" aria-label="FLOW Voice" data-state={voice.state}>
       <div className="flow-voice-heading">
         <span
           className="flow-voice-mark"
           aria-hidden="true"
           style={{ opacity: connected && !voice.muted ? 0.55 + voice.activity * 0.45 : 1 }}
         >
-          <AudioLines size={21} />
+          <AudioLines size={17} />
         </span>
         <div>
           <strong>FLOW Voice {environment === 'demo' && <small>DEMO</small>}</strong>
@@ -498,25 +539,10 @@ export function VoiceCard({
             {label}
           </span>
         </div>
-        <button
-          className="flow-voice-primary"
-          disabled={busy && voice.state === 'disconnecting'}
-          onClick={connected || busy ? voice.stop : voice.start}
-          aria-label={connected || busy ? 'Oprește FLOW Voice' : 'Pornește FLOW Voice'}
-        >
-          {connected || busy ? (
-            <Square size={17} />
-          ) : voice.state === 'error' ? (
-            <RotateCcw size={19} />
-          ) : (
-            <Mic size={19} />
-          )}
-          <span>{connected || busy ? 'Oprește' : 'Pornește'}</span>
-        </button>
       </div>
-      {voice.transcript.length > 0 && (
+      {connected && voice.transcript.length > 0 && (
         <ol className="flow-voice-transcript" aria-label="Conversația cu FLOW Voice" aria-live="polite">
-          {voice.transcript.map((line) => (
+          {voice.transcript.slice(-4).map((line) => (
             <li key={`${line.who}-${line.id}`} data-who={line.who}>
               <span>{line.who === 'user' ? 'Tu' : 'FLOW'}</span>
               {line.text}
@@ -524,7 +550,7 @@ export function VoiceCard({
           ))}
         </ol>
       )}
-      {choices.length > 0 && onChoose && (
+      {showChoices && (
         <div className="flow-voice-choices" role="group" aria-label="Alege locația">
           <p>Am găsit mai multe locuri. Atinge-l pe cel corect:</p>
           {choices.map((c) => (
@@ -546,19 +572,36 @@ export function VoiceCard({
           {voice.error}
         </p>
       )}
-      {!compact && !connected && (
-        <p className="flow-voice-consent">
-          La pornire, vocea și contextul minim al călătoriei ajung la ElevenLabs.{' '}
-          <a href="/confidentialitate">Detalii</a>
-        </p>
-      )}
     </section>
+  );
+}
+/** Menu switch: FLOW Voice is optional and off until the user turns it on. */
+export function VoiceSetting() {
+  const { enabled, setEnabled } = useContext(EnabledContext);
+  return (
+    <label className="flow-voice-setting">
+      <AudioLines aria-hidden="true" />
+      <span>
+        FLOW Voice · asistent vocal (opțional)
+        <small>
+          Adaugă un buton de microfon lângă căutare și în navigație. Vocea ajunge la ElevenLabs
+          doar după ce apeși pe el.
+        </small>
+      </span>
+      <input
+        type="checkbox"
+        role="switch"
+        checked={enabled}
+        onChange={(e) => setEnabled(e.target.checked)}
+      />
+    </label>
   );
 }
 /** Round "talk" button for the navigation screen: one tap starts or stops FLOW Voice. */
 export function VoiceMicButton({ className = '' }: { className?: string }) {
   const voice = useContext(Context);
-  if (!voice) return null;
+  const { enabled } = useContext(EnabledContext);
+  if (!voice || !enabled) return null;
   const connected = voice.state === 'listening' || voice.state === 'speaking';
   const busy = voice.state === 'connecting' || voice.state === 'disconnecting';
   return (
@@ -573,13 +616,21 @@ export function VoiceMicButton({ className = '' }: { className?: string }) {
       disabled={voice.state === 'disconnecting'}
       onClick={connected || busy ? voice.stop : voice.start}
     >
-      {busy ? <AudioLines size={20} /> : connected ? <Mic size={20} /> : <MicOff size={20} />}
+      {busy ? (
+        <AudioLines size={20} />
+      ) : connected || className.includes('is-inline') ? (
+        // Next to the search an idle mic reads as "tap to talk", not as "muted".
+        <Mic size={20} />
+      ) : (
+        <MicOff size={20} />
+      )}
     </button>
   );
 }
 /** The last thing said in the conversation (or a voice error), shown briefly over the map. */
 export function VoiceBubble() {
   const voice = useContext(Context);
+  const { enabled } = useContext(EnabledContext);
   const last = voice?.transcript.at(-1) ?? null;
   const [shown, setShown] = useState<string | null>(null);
   const message = voice?.error ?? (last ? `${last.who}-${last.id}` : null);
@@ -589,7 +640,7 @@ export function VoiceBubble() {
     const t = window.setTimeout(() => setShown(null), 6000);
     return () => window.clearTimeout(t);
   }, [message]);
-  if (!voice || !shown) return null;
+  if (!voice || !enabled || !shown) return null;
   return (
     <p className="flow-voice-bubble" role="status" data-who={voice.error ? 'error' : last?.who}>
       {voice.error ?? (
@@ -606,7 +657,8 @@ export function VoiceBubble() {
  */
 export function VoiceFloating() {
   const voice = useContext(Context);
-  if (!voice || voice.state === 'idle' || voice.state === 'error') return null;
+  const { enabled } = useContext(EnabledContext);
+  if (!voice || !enabled || voice.state === 'idle' || voice.state === 'error') return null;
   return (
     <div className="flow-voice-floating">
       <VoiceBubble />

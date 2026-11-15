@@ -10,8 +10,8 @@ const flows: { what: string; where: string; kept: string }[] = [
   {
     what: 'FLOW Voice: microfonul și contextul minim al călătoriei',
     where:
-      'Numai după pornire explicită: vocea ajunge prin WebRTC la ElevenLabs. Instrumentele trimit etichete de locații, preferințe și rezumate ale rutelor, fără coordonate sau istoric GPS. Textul indicațiilor deterministe poate ajunge la ElevenLabs pentru sinteză.',
-    kept: 'Aplicația nu salvează audio, transcripturi sau tokenuri. Ce spui și ce răspunde FLOW apare pe ecran și e păstrat doar în această filă a browserului (sessionStorage), ca FLOW să nu uite conversația când schimbi pagina; dispare când închizi fila. Nu ajunge la serverul FLOW. La repornirea vocii, ultimele replici și datele călătoriei (fără coordonate) sunt trimise din nou către ElevenLabs, ca agentul să continue de unde a rămas. Agentul este configurat cu înregistrarea audio dezactivată și retenție 0 zile; procesarea furnizorului rămâne supusă setărilor contului. Clipurile de navigație sunt păstrate în memoria serverului cel mult 15 minute; browserul le eliberează după redare. Oprește FLOW Voice ca să închizi microfonul.',
+      'Opțional și dezactivat implicit (Meniu → FLOW Voice). Numai după pornire explicită: vocea ajunge prin WebRTC la ElevenLabs. Instrumentele trimit etichete de locații, preferințe și rezumate ale rutelor, fără coordonate sau istoric GPS. Textul indicațiilor deterministe poate ajunge la ElevenLabs pentru sinteză.',
+    kept: 'Aplicația nu salvează audio, transcripturi sau tokenuri. Ce spui și ce răspunde FLOW apare pe ecran și e păstrat doar în această filă a browserului (sessionStorage), ca FLOW să nu uite conversația când schimbi pagina; dispare când închizi fila. Nu ajunge la serverul FLOW. La repornirea vocii, ultimele replici și datele călătoriei (fără coordonate) sunt trimise din nou către ElevenLabs, ca agentul să continue de unde a rămas. Agentul este configurat cu înregistrarea audio dezactivată și retenție 0 zile; procesarea furnizorului rămâne supusă setărilor contului. Clipurile de navigație sunt păstrate în memoria serverului cel mult 15 minute; browserul le eliberează după redare. Oprește FLOW Voice ca să închizi microfonul. Alegerea de a activa FLOW Voice e păstrată doar în acest browser (localStorage).',
   },
   {
     what: 'Destinația aleasă și punctul de plecare (GPS sau ales pe hartă)',
@@ -172,7 +172,7 @@ export function PrivacyScreen() {
           discarded; we keep only summaries (mode, start time, distance, duration, coins) linked to
           a random cookie whose hash we store. Inactive wallets are deleted after{' '}
           {MOTION_RULES.retentionDays} days, and you can delete yours at any time from the Wallet.
-          When you explicitly start FLOW Voice, microphone audio and minimal journey
+          FLOW Voice is off by default (Menu → FLOW Voice). When you explicitly start it, microphone audio and minimal journey
           labels/preferences are processed by ElevenLabs; route geometry and GPS history stay in the
           app. Navigation instruction text may be synthesized by ElevenLabs, with browser speech as
           fallback. We do not store audio, transcripts or conversation tokens. IP addresses are held

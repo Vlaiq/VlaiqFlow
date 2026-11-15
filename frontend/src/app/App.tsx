@@ -52,8 +52,9 @@ import { useAppRouter } from './router';
 import { useTheme } from './theme';
 import {
   FlowVoiceProvider,
-  VoiceCard,
   VoiceFloating,
+  VoiceMicButton,
+  VoicePanel,
   useVoiceHeard,
   useVoiceRegistration,
   useVoiceTell,
@@ -642,13 +643,26 @@ function Explore({
             </span>
             <span>TIMIȘ</span>
           </div>
-          <DestinationSearch
-            destinations={knownPlaces}
-            unavailable={destinations.state === 'error'}
-            onSelect={(next) => {
-              planner.changed();
-              selectDestination(next);
-            }}
+          <div className="explore-search-row">
+            <DestinationSearch
+              destinations={knownPlaces}
+              unavailable={destinations.state === 'error'}
+              onSelect={(next) => {
+                planner.changed();
+                selectDestination(next);
+              }}
+            />
+            {/* Optional (menu → FLOW Voice): one mic next to the search, nothing in the planner. */}
+            <VoiceMicButton className="is-inline" />
+          </div>
+          <VoicePanel
+            environment={demo ? 'demo' : 'live'}
+            choices={planner.choices.map((d) => ({
+              id: d.id,
+              label: `${d.name}${d.detail ? ` · ${d.detail}` : ''}`,
+              place: d,
+            }))}
+            onChoose={planner.choose}
           />
         </header>
         <section
@@ -680,16 +694,6 @@ function Explore({
                 onWalkRoute={setCarWalk}
               />
             )}
-            {/* Without a destination the card sits under DEMO, so the collapsed phone sheet still shows it. */}
-            {destination && <VoiceCard
-                  environment={demo ? 'demo' : 'live'}
-                  choices={planner.choices.map((d) => ({
-                    id: d.id,
-                    label: `${d.name}${d.detail ? ` · ${d.detail}` : ''}`,
-                    place: d,
-                  }))}
-                  onChoose={planner.choose}
-                />}
             {destination && autoNav && (
               <AutoNavigate
                 key={autoNav.href}
@@ -722,15 +726,6 @@ function Explore({
                     </span>
                   </button>
                 )}
-                <VoiceCard
-                  environment={demo ? 'demo' : 'live'}
-                  choices={planner.choices.map((d) => ({
-                    id: d.id,
-                    label: `${d.name}${d.detail ? ` · ${d.detail}` : ''}`,
-                    place: d,
-                  }))}
-                  onChoose={planner.choose}
-                />
                 <div className="explore-coverage">
                   <ShieldCheck size={14} />
                   <span>
