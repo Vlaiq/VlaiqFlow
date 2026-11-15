@@ -50,10 +50,17 @@ import { api } from '../services/api';
 import { AppShell } from './AppShell';
 import { useAppRouter } from './router';
 import { useTheme } from './theme';
-import { FlowVoiceProvider, VoiceCard, useVoiceRegistration } from '../features/voice/FlowVoice';
+import {
+  FlowVoiceProvider,
+  VoiceCard,
+  useVoiceHeard,
+  useVoiceRegistration,
+  useVoiceTell,
+} from '../features/voice/FlowVoice';
+import { readIntent } from '../features/voice/intents';
 import { useFlowPlanner } from '../features/voice/useFlowPlanner';
 import { AutoNavigate } from '../features/voice/AutoNavigate';
-import { carNavigationHref } from '../features/journey/journeyPresentation';
+import { carNavigationHref, plannedActivity } from '../features/journey/journeyPresentation';
 
 type Load<T> =
   | { state: 'loading' }
@@ -494,6 +501,12 @@ function Explore({
       const href =
         journey?.parking &&
         carNavigationHref(journey, journeysRef.current, destinationRef.current?.name);
+      // The driver already said "hai să mergem": no countdown, go now.
+      if (href && journey?.parking && Date.now() - pendingGo.current < 60_000) {
+        pendingGo.current = 0;
+        navigate(`${href}&start=${demoRef.current ? 'demo' : 'live'}`);
+        return;
+      }
       setAutoNav(
         href && journey?.parking
           ? { href: `${href}&start=${demoRef.current ? 'demo' : 'live'}`, parking: journey.parking.name }
@@ -517,6 +530,63 @@ function Explore({
     if (pending) navigate(pending.href);
   }, [navigate]);
   useVoiceRegistration(planner.tools, planner.begin);
+  /** When the driver said "hai să mergem" before a route existed (cleared after a minute). */
+  const pendingGo = useRef(0);
+  const tell = useVoiceTell();
+  const startJourney = useCallback(
+    (journey: CompleteJourney) => {
+      const place = destinationRef.current;
+      if (journey.parking) {
+        const href = carNavigationHref(journey, journeysRef.current, place?.name);
+        if (!href) return false;
+        setAutoNav(null);
+        navigate(`${href}&start=${demoRef.current ? 'demo' : 'live'}`);
+        return true;
+      }
+      const context = place ? plannedActivity(journey, place) : null;
+      if (!context) return false;
+      onStartActivity(context.mode, context);
+      return true;
+    },
+    [navigate, onStartActivity],
+  );
+  const selectedJourney = () => {
+    const journeys = journeysRef.current;
+    return journeys.find((j) => j.id === planner.selectedId) ?? journeys[0] ?? null;
+  };
+  // The driver's own words: a travel mode they want, and permission to start ("hai să mergem").
+  useVoiceHeard((text) => {
+    const intent = readIntent(text);
+    if (intent.mode) {
+      planner.setSpokenMode(intent.mode);
+      const label =
+        intent.mode === 'driving' ? 'cu mașina' : intent.mode === 'cycling' ? 'cu bicicleta' : 'pe jos';
+      tell(`Șoferul vrea doar ${label}. Compară și propune numai această variantă.`);
+    }
+    if (!intent.go) return;
+    if (window.location.pathname === '/navigation') {
+      window.dispatchEvent(new Event('flow-voice-go'));
+      return;
+    }
+    if (autoNavRef.current) return goNavigate();
+    const journey = selectedJourney();
+    if (journey && startJourney(journey)) return;
+    // No route yet: calculate it (from GPS if needed), show it, and start as soon as it is ready.
+    pendingGo.current = Date.now();
+    setPlannerView('journey');
+    setExpanded(true);
+    if (destinationRef.current)
+      void planner.ensureOrigin().catch(() =>
+        tell('Nu pot afla unde este șoferul. Cere-i punctul de plecare.'),
+      );
+  });
+  useEffect(() => {
+    if (!pendingGo.current || Date.now() - pendingGo.current > 60_000) return;
+    if (planner.result.state !== 'ok' || !planner.result.value.journeys.length) return;
+    const journey = selectedJourney();
+    if (journey && startJourney(journey)) pendingGo.current = 0;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [planner.result, planner.selectedId, startJourney]);
   const detailIndex = detailId ? options.findIndex((o) => o.id === detailId) : -1;
   const detail = detailIndex >= 0 ? options[detailIndex]! : null;
   return (

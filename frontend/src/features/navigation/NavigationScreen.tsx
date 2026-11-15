@@ -135,6 +135,14 @@ function NavigationView({ places }: { places: NavPlaces }) {
     if (how === 'live') nav.startLive();
     else if (how === 'demo') nav.startDemo();
   }, [nav.mode, nav.route, nav.startLive, nav.startDemo]);
+  // "Hai să mergem" said to FLOW Voice on the preview starts GPS navigation, like pressing Start.
+  useEffect(() => {
+    const go = () => {
+      if (nav.mode === 'preview' && nav.route) nav.startLive();
+    };
+    window.addEventListener('flow-voice-go', go);
+    return () => window.removeEventListener('flow-voice-go', go);
+  }, [nav.mode, nav.route, nav.startLive]);
   const backup = handoff.backup;
   // DEMO "parking full" offer: null = not shown, otherwise seconds left before it keeps the current route.
   const [offer, setOffer] = useState<number | null>(null);

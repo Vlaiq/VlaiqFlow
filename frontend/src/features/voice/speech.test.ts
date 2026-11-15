@@ -83,12 +83,30 @@ describe('deterministic navigation audio ownership', () => {
         }),
     );
     const result = arbiter.announce({ ...event, phase: 'now', priority: 'urgent' });
-    await vi.advanceTimersByTimeAsync(81);
+    // Urgent instructions wait up to 1.5 s for the FLOW Voice clip, then use the browser voice.
+    await vi.advanceTimersByTimeAsync(1501);
     expect(await result).toBe(true);
     expect(deps.fallback).toHaveBeenCalledTimes(1);
     resolve(new Blob(['late']));
     await Promise.resolve();
     expect(deps.play).not.toHaveBeenCalled();
+  });
+  it('waits while the driver talks to FLOW Voice, then holds the conversation and gives it back', async () => {
+    const { arbiter, deps, event } = setup();
+    const order: string[] = [];
+    let busy = true;
+    deps.quiesce.mockImplementation(async () => {
+      while (busy) await new Promise((r) => setTimeout(r, 5));
+      order.push('hold');
+    });
+    (deps as { release?: () => void }).release = () => order.push('release');
+    deps.fallback.mockImplementation(async () => void order.push('speak'));
+    const result = arbiter.announce(event);
+    await new Promise((r) => setTimeout(r, 20));
+    expect(order).toEqual([]); // still talking: nothing is said yet
+    busy = false;
+    expect(await result).toBe(true);
+    expect(order).toEqual(['hold', 'speak', 'release']);
   });
   it('repeats only the last valid instruction and clears it when the step changes', async () => {
     const { arbiter, deps, event, scope } = setup();

@@ -27,6 +27,7 @@ import {
   contractComparison,
   contractJourney,
   constrainComparison,
+  chainMatches,
   resolvePlace,
 } from './journeyContract';
 import { navigationState } from './navigationState';
@@ -100,6 +101,8 @@ export function useFlowPlanner(props: Inputs) {
   const [choices, setChoices] = useState<Destination[]>([]);
   /** Last GPS position read for FLOW Voice, reused for a minute so a spoken trip starts fast. */
   const here = useRef<{ origin: Origin; at: number } | null>(null);
+  /** Travel mode the driver said ("doar cu mașina"), kept for the rest of the voice session. */
+  const spokenMode = useRef<Mode | null>(null);
   const destinationId = props.destination?.id;
   useEffect(() => setChoices([]), [destinationId]);
   const revision = useRef(0);
@@ -286,9 +289,14 @@ export function useFlowPlanner(props: Inputs) {
             : s.props.origin;
         let destination: Destination | null;
         try {
-          destination = patch.destination_text
-            ? resolvePlace(patch.destination_text, s.props.places ?? [])
-            : s.props.destination;
+          const text = patch.destination_text;
+          // A chain ("la Lidl") is settled by the nearest branch, so it needs to know where we start.
+          let near = origin?.coordinate ?? here.current?.origin.coordinate ?? null;
+          if (text && !near && chainMatches(text, s.props.places ?? []).length > 1) {
+            origin = await locate(here, signal).catch(() => null);
+            near = origin?.coordinate ?? null;
+          }
+          destination = text ? resolvePlace(text, s.props.places ?? [], near) : s.props.destination;
         } catch (e) {
           // Several places match: offer them on screen as well as to the agent.
           if (e instanceof FlowError && e.code === 'AMBIGUOUS_LOCATION' && e.candidates)
@@ -333,7 +341,8 @@ export function useFlowPlanner(props: Inputs) {
           throw new FlowError('MISSING_DESTINATION', 'Spune destinația călătoriei.');
         if (!destination.location)
           throw new FlowError('NO_ROUTE', 'Destinația nu are o poziție verificată.');
-        const mode = patch.journey_mode ?? s.temporaryMode;
+        // The driver's own words win: "doar cu mașina" means only car routes, whatever the agent asks.
+        const mode = spokenMode.current ?? patch.journey_mode ?? s.temporaryMode;
         const input = CompleteJourneyRequest.parse({
           origin: origin.coordinate,
           destination: [destination.location.lng, destination.location.lat],
@@ -454,6 +463,7 @@ export function useFlowPlanner(props: Inputs) {
   const begin = useCallback(() => {
     tools.begin();
     setChoices([]);
+    spokenMode.current = null;
     // If location is already allowed, read it now so "la Iulius Mall" can start from here at once.
     void navigator.permissions
       ?.query({ name: 'geolocation' })
@@ -492,6 +502,23 @@ export function useFlowPlanner(props: Inputs) {
     begin,
     choices,
     /** The user tapped one of the ambiguous places. */
+    /** The driver said a mode: compare only that from now on, and show only that. */
+    setSpokenMode: (mode: Mode) => {
+      if (spokenMode.current === mode) return;
+      spokenMode.current = mode;
+      changed();
+      setJourneyMode(mode);
+      setTemporaryMode(mode);
+      setManualId(null);
+      setPublished(null);
+    },
+    /** For "hai să mergem" without a start point: start from the current GPS position. */
+    ensureOrigin: async () => {
+      if (latest.current.props.origin) return latest.current.props.origin;
+      const origin = await locate(here, new AbortController().signal);
+      latest.current.props.setOrigin(origin);
+      return origin;
+    },
     choose: (d: Destination) => {
       setChoices([]);
       props.setDestination(d);

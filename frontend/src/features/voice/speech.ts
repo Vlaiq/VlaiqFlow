@@ -13,9 +13,15 @@ interface SpeechDependencies {
   play(blob: Blob, event: NavigationSpeechEvent, valid: () => boolean): Promise<void>;
   fallback(event: NavigationSpeechEvent, valid: () => boolean): Promise<void>;
   stop(): void;
-  quiesce(): Promise<void>;
+  /** Waits until a FLOW Voice conversation is quiet (until `until` at most), then holds it. */
+  quiesce(until: number): Promise<void>;
+  /** Hands the audio back to the conversation after an instruction. */
+  release?(): void;
 }
-/** One audio owner. No conversation audio resumes automatically after navigation takes ownership. */
+/**
+ * One audio owner. Navigation speech waits while the driver and FLOW Voice are talking, then speaks
+ * with the conversation held (microphone and agent muted) and gives it back afterwards.
+ */
 export class SpeechArbiter {
   private scope: SpeechScope = {
     session: '',
@@ -98,35 +104,47 @@ export class SpeechArbiter {
     const ticket = ++this.epoch;
     this.active = event;
     const valid = () => ticket === this.epoch && this.valid(event);
-    // Muting + closing the old conversation avoids replaying buffered speech after a turn.
     try {
-      await this.deps.quiesce();
+      await this.deps.quiesce(event.expires_at_ms);
     } catch {
       return false;
     }
-    if (!valid()) return false;
+    if (!valid()) {
+      this.deps.release?.();
+      return false;
+    }
     this.warm(event);
     let timer: ReturnType<typeof setTimeout> | undefined;
     const blob = await Promise.race([
       this.warmed.get(`${event.locale}:${event.text}`) ?? Promise.resolve(null),
       new Promise<null>((resolve) => {
-        timer = setTimeout(() => resolve(null), event.priority === 'urgent' ? 80 : 350);
+        // Wait for the FLOW Voice (ElevenLabs) clip so directions keep the same voice; the
+        // browser voice is only a fallback when the clip does not arrive in time.
+        timer = setTimeout(() => resolve(null), event.priority === 'urgent' ? 1500 : 2500);
       }),
     ]);
     clearTimeout(timer);
-    if (!valid()) return false;
+    if (!valid()) {
+      this.deps.release?.();
+      return false;
+    }
     this.last = event;
     try {
       if (blob) await this.deps.play(blob, event, valid);
       else await this.deps.fallback(event, valid);
     } catch {
-      if (!blob || !valid()) return false;
+      if (!blob || !valid()) {
+        this.deps.release?.();
+        return false;
+      }
       try {
         await this.deps.fallback(event, valid);
       } catch {
+        this.deps.release?.();
         return false;
       }
     }
+    this.deps.release?.();
     if (ticket === this.epoch) this.active = null;
     return true;
   }
@@ -144,12 +162,28 @@ export class SpeechArbiter {
 
 let audio: HTMLAudioElement | null = null;
 let finishPlayback: (() => void) | null = null;
-let conversationStop: (() => Promise<void>) | null = null;
-export function registerConversationStop(stop: () => Promise<void>) {
-  conversationStop = stop;
+/** The FLOW Voice conversation, as seen by navigation speech. */
+export interface ConversationGate {
+  /** The driver or the agent is talking (or just did). */
+  busy(): boolean;
+  /** true: mute the microphone and the agent while an instruction plays; false: give them back. */
+  hold(on: boolean): void;
+}
+let conversationGate: ConversationGate | null = null;
+export function registerConversationGate(gate: ConversationGate) {
+  conversationGate = gate;
   return () => {
-    if (conversationStop === stop) conversationStop = null;
+    if (conversationGate === gate) conversationGate = null;
   };
+}
+/** Prefer a female Romanian browser voice when the FLOW Voice clip is unavailable. */
+function fallbackVoice(locale: 'ro' | 'en') {
+  const voices = window.speechSynthesis?.getVoices() ?? [];
+  const lang = locale === 'ro' ? 'ro' : 'en';
+  const local = voices.filter((v) => v.lang.toLowerCase().startsWith(lang));
+  return (
+    local.find((v) => /alina|ioana|carmen|female|femeie|woman/i.test(v.name)) ?? local[0] ?? null
+  );
 }
 const base = (import.meta.env.VITE_API_URL ?? '').replace(/\/$/, '');
 export const navigationSpeech = new SpeechArbiter({
@@ -172,9 +206,14 @@ export const navigationSpeech = new SpeechArbiter({
     finishPlayback?.();
     finishPlayback = null;
   },
-  quiesce: async () => {
-    await conversationStop?.();
+  quiesce: async (until) => {
+    const gate = conversationGate;
+    if (!gate) return;
+    // While the driver talks to FLOW Voice the instruction waits; it is dropped if it expires.
+    while (gate.busy() && Date.now() < until) await new Promise((r) => setTimeout(r, 150));
+    gate.hold(true);
   },
+  release: () => conversationGate?.hold(false),
   play: (blob, event, valid) =>
     new Promise<void>((resolve, reject) => {
       if (!valid() || document.visibilityState !== 'visible') return resolve();
@@ -211,6 +250,8 @@ export const navigationSpeech = new SpeechArbiter({
         return resolve();
       const speech = new SpeechSynthesisUtterance(event.text);
       speech.lang = event.locale === 'ro' ? 'ro-RO' : 'en-US';
+      const voice = fallbackVoice(event.locale);
+      if (voice) speech.voice = voice;
       const timer = setTimeout(
         () => {
           window.speechSynthesis.cancel();

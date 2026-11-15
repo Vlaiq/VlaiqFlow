@@ -19,7 +19,7 @@ import { z } from 'zod';
 import type { Destination } from '@vlaiq/shared';
 import { FLOW_AGENT } from '../../../../shared/src/flowVoice';
 import { useAppRouter } from '../../app/router';
-import { registerConversationStop } from './speech';
+import { registerConversationGate } from './speech';
 import './voice.css';
 
 interface ToolSession {
@@ -58,6 +58,14 @@ interface VoiceContextValue {
 const Context = createContext<VoiceContextValue | null>(null);
 // Planner registration must not subscribe the map subtree to high-frequency VAD/UI updates.
 const RegistrationContext = createContext<VoiceContextValue['register'] | null>(null);
+/** What the driver says, for the app's own reactions ("hai să mergem"), plus a way to tell the agent. */
+interface Heard {
+  subscribe(listener: (text: string) => void): () => void;
+  tell(text: string): void;
+}
+const HeardContext = createContext<Heard | null>(null);
+/** Pages where FLOW Voice stays connected while the driver moves between them. */
+const VOICE_PAGES = ['/', '/navigation'];
 export function FlowVoiceProvider({ children }: { children: ReactNode }) {
   return (
     <ConversationProvider>
@@ -88,6 +96,30 @@ function VoiceRuntime({ children }: { children: ReactNode }) {
   const failure = useRef<string | null>(null);
   const timer = useRef<ReturnType<typeof setTimeout>>();
   const mounted = useRef(true);
+  const listeners = useRef(new Set<(text: string) => void>());
+  const stateRef = useRef<State>('idle');
+  stateRef.current = state;
+  const speakingRef = useRef(false);
+  speakingRef.current = isSpeaking;
+  const outputMutedRef = useRef(false);
+  outputMutedRef.current = outputMuted;
+  const inputRef = useRef(input);
+  inputRef.current = input;
+  /** Last moment the driver's microphone picked up speech or the agent answered. */
+  const lastVoice = useRef(0);
+  const held = useRef<{ micWasMuted: boolean } | null>(null);
+  const controlsRef = useRef(controls);
+  controlsRef.current = controls;
+  const heard = useRef<Heard>({
+    subscribe: (listener) => {
+      listeners.current.add(listener);
+      return () => listeners.current.delete(listener);
+    },
+    tell: (text) => {
+      if (stateRef.current === 'listening' || stateRef.current === 'speaking')
+        controlsRef.current.sendContextualUpdate(text);
+    },
+  });
   const register = useCallback((tools: ToolSession, begin: () => void) => {
     const entry = { tools, begin };
     registration.current = entry;
@@ -129,22 +161,38 @@ function VoiceRuntime({ children }: { children: ReactNode }) {
     // Pending SDK connections keep the start lock until their disconnect/error callback.
     return promise;
   }, [controls.endSession]);
+  // Navigation speech waits while the conversation is busy, then holds it (mic and agent muted)
+  // for the few seconds of an instruction, and gives it back. The session is never ended for it.
   useEffect(
     () =>
-      registerConversationStop(async () => {
-        const conversation = rawRef.current;
-        if (!active.current && !conversation) return;
-        conversation?.setVolume({ volume: 0 });
-        // endSession returns a Promise on the raw instance; granular controls intentionally return void.
-        await stop();
-        if (mounted.current)
-          setError('Navigatorul a preluat vocea. Poți reporni copilotul când dorești.');
+      registerConversationGate({
+        busy: () =>
+          (stateRef.current === 'listening' || stateRef.current === 'speaking') &&
+          (speakingRef.current || Date.now() - lastVoice.current < 1500),
+        hold: (on) => {
+          const conversation = rawRef.current;
+          if (!conversation) return;
+          if (on && !held.current) {
+            held.current = { micWasMuted: inputRef.current.isMuted };
+            inputRef.current.setMuted(true);
+            conversation.setVolume({ volume: 0 });
+          } else if (!on && held.current) {
+            inputRef.current.setMuted(held.current.micWasMuted);
+            conversation.setVolume({ volume: outputMutedRef.current ? 0 : 1 });
+            held.current = null;
+          }
+        },
       }),
-    [stop],
+    [],
   );
-  // Leaving the page ends the session; a query change on the same page (the arrival walk link,
-  // clearing it when a new destination is picked) must not cut the user off mid-sentence.
+  // The session stays connected between the planner and navigation (the driver keeps talking);
+  // any other page ends it. A query change on the same page never does.
+  const lastPath = useRef(location.pathname);
   useEffect(() => {
+    const from = lastPath.current;
+    lastPath.current = location.pathname;
+    if (from === location.pathname) return;
+    if (VOICE_PAGES.includes(from) && VOICE_PAGES.includes(location.pathname)) return;
     stop();
     setTranscript([]);
   }, [location.pathname, stop]);
@@ -238,6 +286,8 @@ function VoiceRuntime({ children }: { children: ReactNode }) {
           const text = message.trim();
           if (!valid() || !text) return;
           const line: TranscriptLine = { id: event_id, who: role === 'user' ? 'user' : 'agent', text };
+          lastVoice.current = Date.now();
+          if (line.who === 'user') listeners.current.forEach((listener) => listener(text));
           setTranscript((lines) =>
             lines.some((l) => l.id === line.id && l.who === line.who)
               ? lines
@@ -245,6 +295,7 @@ function VoiceRuntime({ children }: { children: ReactNode }) {
           );
         },
         onVadScore: ({ vadScore }) => {
+          if (vadScore > 0.45) lastVoice.current = Date.now();
           if (valid()) setActivity(Math.max(0, Math.min(1, vadScore)));
         },
         onError: () => {
@@ -279,6 +330,7 @@ function VoiceRuntime({ children }: { children: ReactNode }) {
     rawRef.current?.setVolume({ volume: next ? 0 : 1 });
   };
   return (
+    <HeardContext.Provider value={heard.current}>
     <RegistrationContext.Provider value={register}>
       <Context.Provider
         value={{
@@ -306,7 +358,19 @@ function VoiceRuntime({ children }: { children: ReactNode }) {
         {children}
       </Context.Provider>
     </RegistrationContext.Provider>
+    </HeardContext.Provider>
   );
+}
+/** Calls `listener` with each sentence the driver says to FLOW Voice. */
+export function useVoiceHeard(listener: (text: string) => void) {
+  const heard = useContext(HeardContext);
+  const latest = useRef(listener);
+  latest.current = listener;
+  useEffect(() => heard?.subscribe((text) => latest.current(text)), [heard]);
+}
+/** Tells a connected agent about something the app did; no-op when not connected. */
+export function useVoiceTell() {
+  return useContext(HeardContext)?.tell ?? (() => {});
 }
 export function useVoiceRegistration(tools: ToolSession, begin: () => void) {
   const register = useContext(RegistrationContext);
