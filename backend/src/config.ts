@@ -13,6 +13,8 @@ const Env = z.object({
   CORS_ORIGINS: z.string().default('http://localhost:5173'),
   ORS_API_KEY: optionalSecret,
   GEMINI_API_KEY: optionalSecret,
+  BUDDY_GEMINI_MODEL: z.string().regex(/^[a-zA-Z0-9._-]{1,100}$/).default('gemini-3.5-flash'),
+  BUDDY_VOICE_ID: z.string().regex(/^[a-zA-Z0-9]{10,64}$/).default('EXAVITQu4vr4xnSDxMaL'),
   ELEVENLABS_API_KEY: optionalSecret,
   DATABASE_URL: optionalSecret,
   AUTH0_ISSUER_BASE_URL: z
@@ -56,6 +58,8 @@ export const config = {
     .filter(Boolean),
   orsApiKey: env.ORS_API_KEY,
   geminiApiKey: env.GEMINI_API_KEY,
+  buddyGeminiModel: env.BUDDY_GEMINI_MODEL,
+  buddyVoiceId: env.BUDDY_VOICE_ID,
   elevenLabsApiKey: env.ELEVENLABS_API_KEY,
   databaseUrl: env.DATABASE_URL,
   auth0Issuer: env.AUTH0_ISSUER_BASE_URL,

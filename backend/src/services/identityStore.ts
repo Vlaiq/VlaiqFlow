@@ -11,6 +11,7 @@ import type { Identity } from '../middleware/identity';
 import { ownerKey } from '../middleware/identity';
 import { MotionStore } from './motionStore';
 import { config } from '../config';
+import { accountErased } from './accountLifecycle';
 
 export class IdentityStore {
   readonly pool: Pool;
@@ -117,6 +118,7 @@ export class IdentityStore {
       id.issuer,
       id.subject,
     ]);
+    accountErased(id);
   }
   async team() {
     const { rows } = await this.pool.query('SELECT presentation FROM flow_team WHERE id=true');

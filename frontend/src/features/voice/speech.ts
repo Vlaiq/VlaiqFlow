@@ -177,6 +177,11 @@ export function registerConversationGate(gate: ConversationGate) {
     if (conversationGate === gate) conversationGate = null;
   };
 }
+/** A second companion must wait until the existing voice owner has actually released audio. */
+export function acquireConversationGate(gate: ConversationGate) {
+  if (conversationGate) return null;
+  return registerConversationGate(gate);
+}
 /** Prefer a female Romanian browser voice when the FLOW Voice clip is unavailable. */
 function fallbackVoice(locale: 'ro' | 'en') {
   const voices = window.speechSynthesis?.getVoices() ?? [];

@@ -1,70 +1,345 @@
-.buddy-robot { width: min(100%, 420px); margin: auto; --buddy-accent: #72e5b0; filter: drop-shadow(0 16px 18px #092f201c); }
-.buddy-robot svg { width: 100%; display: block; overflow: visible; }
-.buddy-robot-small { width: 112px; flex: 0 0 112px; }
-.buddy-body-float { animation: buddy-breathe 6.7s ease-in-out infinite; transform-origin: 210px 330px; }
-.buddy-head { transform-origin: 210px 233px; animation: buddy-head-idle 13s ease-in-out infinite; }
-.buddy-shoulder,.buddy-elbow,.buddy-hand { transform-origin: 0 0; transition: transform .6s cubic-bezier(.2,.7,.2,1); }
-.buddy-shoulder-left { transform: rotate(5deg); }
-.buddy-shoulder-right { transform: rotate(-5deg); }
-.buddy-eye { transform-origin: 0 0; transition: transform .15s; }
-.buddy-eyes-blink .buddy-eye { transform: scaleY(.08); }
-.buddy-pupil { transform: translate(var(--gaze-x),var(--gaze-y)); transition: transform .65s ease; }
-.buddy-pupil-1 { transition-duration: .72s; }
-.buddy-brow-left { transform-origin: 164px 118px; }
-.buddy-brow-right { transform-origin: 263px 115px; }
-.buddy-mouth { transform-origin: 213px 180px; }
-.buddy-mouth-talking { display: none; transform-origin: 213px 174px; }
-.buddy-gesture-clock { animation: buddy-clock 1.8s linear; }
-.buddy-clock-wave { animation-duration: 3.4s; }
-.buddy-clock-celebrating { animation-duration: 1.9s; }
-.buddy-chest-pulse { animation: buddy-light 2s ease-in-out infinite; }
-.buddy-robot[data-pose='wave'] .buddy-shoulder-right { animation: buddy-wave-shoulder 3.4s ease-in-out both; }
-.buddy-robot[data-pose='wave'] .buddy-elbow-right { animation: buddy-wave-elbow 3.4s ease-in-out both; }
-.buddy-robot[data-pose='wave'] .buddy-hand-right { animation: buddy-wave-hand 3.4s ease-in-out both; }
-.buddy-robot[data-pose='wave'] .buddy-head { transform: rotate(-6deg); animation: none; }
-.buddy-robot[data-pose='thinking'] .buddy-head { animation: none; transform: rotate(-8deg) translateY(-2px); }
-.buddy-robot[data-pose='thinking'] .buddy-shoulder-left { transform: rotate(-10deg); }
-.buddy-robot[data-pose='thinking'] .buddy-elbow-left { transform: rotate(-160deg); }
-.buddy-robot[data-pose='thinking'] .buddy-antenna { animation: buddy-light 1.3s ease-in-out infinite; }
-.buddy-robot[data-pose='listening'] .buddy-head { animation: none; transform: rotate(8deg) translateY(2px); }
-.buddy-robot[data-pose='listening'] .buddy-brow-right { transform: translateY(-4px); }
-.buddy-robot[data-pose='curious'] .buddy-head { animation: none; transform: rotate(-7deg); }
-.buddy-robot[data-pose='curious'] .buddy-eye { transform: scale(1.06); }
-.buddy-robot[data-pose='pointing'] .buddy-shoulder-right { transform: rotate(-80deg); }
-.buddy-robot[data-pose='pointing'] .buddy-elbow-right { transform: rotate(-20deg); }
-.buddy-robot[data-pose='pointing'] .buddy-head { animation: none; transform: rotate(6deg); }
-.buddy-robot[data-pose='pointing'] .buddy-pupil { transform: translate(7px,3px); }
-.buddy-robot[data-pose='encouraging'] .buddy-head { animation: buddy-nod 1.7s ease-in-out; }
-.buddy-robot[data-pose='encouraging'] .buddy-brow-left { transform: rotate(-8deg); }
-.buddy-robot[data-pose='explaining'] .buddy-shoulder-right { transform: rotate(-35deg); }
-.buddy-robot[data-pose='talking'] .buddy-mouth > path:first-child { display: none; }
-.buddy-robot[data-pose='talking'] .buddy-mouth-talking { display: block; animation: buddy-talk .31s ease-in-out infinite alternate; }
-.buddy-robot[data-pose='talking'] .buddy-head { animation: buddy-nod 2.7s ease-in-out infinite; }
-.buddy-robot[data-pose='talking'] .buddy-shoulder-left { animation: buddy-talk-hand 3.1s ease-in-out infinite; }
-.buddy-robot[data-pose='talking'] .buddy-shoulder-right { animation: buddy-talk-hand 4.3s ease-in-out infinite reverse; }
-.buddy-robot[data-pose='celebrating'] .buddy-shoulder-left { transform: rotate(70deg); }
-.buddy-robot[data-pose='celebrating'] .buddy-shoulder-right { transform: rotate(-70deg); }
-.buddy-robot[data-pose='celebrating'] .buddy-elbow-left { transform: rotate(35deg); }
-.buddy-robot[data-pose='celebrating'] .buddy-elbow-right { transform: rotate(-35deg); }
-.buddy-robot[data-pose='celebrating'] .buddy-body-float { animation: buddy-celebrate 1.9s ease-in-out; }
-.buddy-sparkles path { animation: buddy-particle 1.7s ease-out both; animation-delay: calc(var(--particle) * .04s); transform-origin: 210px 260px; }
-.buddy-robot[data-pose='sleeping'] .buddy-eye { transform: scaleY(.12); }
-@keyframes buddy-breathe { 0%,100% { transform: translateY(0); } 50% { transform: translateY(-4px); } }
-@keyframes buddy-head-idle { 0%,30%,65%,100% { transform: rotate(0); } 42%,52% { transform: rotate(-2deg); } 80%,87% { transform: rotate(2deg); } }
-@keyframes buddy-wave-shoulder { 0%,100% { transform: rotate(-5deg); } 20%,80% { transform: rotate(-65deg); } }
-@keyframes buddy-wave-elbow { 0%,100% { transform: rotate(0); } 20%,80% { transform: rotate(-40deg); } }
-@keyframes buddy-wave-hand { 0%,20%,85%,100% { transform: rotate(0); } 30%,50%,70% { transform: rotate(20deg); } 40%,60%,80% { transform: rotate(-20deg); } }
-@keyframes buddy-talk { from { transform: scaleY(.25); } to { transform: scaleY(1); } }
-@keyframes buddy-nod { 0%,100% { transform: rotate(0); } 45% { transform: rotate(3deg) translateY(3px); } 70% { transform: rotate(-2deg); } }
-@keyframes buddy-talk-hand { 0%,100% { transform: rotate(-5deg); } 40% { transform: rotate(-23deg); } }
-@keyframes buddy-celebrate { 0%,100% { transform: translateY(0); } 30% { transform: translateY(-16px); } 52% { transform: translateY(0); } 70% { transform: translateY(-7px); } }
-@keyframes buddy-particle { 0% { opacity: 0; transform: scale(.6); } 25% { opacity: 1; } 100% { opacity: 0; transform: scale(1.15) translateY(-22px); } }
-@keyframes buddy-light { 0%,100% { opacity: .6; } 50% { opacity: 1; } }
-@keyframes buddy-clock { from { opacity: .99; } to { opacity: 1; } }
+.buddy-robot {
+  width: min(100%, 420px);
+  margin: auto;
+  --buddy-accent: #72e5b0;
+  filter: drop-shadow(0 16px 18px #092f201c);
+}
+.buddy-robot svg {
+  width: 100%;
+  display: block;
+  overflow: visible;
+}
+.buddy-robot-small {
+  width: 112px;
+  flex: 0 0 112px;
+}
+.buddy-body-float {
+  animation: buddy-breathe 6.7s ease-in-out infinite;
+  transform-origin: 210px 330px;
+}
+.buddy-head {
+  transform-origin: 210px 233px;
+  animation: buddy-head-idle 13s ease-in-out infinite;
+}
+.buddy-shoulder,
+.buddy-elbow,
+.buddy-hand {
+  transform-origin: 0 0;
+  transition: transform 0.6s cubic-bezier(0.2, 0.7, 0.2, 1);
+}
+.buddy-shoulder-left {
+  transform: rotate(5deg);
+}
+.buddy-shoulder-right {
+  transform: rotate(-5deg);
+}
+.buddy-eye {
+  transform-origin: 0 0;
+  transition: transform 0.15s;
+}
+.buddy-eyes-blink .buddy-eye {
+  transform: scaleY(0.08);
+}
+.buddy-pupil {
+  transform: translate(var(--gaze-x), var(--gaze-y));
+  transition: transform 0.65s ease;
+}
+.buddy-pupil-1 {
+  transition-duration: 0.72s;
+}
+.buddy-brow-left {
+  transform-origin: 164px 118px;
+}
+.buddy-brow-right {
+  transform-origin: 263px 115px;
+}
+.buddy-mouth {
+  transform-origin: 213px 180px;
+}
+.buddy-mouth-talking {
+  display: none;
+  transform-origin: 213px 174px;
+}
+.buddy-gesture-clock {
+  animation: buddy-clock 1.8s linear;
+}
+.buddy-clock-wave {
+  animation-duration: 3.4s;
+}
+.buddy-clock-celebrating {
+  animation-duration: 1.9s;
+}
+.buddy-chest-pulse {
+  animation: buddy-light 2s ease-in-out infinite;
+}
+.buddy-robot[data-pose='wave'] .buddy-shoulder-right {
+  animation: buddy-wave-shoulder 3.4s ease-in-out both;
+}
+.buddy-robot[data-pose='wave'] .buddy-elbow-right {
+  animation: buddy-wave-elbow 3.4s ease-in-out both;
+}
+.buddy-robot[data-pose='wave'] .buddy-hand-right {
+  animation: buddy-wave-hand 3.4s ease-in-out both;
+}
+.buddy-robot[data-pose='wave'] .buddy-head {
+  transform: rotate(-6deg);
+  animation: none;
+}
+.buddy-robot[data-pose='thinking'] .buddy-head {
+  animation: none;
+  transform: rotate(-8deg) translateY(-2px);
+}
+.buddy-robot[data-pose='thinking'] .buddy-shoulder-left {
+  transform: rotate(-10deg);
+}
+.buddy-robot[data-pose='thinking'] .buddy-elbow-left {
+  transform: rotate(-160deg);
+}
+.buddy-robot[data-pose='thinking'] .buddy-antenna {
+  animation: buddy-light 1.3s ease-in-out infinite;
+}
+.buddy-robot[data-pose='listening'] .buddy-head {
+  animation: none;
+  transform: rotate(8deg) translateY(2px);
+}
+.buddy-robot[data-pose='listening'] .buddy-brow-right {
+  transform: translateY(-4px);
+}
+.buddy-robot[data-pose='curious'] .buddy-head {
+  animation: none;
+  transform: rotate(-7deg);
+}
+.buddy-robot[data-pose='curious'] .buddy-eye {
+  transform: scale(1.06);
+}
+.buddy-robot[data-pose='pointing'] .buddy-shoulder-right {
+  transform: rotate(-80deg);
+}
+.buddy-robot[data-pose='pointing'] .buddy-elbow-right {
+  transform: rotate(-20deg);
+}
+.buddy-robot[data-pose='pointing'] .buddy-head {
+  animation: none;
+  transform: rotate(6deg);
+}
+.buddy-robot[data-pose='pointing'] .buddy-pupil {
+  transform: translate(7px, 3px);
+}
+.buddy-robot[data-pose='pointing'][data-point='left'] .buddy-shoulder-right {
+  transform: rotate(-5deg);
+}
+.buddy-robot[data-pose='pointing'][data-point='left'] .buddy-elbow-right {
+  transform: rotate(0);
+}
+.buddy-robot[data-pose='pointing'][data-point='left'] .buddy-shoulder-left {
+  transform: rotate(80deg);
+}
+.buddy-robot[data-pose='pointing'][data-point='left'] .buddy-elbow-left {
+  transform: rotate(20deg);
+}
+.buddy-robot[data-pose='pointing'][data-point='left'] .buddy-pupil {
+  transform: translate(-7px, 3px);
+}
+.buddy-robot[data-pose='encouraging'] .buddy-head {
+  animation: buddy-nod 1.7s ease-in-out;
+}
+.buddy-robot[data-pose='encouraging'] .buddy-brow-left {
+  transform: rotate(-8deg);
+}
+.buddy-robot[data-pose='explaining'] .buddy-shoulder-right {
+  transform: rotate(-35deg);
+}
+.buddy-robot[data-pose='talking'] .buddy-mouth > path:first-child {
+  display: none;
+}
+.buddy-robot[data-pose='talking'] .buddy-mouth-talking {
+  display: block;
+  animation: buddy-talk 0.31s ease-in-out infinite alternate;
+}
+.buddy-robot[data-pose='talking'] .buddy-head {
+  animation: buddy-nod 2.7s ease-in-out infinite;
+}
+.buddy-robot[data-pose='talking'] .buddy-shoulder-left {
+  animation: buddy-talk-hand 3.1s ease-in-out infinite;
+}
+.buddy-robot[data-pose='talking'] .buddy-shoulder-right {
+  animation: buddy-talk-hand 4.3s ease-in-out infinite reverse;
+}
+.buddy-robot[data-pose='celebrating'] .buddy-shoulder-left {
+  transform: rotate(70deg);
+}
+.buddy-robot[data-pose='celebrating'] .buddy-shoulder-right {
+  transform: rotate(-70deg);
+}
+.buddy-robot[data-pose='celebrating'] .buddy-elbow-left {
+  transform: rotate(35deg);
+}
+.buddy-robot[data-pose='celebrating'] .buddy-elbow-right {
+  transform: rotate(-35deg);
+}
+.buddy-robot[data-pose='celebrating'] .buddy-body-float {
+  animation: buddy-celebrate 1.9s ease-in-out;
+}
+.buddy-sparkles path {
+  animation: buddy-particle 1.7s ease-out both;
+  animation-delay: calc(var(--particle) * 0.04s);
+  transform-origin: 210px 260px;
+}
+.buddy-robot[data-pose='sleeping'] .buddy-eye {
+  transform: scaleY(0.12);
+}
+@keyframes buddy-breathe {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-4px);
+  }
+}
+@keyframes buddy-head-idle {
+  0%,
+  30%,
+  65%,
+  100% {
+    transform: rotate(0);
+  }
+  42%,
+  52% {
+    transform: rotate(-2deg);
+  }
+  80%,
+  87% {
+    transform: rotate(2deg);
+  }
+}
+@keyframes buddy-wave-shoulder {
+  0%,
+  100% {
+    transform: rotate(-5deg);
+  }
+  20%,
+  80% {
+    transform: rotate(-65deg);
+  }
+}
+@keyframes buddy-wave-elbow {
+  0%,
+  100% {
+    transform: rotate(0);
+  }
+  20%,
+  80% {
+    transform: rotate(-40deg);
+  }
+}
+@keyframes buddy-wave-hand {
+  0%,
+  20%,
+  85%,
+  100% {
+    transform: rotate(0);
+  }
+  30%,
+  50%,
+  70% {
+    transform: rotate(20deg);
+  }
+  40%,
+  60%,
+  80% {
+    transform: rotate(-20deg);
+  }
+}
+@keyframes buddy-talk {
+  from {
+    transform: scaleY(0.25);
+  }
+  to {
+    transform: scaleY(1);
+  }
+}
+@keyframes buddy-nod {
+  0%,
+  100% {
+    transform: rotate(0);
+  }
+  45% {
+    transform: rotate(3deg) translateY(3px);
+  }
+  70% {
+    transform: rotate(-2deg);
+  }
+}
+@keyframes buddy-talk-hand {
+  0%,
+  100% {
+    transform: rotate(-5deg);
+  }
+  40% {
+    transform: rotate(-23deg);
+  }
+}
+@keyframes buddy-celebrate {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  30% {
+    transform: translateY(-16px);
+  }
+  52% {
+    transform: translateY(0);
+  }
+  70% {
+    transform: translateY(-7px);
+  }
+}
+@keyframes buddy-particle {
+  0% {
+    opacity: 0;
+    transform: scale(0.6);
+  }
+  25% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+    transform: scale(1.15) translateY(-22px);
+  }
+}
+@keyframes buddy-light {
+  0%,
+  100% {
+    opacity: 0.6;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+@keyframes buddy-clock {
+  from {
+    opacity: 0.99;
+  }
+  to {
+    opacity: 1;
+  }
+}
 @media (prefers-reduced-motion: reduce) {
-  .buddy-robot * { animation: none !important; transition: none !important; }
-  .buddy-robot .buddy-gesture-clock { animation: buddy-clock .01s linear !important; }
-  .buddy-robot[data-pose='wave'] .buddy-shoulder-right { transform: rotate(-65deg); }
-  .buddy-robot[data-pose='wave'] .buddy-elbow-right { transform: rotate(-40deg); }
-  .buddy-robot[data-pose='talking'] .buddy-mouth-talking { transform: scaleY(.7); }
+  .buddy-robot * {
+    animation: none !important;
+    transition: none !important;
+  }
+  .buddy-robot .buddy-gesture-clock {
+    animation: buddy-clock 0.01s linear !important;
+  }
+  .buddy-robot[data-pose='wave'] .buddy-shoulder-right {
+    transform: rotate(-65deg);
+  }
+  .buddy-robot[data-pose='wave'] .buddy-elbow-right {
+    transform: rotate(-40deg);
+  }
+  .buddy-robot[data-pose='talking'] .buddy-mouth-talking {
+    transform: scaleY(0.7);
+  }
 }

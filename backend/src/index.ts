@@ -14,6 +14,7 @@ import { identityRouter, teamRouter } from './routes/identity';
 import { jwtGuard, requireIdentity } from './middleware/identity';
 import { journeyRouter } from './routes/journeys';
 import { createFlowVoiceRouter } from './routes/flowVoice';
+import { createIntegratedBuddyRouter } from './features/buddy/integration';
 import { existsSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 
@@ -58,6 +59,7 @@ app.use('/api/team', teamRouter);
 app.use('/api/motion', jwtGuard(), requireIdentity, motionRouter);
 app.use('/api/journeys', journeyRouter);
 app.use('/api/flow-voice', jwtGuard(), requireIdentity, createFlowVoiceRouter());
+app.use('/api/buddy', createIntegratedBuddyRouter());
 
 app.use('/api', (_req, res) => {
   const body: ApiError = {

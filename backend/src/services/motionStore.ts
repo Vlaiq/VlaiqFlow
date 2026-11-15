@@ -7,11 +7,12 @@ import {
   MOTION_RULES,
   MotionEvaluation,
   MotionMode,
-  MotionTransaction,
+  WalletTransaction,
   type MotionPoint,
   type MotionResult,
   type MotionWallet,
 } from '@vlaiq/shared';
+import { COSMETICS, MissionId } from '../../../shared/src/buddy/contracts';
 
 const Activity = z.object({
   id: z.string().uuid(),
@@ -23,7 +24,7 @@ const Activity = z.object({
 });
 const Owner = z.object({
   activities: z.array(Activity),
-  ledger: z.array(MotionTransaction),
+  ledger: z.array(WalletTransaction),
 });
 const Database = z.record(Owner);
 const day = (timestamp: number) =>
@@ -95,11 +96,11 @@ export class MotionStore {
   }
   wallet(owner: string, now = Date.now()): MotionWallet {
     const transactions = this.data[owner]?.ledger ?? [];
-    const daily = transactions.filter((t) => day(t.awardedAt) === day(now));
+    const daily = transactions.filter((t) => t.source === 'browser-gps-plausibility' && day(t.awardedAt) === day(now));
     const balance = transactions.reduce((sum, t) => sum + t.coins, 0);
     return {
       balance,
-      lifetime: balance,
+      lifetime: transactions.reduce((sum, t) => sum + Math.max(0, t.coins), 0),
       transactions: [...transactions].reverse(),
       dailyEarned: daily.reduce((s, t) => s + t.coins, 0),
       todayActivities: daily.length,
@@ -107,6 +108,29 @@ export class MotionStore {
   }
   activities(owner: string) {
     return (this.data[owner]?.activities ?? []).map(({ digest, ...summary }) => summary).reverse();
+  }
+  /** Called only inside the same locked account transaction as Buddy progress. */
+  buddyCredit(owner: string, coins: number, key: string, now = Date.now()) {
+    const match = /^buddy:([a-z-]+):v(\d+)$/.exec(key);
+    const missionId = MissionId.parse(match?.[1]);
+    const version = Number(match?.[2]);
+    if (coins !== 5 || version !== 1) throw new Error('Invalid educational reward');
+    const next = structuredClone(this.data), user = next[owner] ??= { activities: [], ledger: [] };
+    if (user.ledger.some(t => 'idempotencyKey' in t && t.idempotencyKey === key)) throw Object.assign(new Error('Lecție deja recompensată.'), { status: 409 });
+    const utcDay = new Date(now).toISOString().slice(0, 10);
+    const earned = user.ledger.filter(t => t.source === 'education' && new Date(t.awardedAt).toISOString().slice(0, 10) === utcDay).reduce((n,t) => n + t.coins, 0);
+    if (earned + coins > 20) throw Object.assign(new Error('Limita educațională a fost atinsă.'), { status: 409 });
+    user.ledger.push({ id: randomUUID(), source: 'education', coins, awardedAt: now, missionId, definitionVersion: version, idempotencyKey: key, reason: 'Lecție FLOW Buddy validată determinist pe server.' });
+    this.save(next);
+  }
+  buddySpend(owner: string, coins: number, key: string, now = Date.now()) {
+    const item = COSMETICS.find(c => key === `buddy:cosmetic:${c.id}`);
+    if (!item || item.price <= 0 || coins !== item.price) throw new Error('Invalid cosmetic price');
+    if (this.wallet(owner, now).balance < coins) throw Object.assign(new Error('Nu ai suficiente FLOW Coins.'), { status: 409 });
+    const next = structuredClone(this.data), user = next[owner] ??= { activities: [], ledger: [] };
+    if (user.ledger.some(t => 'idempotencyKey' in t && t.idempotencyKey === key)) throw Object.assign(new Error('Accesoriu deja cumpărat.'), { status: 409 });
+    user.ledger.push({ id: randomUUID(), source: 'cosmetic', coins: -coins, awardedAt: now, cosmeticId: item.id, idempotencyKey: key, reason: `Buddy Workshop · ${item.name}` });
+    this.save(next);
   }
   start(owner: string, mode: MotionMode, now = Date.now()) {
     this.purgeInactive(now);

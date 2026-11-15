@@ -7,11 +7,17 @@ describe('Educational city, existing FLOW allocator', () => {
       const r = simulateBuddyCity(params, policy);
       expect(r).toEqual(simulateBuddyCity(params, policy));
       expect(r.assigned + r.unassigned + r.transitPassengers).toBe(30);
-      expect(r.allocations.every(l => l.occupied <= l.capacity)).toBe(true);
+      expect(r.allocations.every((l) => l.occupied <= l.capacity)).toBe(true);
       expect(r.assumptions).toContain('Date sintetice');
       expect(r).not.toHaveProperty('co2Saved');
     }
-    expect(simulateBuddyCity(params, 'nearest').allocations).not.toEqual(simulateBuddyCity(params, 'balanced').allocations);
+    expect(simulateBuddyCity(params, 'nearest').allocations).not.toEqual(
+      simulateBuddyCity(params, 'balanced').allocations,
+    );
   });
-  it('rejects unbounded scenario sizes', () => { expect(() => simulateBuddyCity({ drivers: 100000, capacity: 36, seed: 7 }, 'nearest')).toThrow(); });
+  it('rejects unbounded scenario sizes', () => {
+    expect(() =>
+      simulateBuddyCity({ drivers: 100000, capacity: 36, seed: 7 }, 'nearest'),
+    ).toThrow();
+  });
 });

@@ -95,6 +95,8 @@ const NavigationScreen = lazy(() =>
 const MotionScreen = lazy(() =>
   import('../features/motion/MotionScreen').then((m) => ({ default: m.MotionScreen })),
 );
+const BuddyRoute = lazy(() => import('../features/buddy/BuddyRoute').then(m => ({ default: m.BuddyRoute })));
+const BuddyDiscovery = lazy(() => import('../features/buddy/BuddyDiscovery').then(m => ({ default: m.BuddyDiscovery })));
 const CityScreen = lazy(() =>
   import('../features/city/CityScreen').then((m) => ({ default: m.CityScreen })),
 );
@@ -192,6 +194,8 @@ function AppContent() {
       <div hidden={path !== '/'}>
         <Explore onStartActivity={startActivity} />
       </div>
+      {path === '/challenges' && <Suspense fallback={loading}><BuddyDiscovery onOpen={() => navigate('/buddy')} /></Suspense>}
+      {path === '/buddy' && <Suspense fallback={loading}><BuddyRoute onWalletChange={setBalance} /></Suspense>}
       {(motionVisited || motionVisible) && (
         <div hidden={!motionVisible}>
           {journey && (
@@ -284,7 +288,7 @@ function AppContent() {
         '/city',
         '/data',
         '/sources',
-        '/help', '/team', '/auth/callback', '/profile', '/profile/edit', '/settings', '/activities',
+        '/help', '/team', '/auth/callback', '/profile', '/profile/edit', '/settings', '/activities', '/buddy',
       ].includes(path) && (
         <section className="flow-unknown">
           <strong>404</strong>

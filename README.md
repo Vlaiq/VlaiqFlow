@@ -41,6 +41,7 @@ Also in the app:
 - **Mișcare** records a walk or ride in the foreground with GPS plausibility checks and server-side evaluation. It awards virtual FLOW coins with no monetary value; choosing a green route alone never awards coins.
 - **Provocări / Comunitate** show activity goals and a local, opt-in league preview.
 - **Primărie** (FLOW City) shows public data coverage and a clearly labelled deterministic simulation of parking allocation.
+- **FLOW Buddy** — authenticated discovery in Provocări, expressive articulated eco-robot, Gemini chat, educational city, server-validated lessons and a cosmetic workshop using the existing account wallet. See [architecture](docs/flow-buddy.md) and [verified scope/limitations](docs/flow-buddy-verification.md).
 - **Surse** lists every dataset with its source, date and limits.
 - **/confidentialitate** lists where personal data goes.
 
@@ -94,7 +95,10 @@ flowchart LR
 | `CORS_ORIGINS` | backend | Allowed frontend origins, comma-separated |
 | `ORS_API_KEY` | backend, optional | openrouteservice routes and walking/driving matrices |
 | `VITE_API_URL` | frontend, public | Empty for same-origin `/api`; never put secrets here |
-| `GEMINI_API_KEY`, `ELEVENLABS_API_KEY`, `DATABASE_URL` | backend, optional | Reserved for future integrations; nothing uses them yet |
+| `GEMINI_API_KEY` | backend secret | FLOW Buddy text conversation; never sent to the browser |
+| `BUDDY_GEMINI_MODEL`, `BUDDY_VOICE_ID` | backend, optional | Buddy model/voice selection; defaults documented in the Buddy guide |
+| `ELEVENLABS_API_KEY` | backend secret, optional | Existing FLOW Voice and explicitly requested Buddy reply speech |
+| `DATABASE_URL` | backend secret | PostgreSQL for authenticated accounts, the shared wallet and Buddy progress; run `pnpm -F backend db:migrate` |
 
 Without `ORS_API_KEY`, driving uses the OSRM public demo, and walking and cycling use the FOSSGIS servers (`routing.openstreetmap.de`). These are low-volume services: the backend sends at most one FOSSGIS request per second with a User-Agent naming the team, caches results, and the map shows the OSM "fix the map" link their policy asks for. Set a key for anything beyond a demo.
 

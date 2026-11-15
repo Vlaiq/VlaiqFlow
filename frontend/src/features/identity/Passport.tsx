@@ -22,6 +22,7 @@ import { Avatar } from './AccountMenu';
 import { AvatarCropper } from './AvatarCropper';
 import { accountCall } from './privateApi';
 import { useAppRouter } from '../../app/router';
+import { BuddyProgressCard } from '../buddy/BuddyProgressCard';
 const Activities = z.array(
   z.object({
     id: z.string(),
@@ -140,7 +141,7 @@ export function Passport({
       )}
       <div className="passport-stats">
         {[
-          ['FLOW Coins', wallet?.balance, Leaf, 'Din mișcare eligibilă'],
+          ['FLOW Coins', wallet?.balance, Leaf, 'Portofel comun · mișcare și educație'],
           [
             'Activități eligibile',
             ready ? eligible.length : null,
@@ -167,6 +168,7 @@ export function Passport({
         })}
       </div>
       <div className="passport-grid">
+        {!activitiesOnly && <BuddyProgressCard key={id.accountKey} />}
         <section className="passport-card passport-timeline">
           <div className="identity-section-heading">
             <h2>În mișcare, în ritmul tău.</h2>
@@ -512,7 +514,8 @@ function ProfileEditor({ profile }: { profile: Profile }) {
             <h2>Vocea care te cunoaște.</h2>
             <p>
               La următoarea conversație, FLOW Voice poate primi nickname-ul tău ca informație de
-              context.
+              context. În Buddy, poți trimite la cerere ultimul răspuns către ElevenLabs pentru
+              redare vocală. Microfonul pornește doar la apăsare; transcrierea folosește furnizorul browserului.
             </p>
             <label className="identity-check">
               <input
@@ -520,7 +523,7 @@ function ProfileEditor({ profile }: { profile: Profile }) {
                 checked={form.voiceConsent}
                 onChange={(e) => setForm({ ...form, voiceConsent: e.target.checked })}
               />
-              <span>Permit trimiterea nickname-ului către ElevenLabs pentru personalizare.</span>
+              <span>Permit trimiterea nickname-ului către ElevenLabs pentru personalizare și redarea la cerere a răspunsurilor Buddy.</span>
             </label>
             <small>
               Nu trimitem emailul, biografia sau istoricul tău. Modificarea se aplică la o sesiune
