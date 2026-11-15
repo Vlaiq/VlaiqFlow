@@ -4,7 +4,28 @@ Verification date: 15 November 2026 (Europe/Bucharest). Repository: `Vlaiq/Vlaiq
 
 The implementation is ready for code review and local demonstration. **It is not certified as an end-to-end live Auth0 release.** The external tenant cannot be reached from this environment, and no real user email, Google session, passkey device, MFA enrollment, production database or contributor assignment was used to claim success.
 
-## Tests actually executed
+## Final live-acceptance pass, following commit 2a2adb0
+
+The existing feature branch and draft PR #1 were resumed at exactly `2a2adb00db25114536d406e4fc863ce0fee7f219`. No identity architecture, mobility feature or UI was rebuilt. The original **628 tests passed again** before changes. This pass adds three meaningful network-discovery/JWKS regressions; **631 tests now pass: 398 backend, 103 frontend, 130 shared**, with no skipped PostgreSQL integration suite. Typechecks now also include the backend acceptance/migration scripts. Workspace typecheck and the production build pass; existing large-chunk warnings remain.
+
+| Evidence category | Result in this pass |
+|---|---|
+| Implemented | Existing account/profile/avatar/wallet/route guards preserved. Added `pnpm identity:acceptance` (real SDK, migration, fixed local origin, no test identities/fallback grants) and `pnpm -F backend identity:verify-live` (private local token file, actual production JWT guard, native permission checks, no credential/PII output) |
+| Tested locally | Real PG17 named volume and migration; 631 tests; real-SDK PKCE construction; profile edit/crop/reload/isolation with **synthetic** identity; compiled PWA/offline public shell; missing-token private APIs and team PATCH 401 with no-store; allowed CORS origin receives ACAO, unlisted origin does not |
+| Verified against real Auth0 | **None.** Discovery and JWKS each fail with curl error 56, `CONNECT tunnel failed, response 403`, HTTP result `000`. The environment's enforced allowlist omits the tenant. This is a proxy rejection before an Auth0 response, not evidence of invalid tenant configuration |
+| Verified against real ElevenLabs | Isolated greeting candidate saved and read back; only greeting/placeholder differ from the immutable production pin; named and explicit-empty signed WebSocket sessions return expected text and PCM audio. Omitted-variable test times out, so candidate is not promotion-ready. Main retains 100% automatic traffic, candidate 0%; production app pin unchanged |
+| Requires manual testing | Two owned real accounts; signup/login/Google; callback/refresh/logout; real profile/photo persistence and isolation; received verification/reset email and new/old password behavior; physical passkey enrollment/login; authenticated FLOW WebRTC/audio/tools; independent MFA challenge/recovery |
+| Blocked by external configuration | Auth0 tenant egress and management access; actual native RBAC/plan/MFA entitlement inspection and intended contributor assignment; production DB/HTTPS origin/allowlists, email/Google production settings and device acceptance |
+
+An independent fresh headless Chromium issuer navigation also failed with `net::ERR_TUNNEL_CONNECTION_FAILED`. No authorize request was completed and no token was obtained.
+
+The local acceptance database `flow_identity` has zero account rows; synthetic users are confined to `flow_identity_test`. No legitimate accounts or real tokens were fabricated. No production deployment, Auth0 tenant change, paid upgrade, role assignment or MFA enrollment was performed.
+
+**Exact browser steps, hidden local token instructions, expected 401/403/200 results, the HTTPS deployment audit and a verified-capabilities-only 60-second jury rehearsal:** [live acceptance runbook](flow-identity-live-acceptance.md). The earlier 90-second live script remains conditional on those real-account gates. Keep the PR in draft while they are open.
+
+Acceptance additions: `scripts/start-identity-acceptance.mjs`, `backend/scripts/verify-live-identity.ts`, `backend/src/middleware/identity.jwks.test.ts`, and `docs/flow-identity-live-acceptance.md`. Package scripts, backend script typechecking and both original identity documents were updated. The original implementation manifest below is retained for review.
+
+## Original implementation evidence (retained; reruns above)
 
 - Backend full suite: **395 passed**, 26 files, including real PostgreSQL integration with locally signed RS256 JWTs. Final full run: 41.71 seconds.
 - Frontend full suite: **103 passed**, 16 files. Final full run: 18.92 seconds.
@@ -52,7 +73,7 @@ The implementation is ready for code review and local demonstration. **It is not
 
 A real Chromium navigation toward the supplied Auth0 host failed with `ERR_TUNNEL_CONNECTION_FAILED`. The issuer discovery request returned HTTP 403. The shared-browser tool also could not open requested pages. These are current environment limitations; they do not prove a tenant outage, bot block, wrong password or invalid tenant settings. An authenticated Auth0 management connection/CLI was not available, so active plan, native role assignments, MFA entitlement and delivery logs could not be inspected.
 
-The existing ElevenLabs agent was read successfully through the connected service. It disables first-message overrides and defines no nickname placeholder. Its pinned version and security settings were left unchanged; the code uses bounded, consented, data-only contextual updates. A personalized first spoken greeting and a new live authenticated voice conversation are not claimed.
+The original pinned ElevenLabs agent disables first-message overrides and defines no nickname placeholder. Its pinned version and security settings remain unchanged; application code uses bounded, consented, data-only contextual updates. The final pass staged and provider-tested a separate candidate, documented above and in the live runbook. A personalized production first greeting and a new live Auth0-authenticated voice conversation are not claimed.
 
 Auth0 tenant configuration described in the supplied handoff (Google, database signup, verification/reset templates, Identifier First, Passkeys, Romanian localization, branding, API permissions and role) remains **reported configuration**, not newly verified evidence. The handoff reports MFA disabled, development Google credentials and the development email provider. No plan was purchased and no OTP connection was enabled.
 
@@ -60,7 +81,7 @@ Auth0 tenant configuration described in the supplied handoff (Google, database s
 
 The complete implementation audit, route map, schema/storage/wallet design, consented ElevenLabs behavior, permission and fallback design, recovery/Passkey/MFA status, production SMTP fields, deployment instructions, manual acceptance steps and precise conditional 90-second jury script are in `docs/flow-identity.md`.
 
-The local database is PostgreSQL 17 in a named Docker volume. Test databases end in `_test` and fixture servers refuse other names. Production requires a separately provisioned durable PostgreSQL service, configured HTTPS origins, actual Google/email provider credentials where applicable, verified tenant features, a real team image/member list, and the privacy operator/contact. There is no localStorage substitute for account persistence and no production auth bypass.
+The current local database is PostgreSQL 17 in named Docker volume `flow-identity-postgres-data`, bound only to 127.0.0.1:5432. Migration was applied to `flow_identity`; disposable tests use `flow_identity_test`. Test databases end in `_test` and fixture servers refuse other names. Production requires a separately provisioned durable PostgreSQL service, configured HTTPS origins, actual Google/email provider credentials where applicable, verified tenant features, a real team image/member list, and the privacy operator/contact. There is no localStorage substitute for account persistence and no production auth bypass.
 
 Legacy anonymous wallet data was not destroyed or automatically reassigned. This version does not expose a guest-import action. Existing browser-only parked-car/favorite shortcuts remain device data and are cleared on logout; they are not represented as cross-device profile fields.
 

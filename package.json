@@ -9,6 +9,7 @@
   },
   "scripts": {
     "dev": "pnpm -r --parallel dev",
+    "identity:acceptance": "node scripts/start-identity-acceptance.mjs",
     "build": "pnpm -F frontend build",
     "test": "pnpm -r test",
     "typecheck": "pnpm -r typecheck",

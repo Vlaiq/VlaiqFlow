@@ -8,7 +8,8 @@
     "start": "tsx src/index.ts",
     "test": "vitest run --passWithNoTests",
     "typecheck": "tsc -p tsconfig.json",
-    "db:migrate": "tsx scripts/migrate.ts"
+    "db:migrate": "tsx scripts/migrate.ts",
+    "identity:verify-live": "tsx scripts/verify-live-identity.ts"
   },
   "dependencies": {
     "@vlaiq/shared": "workspace:*",

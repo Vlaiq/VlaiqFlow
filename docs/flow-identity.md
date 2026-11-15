@@ -2,6 +2,8 @@
 
 Your city. Your identity. Your journey.
 
+**Final acceptance update:** the original 628 tests were preserved and rerun; three local discovery/JWKS tests bring the total to 631. Actual Auth0 access is still blocked before reaching the tenant. Use [the live acceptance runbook](flow-identity-live-acceptance.md) for the ready-to-run real-SDK launcher, owned-account browser steps, native 401/403/200 token probe, current voice candidate limitations, HTTPS audit and dependable jury fallback. The production voice pin remains unchanged. This document's original implementation evidence and conditional live script remain below.
+
 ## Repository audit and selected baseline
 
 The supplied clean workspace was `work` at `bcbeb88`, without an Auth0 implementation or installed SDK. Remote branches were enumerated using GitHub and `git ls-remote`, then fetched before changes. No Auth0 branch existed. `main` was `f8ae474`; the previously verified voice branch was `0888886`. The latest integrated `school-drop-off-zones` branch was `f036822` and already contained `feature/flow-voice-elevenlabs` as an ancestor. It includes later hands-free voice, shared journey, School Shield, Bega and transit work. This task branches from that integrated baseline; it does not merge independent branches. Work is on `feature/flow-identity-auth0`. No changes were made directly to main.
@@ -72,7 +74,7 @@ Legacy anonymous `backend/.data/motion.json` is untouched. **Guest import is not
 
 ## ElevenLabs
 
-The connected ElevenLabs exploration skill was used to inspect the existing FLOW Voice agent and branch. Agent `agent_8701m7dvvhhyexj9771tqawz23vm`, pinned version `agtvrsn_7001m7dwanv7fe385wxb8f4zbc6c`, voice and tools are preserved. The inspected configuration has **first-message override disabled** and no nickname variable placeholder. Therefore no unsupported greeting override or agent/prompt/security-setting change was made.
+The connected ElevenLabs exploration skill was used to inspect the existing FLOW Voice agent and branch. Agent `agent_8701m7dvvhhyexj9771tqawz23vm`, pinned version `agtvrsn_7001m7dwanv7fe385wxb8f4zbc6c`, voice and tools are preserved. That production configuration has **first-message override disabled** and no nickname variable placeholder. The final acceptance pass created an isolated candidate branch, changing only its first-message template and placeholder; see the live runbook for exact IDs and evidence. No production prompt, override policy, traffic split or application pin was changed.
 
 With opt-in, `voicePersonalization` produces only a normalized, length-bounded preferred name. After connection, the existing SDK `sendContextualUpdate` receives data-only JSON with preferred name and consent. No email, biography, full activity history or arbitrary instructions are sent. Opt-out produces no nickname context. Leaving voice pages or logging out/account switching closes the existing session; account-specific state is remounted. The initial pinned greeting remains generic. A spoken personalized first greeting is **not claimed**; it would require a separately tested agent version with an appropriate bounded variable. Subsequent use of the contextual nickname also needs a real authenticated audio session test.
 
