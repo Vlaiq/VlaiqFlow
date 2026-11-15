@@ -13,12 +13,20 @@ import {
 } from '@elevenlabs/react';
 import { z } from 'zod';
 import { useIdentity } from '../identity/IdentityProvider';
-import { privateFetch } from '../identity/privateApi';
+import { accountCall, privateFetch } from '../identity/privateApi';
 import { voicePersonalization } from '../../../../shared/src/identity';
 import { FLOW_AGENT } from '../../../../shared/src/flowVoice';
 import { useAppRouter } from '../../app/router';
 import { navigationSpeech, registerConversationGate } from './speech';
-import { TRANSCRIPT_KEY, TRANSCRIPT_LINES, cleanAgentText, isNoise, loadTranscript } from './voiceText';
+import {
+  TRANSCRIPT_KEY,
+  TRANSCRIPT_LINES,
+  cleanAgentText,
+  isNoise,
+  loadTranscript,
+  memoryContext,
+  mergeLines,
+} from './voiceText';
 import type {
   ToolSession,
   TranscriptLine,
@@ -65,6 +73,39 @@ function Runtime({ bridge }: { bridge: VoiceBridge }) {
       /* private mode: the conversation still shows for this page */
     }
   }, [transcript]);
+  // Long memory: with the voice consent from Settings, the conversation is kept in the FLOW account
+  // (PostgreSQL), so FLOW remembers it on another day or device. Without consent: this tab only.
+  const memoryOn = identity.authenticated && identity.profile?.voiceConsent === true;
+  const memoryReady = useRef(false);
+  useEffect(() => {
+    memoryReady.current = false;
+    if (!memoryOn) return;
+    let alive = true;
+    void accountCall('/me/voice-memory')
+      .then((body: { lines?: TranscriptLine[] }) => {
+        if (!alive) return;
+        const saved = Array.isArray(body?.lines) ? body.lines : [];
+        setTranscript((current) => mergeLines(saved, current));
+        memoryReady.current = true;
+      })
+      .catch(() => {
+        /* Account memory unavailable: FLOW still remembers this tab. */
+      });
+    return () => {
+      alive = false;
+    };
+  }, [memoryOn, identity.accountKey]);
+  useEffect(() => {
+    if (!memoryOn || !memoryReady.current) return;
+    const timer = setTimeout(() => {
+      void accountCall('/me/voice-memory', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ lines: transcript.slice(-TRANSCRIPT_LINES) }),
+      }).catch(() => {});
+    }, 1500);
+    return () => clearTimeout(timer);
+  }, [transcript, memoryOn]);
   const registration = bridge.registration;
   const active = useRef<{ id: number; controller: AbortController; tools: ToolSession } | null>(
     null,
@@ -186,6 +227,7 @@ function Runtime({ bridge }: { bridge: VoiceBridge }) {
     }
     const entry = registration.current;
     const id = ++generation.current;
+    const sessionTag = `${Date.now().toString(36)}${Math.random().toString(36).slice(2, 6)}`;
     const controller = new AbortController();
     active.current = { id, controller, tools: entry.tools };
     const valid = () => mounted.current && active.current?.id === id && !controller.signal.aborted;
@@ -252,16 +294,10 @@ function Runtime({ bridge }: { bridge: VoiceBridge }) {
             // Data-only context: the pinned agent forbids first-message overrides.
             if (personal) controls.sendContextualUpdate(JSON.stringify({ user_profile: { preferred_name: personal.nickname }, voice_personalization_consent: true }));
             const summary = registration.current?.summary?.();
-            const recent = transcriptRef.current
-              .slice(-6)
-              .map((l) => `${l.who === 'user' ? 'Șoferul' : 'FLOW'}: ${l.text}`)
-              .join(' | ');
-            const context = [
-              summary,
-              recent && `Conversația de până acum (continuă de aici, nu o lua de la capăt): ${recent}`,
-            ]
-              .filter(Boolean)
-              .join(' ');
+            // What was said before (this tab, or the account memory with consent), like a person
+            // who remembers the last conversation.
+            const recent = memoryContext(transcriptRef.current);
+            const context = [summary, recent].filter(Boolean).join(' ');
             if (context) controls.sendContextualUpdate(context);
           }
         },
@@ -286,7 +322,13 @@ function Runtime({ bridge }: { bridge: VoiceBridge }) {
           const text = who === 'agent' ? cleanAgentText(message) : message.trim();
           // Noise heard as "..." is neither shown nor treated as the driver talking.
           if (!valid() || !text || isNoise(text)) return;
-          const line: TranscriptLine = { id: `${id}-${event_id}`, who, text };
+          // A random session tag: lines kept in the account never collide with a later session.
+          const line: TranscriptLine = {
+            id: `${sessionTag}-${event_id}`,
+            who,
+            text: text.slice(0, 600),
+            at: new Date().toISOString(),
+          };
           lastVoice.current = Date.now();
           if (line.who === 'user') lastUserAt.current = Date.now();
           else lastAgentAt.current = Date.now();

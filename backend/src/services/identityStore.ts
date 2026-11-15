@@ -6,6 +6,7 @@ import {
   ProfileInput,
   DEFAULT_TEAM,
   TeamPresentation,
+  VoiceMemory,
 } from '../../../shared/src/identity';
 import type { Identity } from '../middleware/identity';
 import { ownerKey } from '../middleware/identity';
@@ -66,11 +67,48 @@ export class IdentityStore {
   async update(id: Identity, input: unknown) {
     const p = ProfileInput.parse(input);
     await this.ensure(this.pool, id);
+    // Withdrawing voice consent also forgets what FLOW Voice remembered.
     await this.pool.query(
-      'UPDATE flow_accounts SET profile=$3,updated_at=now() WHERE issuer=$1 AND subject=$2',
-      [id.issuer, id.subject, p],
+      `UPDATE flow_accounts SET profile=$3,updated_at=now(),
+         voice_memory=CASE WHEN $4 THEN voice_memory ELSE '[]'::jsonb END
+       WHERE issuer=$1 AND subject=$2`,
+      [id.issuer, id.subject, p, p.voiceConsent],
     );
     return this.profile(id);
+  }
+  /** FLOW Voice memory; empty without voice consent (nothing is kept then). */
+  async voiceMemory(id: Identity) {
+    await this.ensure(this.pool, id);
+    const { rows } = await this.pool.query(
+      'SELECT profile,voice_memory FROM flow_accounts WHERE issuer=$1 AND subject=$2',
+      [id.issuer, id.subject],
+    );
+    const r = rows[0];
+    if (!r?.profile?.voiceConsent) return { lines: [], consent: false };
+    const parsed = VoiceMemory.safeParse({ lines: r.voice_memory ?? [] });
+    return { lines: parsed.success ? parsed.data.lines : [], consent: true };
+  }
+  async saveVoiceMemory(id: Identity, input: unknown) {
+    const { lines } = VoiceMemory.parse(input);
+    await this.ensure(this.pool, id);
+    const { rowCount } = await this.pool.query(
+      `UPDATE flow_accounts SET voice_memory=$3
+       WHERE issuer=$1 AND subject=$2 AND (profile->>'voiceConsent')::boolean IS TRUE`,
+      [id.issuer, id.subject, JSON.stringify(lines)],
+    );
+    if (!rowCount)
+      throw Object.assign(
+        new Error('Activează personalizarea vocii în Setări ca FLOW Voice să țină minte conversația.'),
+        { status: 403 },
+      );
+    return { lines, consent: true };
+  }
+  async clearVoiceMemory(id: Identity) {
+    await this.pool.query(
+      `UPDATE flow_accounts SET voice_memory='[]'::jsonb WHERE issuer=$1 AND subject=$2`,
+      [id.issuer, id.subject],
+    );
+    return { lines: [], consent: true };
   }
   async avatar(id: Identity) {
     const { rows } = await this.pool.query(

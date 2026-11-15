@@ -15,7 +15,7 @@ import {
   Trash2,
 } from 'lucide-react';
 import { z } from 'zod';
-import { ProfileInput, type Profile } from '../../../../shared/src/identity';
+import { ProfileInput, VOICE_MEMORY_LINES, type Profile } from '../../../../shared/src/identity';
 import { MotionEvaluation, MotionMode, MotionWallet, motionNames } from '@vlaiq/shared';
 import { useIdentity } from './IdentityProvider';
 import { Avatar } from './AccountMenu';
@@ -283,6 +283,40 @@ export function Passport({
     </div>
   );
 }
+/** Forget what FLOW Voice remembers, without withdrawing consent. */
+function ForgetVoiceMemory() {
+  const [state, setState] = useState<'idle' | 'busy' | 'done' | 'error'>('idle');
+  return (
+    <p className="identity-voice-memory">
+      <button
+        type="button"
+        className="identity-secondary"
+        disabled={state === 'busy'}
+        onClick={() => {
+          setState('busy');
+          void accountCall('/me/voice-memory', { method: 'DELETE' }).then(
+            () => {
+              try {
+                sessionStorage.removeItem('vlaiq-voice-transcript');
+              } catch {}
+              setState('done');
+            },
+            () => setState('error'),
+          );
+        }}
+      >
+        Șterge memoria FLOW Voice
+      </button>
+      <span role="status">
+        {state === 'done'
+          ? 'Memoria a fost ștearsă. Următoarea conversație începe de la zero.'
+          : state === 'error'
+            ? 'Nu am putut șterge memoria acum. Reîncearcă.'
+            : ''}
+      </span>
+    </p>
+  );
+}
 function ProfileEditor({ profile }: { profile: Profile }) {
   const id = useIdentity(),
     { navigate } = useAppRouter();
@@ -513,9 +547,10 @@ function ProfileEditor({ profile }: { profile: Profile }) {
             <Sparkles size={24} />
             <h2>Vocea care te cunoaște.</h2>
             <p>
-              La următoarea conversație, FLOW Voice poate primi nickname-ul tău ca informație de
-              context. În Buddy, poți trimite la cerere ultimul răspuns către ElevenLabs pentru
-              redare vocală. Microfonul pornește doar la apăsare; transcrierea folosește furnizorul browserului.
+              FLOW Voice te strigă pe nickname și ține minte ce ați vorbit, ca să continue de unde
+              ați rămas, chiar și în altă zi sau pe alt telefon. În Buddy, poți trimite la cerere
+              ultimul răspuns către ElevenLabs pentru redare vocală. Microfonul pornește doar la
+              apăsare; transcrierea folosește furnizorul browserului.
             </p>
             <label className="identity-check">
               <input
@@ -523,12 +558,17 @@ function ProfileEditor({ profile }: { profile: Profile }) {
                 checked={form.voiceConsent}
                 onChange={(e) => setForm({ ...form, voiceConsent: e.target.checked })}
               />
-              <span>Permit trimiterea nickname-ului către ElevenLabs pentru personalizare și redarea la cerere a răspunsurilor Buddy.</span>
+              <span>
+                Permit personalizarea vocii: nickname-ul și ultimele {VOICE_MEMORY_LINES} de replici cu
+                FLOW Voice se păstrează în contul meu și se trimit către ElevenLabs la o conversație
+                nouă; redarea la cerere a răspunsurilor Buddy.
+              </span>
             </label>
             <small>
-              Nu trimitem emailul, biografia sau istoricul tău. Modificarea se aplică la o sesiune
-              vocală nouă.
+              Nu trimitem emailul, biografia, coordonatele sau audio. Dacă debifezi și salvezi,
+              memoria FLOW Voice se șterge. Modificarea se aplică la o sesiune vocală nouă.
             </small>
+            {form.voiceConsent && <ForgetVoiceMemory />}
           </section>
           <section className="passport-card">
             <ShieldCheck size={24} />

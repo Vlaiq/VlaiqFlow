@@ -10,6 +10,8 @@ export interface TranscriptLine {
   id: string;
   who: 'user' | 'agent';
   text: string;
+  /** When it was said (ISO). Older lines kept before 15 Nov have none. */
+  at?: string;
 }
 export interface VoiceContextValue {
   state: VoiceState;

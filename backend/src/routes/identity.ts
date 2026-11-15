@@ -2,7 +2,7 @@ import { Router, raw, type RequestHandler } from 'express';
 import rateLimit from 'express-rate-limit';
 import sharp from 'sharp';
 import { z } from 'zod';
-import { ProfileInput, TeamPresentation } from '../../../shared/src/identity';
+import { ProfileInput, TeamPresentation, VoiceMemory } from '../../../shared/src/identity';
 import { jwtGuard, requireIdentity, contributor } from '../middleware/identity';
 import { identityStore } from '../services/identityStore';
 
@@ -62,6 +62,30 @@ export function createIdentityRouter(guard: RequestHandler = jwtGuard(), getStor
         return;
       }
       res.json(await getStore().update(res.locals.identity, input.data));
+    }),
+  );
+  // FLOW Voice memory (only with voice consent): what was said, so a new session continues.
+  identityRouter.get(
+    '/voice-memory',
+    run(async (_req, res) => {
+      res.set('Cache-Control', 'no-store').json(await getStore().voiceMemory(res.locals.identity));
+    }),
+  );
+  identityRouter.put(
+    '/voice-memory',
+    run(async (req, res) => {
+      const input = VoiceMemory.safeParse(req.body);
+      if (!input.success) {
+        res.status(400).json({ error: { message: 'Memoria vocală nu este validă.' } });
+        return;
+      }
+      res.json(await getStore().saveVoiceMemory(res.locals.identity, input.data));
+    }),
+  );
+  identityRouter.delete(
+    '/voice-memory',
+    run(async (_req, res) => {
+      res.json(await getStore().clearVoiceMemory(res.locals.identity));
     }),
   );
   identityRouter.get(

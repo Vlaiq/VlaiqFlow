@@ -258,6 +258,43 @@ describe.skipIf(!url)('FLOW Identity: real PostgreSQL + RS256 middleware integra
     const history = await call('/motion/activities', await sign());
     expect((await history.json())[0].evaluation.status).toBe('eligible');
   });
+  it('keeps FLOW Voice memory per account only with consent and forgets it when consent is withdrawn', async () => {
+    const ta = await sign(a.subject),
+      c = { issuer, subject: `auth0|test-voice-${randomUUID()}` },
+      tb = await sign(c.subject);
+    const lines = [
+      { id: 's1-1', who: 'user', text: 'Vreau la Piața Victoriei', at: '2026-11-15T09:00:00.000Z' },
+      { id: 's1-2', who: 'agent', text: 'Am găsit trei parcări.', at: '2026-11-15T09:00:05.000Z' },
+    ];
+    // c has no consent: nothing is kept.
+    await call('/me', tb, 'PATCH', { ...profile, voiceConsent: false });
+    expect((await call('/me/voice-memory', tb, 'PUT', { lines })).status).toBe(403);
+    expect(await (await call('/me/voice-memory', tb)).json()).toEqual({ lines: [], consent: false });
+    // a has consent: saved, isolated from c, readable after a new connection.
+    await call('/me', ta, 'PATCH', { ...profile, voiceConsent: true });
+    expect((await call('/me/voice-memory', ta, 'PUT', { lines })).status).toBe(200);
+    const again = new IdentityStore(url!);
+    try {
+      expect((await again.voiceMemory(a)).lines).toEqual(lines);
+    } finally {
+      await again.pool.end();
+    }
+    expect((await (await call('/me/voice-memory', tb)).json()).lines).toEqual([]);
+    // Bounded and validated: too many lines or extra fields are refused.
+    const many = Array.from({ length: 41 }, (_, i) => ({ id: `x${i}`, who: 'user', text: 'Da' }));
+    expect((await call('/me/voice-memory', ta, 'PUT', { lines: many })).status).toBe(400);
+    expect(
+      (await call('/me/voice-memory', ta, 'PUT', { lines: [{ ...lines[0], lat: 45.75 }] })).status,
+    ).toBe(400);
+    // Withdrawing consent forgets; explicit delete works too.
+    await call('/me', ta, 'PATCH', { ...profile, voiceConsent: false });
+    await call('/me', ta, 'PATCH', { ...profile, voiceConsent: true });
+    expect((await (await call('/me/voice-memory', ta)).json()).lines).toEqual([]);
+    await call('/me/voice-memory', ta, 'PUT', { lines });
+    expect((await call('/me/voice-memory', ta, 'DELETE')).status).toBe(200);
+    expect((await (await call('/me/voice-memory', ta)).json()).lines).toEqual([]);
+    await store.erase(c);
+  });
   it('erases only owned FLOW data, leaving Auth0 identity and other accounts explicit', async () => {
     expect((await call('/me', await sign(), 'DELETE', {})).status).toBe(400);
     const r = await call('/me', await sign(), 'DELETE', {

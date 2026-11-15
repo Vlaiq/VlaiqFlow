@@ -1112,3 +1112,16 @@
     overscroll-behavior: contain;
   }
 }
+
+/* Settings: forget FLOW Voice memory */
+.identity-voice-memory {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 12px;
+  margin: 12px 0 0;
+}
+.identity-voice-memory span {
+  font-size: 12px;
+  color: rgb(var(--text-muted));
+}

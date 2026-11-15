@@ -99,7 +99,12 @@ export function createBuddyRouter(deps: Dependencies) {
             code: status === 400 ? 'INVALID_INPUT' : status === 503 ? 'UNAVAILABLE' : 'CONFLICT',
             message:
               status === 503
-                ? 'Buddy nu poate răspunde acum. Încearcă din nou.'
+                ? typeof e === 'object' &&
+                  e &&
+                  'publicMessage' in e &&
+                  typeof e.publicMessage === 'string'
+                  ? e.publicMessage
+                  : 'Buddy nu poate răspunde acum. Încearcă din nou.'
                 : schemaError
                   ? 'Cererea nu este validă.'
                   : (e as Error).message,

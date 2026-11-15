@@ -37,7 +37,12 @@ export function createIntegratedBuddyRouter() {
   const ai: BuddyAIService = {
     source: 'gemini',
     reply: (...args) => {
-      if (!config.geminiApiKey) throw new Error('Gemini not configured');
+      if (!config.geminiApiKey)
+        throw Object.assign(new Error('Gemini not configured'), {
+          // Shown as is: "try again" would never help until the server has a key.
+          publicMessage:
+            'Buddy nu poate răspunde: pe acest server lipsește cheia Gemini (GEMINI_API_KEY). Lecțiile, misiunile și mini-orașul merg în continuare.',
+        });
       gemini ??= new GeminiBuddy(config.geminiApiKey, config.buddyGeminiModel);
       return gemini.reply(...args);
     },

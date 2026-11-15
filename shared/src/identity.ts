@@ -37,6 +37,23 @@ export const Profile = ProfileInput.extend({
 });
 export type Profile = z.infer<typeof Profile>;
 export type ProfileInput = z.infer<typeof ProfileInput>;
+
+/**
+ * FLOW Voice memory: the last lines of the conversation, kept in the account only with the voice
+ * consent from Settings, so a new session continues where the last one stopped. No audio, no GPS.
+ */
+export const VOICE_MEMORY_LINES = 40;
+export const VoiceMemoryLine = z
+  .object({
+    id: z.string().min(1).max(80),
+    who: z.enum(['user', 'agent']),
+    text: z.string().trim().min(1).max(600),
+    /** When the line was said (ISO); lets the agent say "data trecută am vorbit despre…". */
+    at: z.string().datetime().optional(),
+  })
+  .strict();
+export const VoiceMemory = z.object({ lines: z.array(VoiceMemoryLine).max(VOICE_MEMORY_LINES) }).strict();
+export type VoiceMemoryLine = z.infer<typeof VoiceMemoryLine>;
 export const TeamPresentation = z
   .object({
     headline: z.string().trim().min(3).max(120),

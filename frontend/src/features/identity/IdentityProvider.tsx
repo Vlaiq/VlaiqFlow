@@ -266,6 +266,8 @@ function IdentityRuntime({ children, logoutUri }: { children: ReactNode; logoutU
     } catch {}
     try {
       sessionStorage.removeItem('flow-login-return');
+      // The FLOW Voice conversation of this tab belongs to the account that signs out.
+      sessionStorage.removeItem('vlaiq-voice-transcript');
     } catch {}
     await auth.logout({ logoutParams: { returnTo: logoutUri } });
   };
