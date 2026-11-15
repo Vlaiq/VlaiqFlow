@@ -2,6 +2,7 @@ import { type Coordinate, type JourneyOption } from '@vlaiq/shared';
 import { requestActiveRoute, walkOption } from './journeys';
 import { offlineWalking } from './offlineRoutes';
 import { validateEndpoints } from './routeValidation';
+import { ROUTE_CACHE } from './routeCache';
 export { validateEndpoints } from './routeValidation';
 const cache = new Map<string, { expires: number; value: JourneyOption }>();
 const pending = new Map<string, Promise<JourneyOption>>();
@@ -21,8 +22,8 @@ export async function activeDirections(mode: 'walk' | 'cycle', from: Coordinate,
     })
     .then((value) => {
       validateEndpoints(value.route.geometry, from, to);
-      if (cache.size >= 100) cache.delete(cache.keys().next().value!);
-      cache.set(key, { value, expires: Date.now() + 300000 });
+      if (cache.size >= ROUTE_CACHE.entries) cache.delete(cache.keys().next().value!);
+      cache.set(key, { value, expires: Date.now() + ROUTE_CACHE.ttlMs });
       return value;
     })
     .finally(() => pending.delete(key));

@@ -77,6 +77,10 @@ if (process.env.NODE_ENV === 'production' && existsSync(`${frontendDirectory}/in
       setHeaders: (res, path) => {
         if (path.endsWith('.html') || path.endsWith('service-worker.js'))
           res.setHeader('Cache-Control', 'no-cache');
+        // Vite names every built file by its content hash: a new build gets new names, so a
+        // returning visitor (or judge) never downloads the same JS, CSS or font twice.
+        else if (/[\\/]assets[\\/]/.test(path))
+          res.setHeader('Cache-Control', 'public, max-age=31536000, immutable');
       },
     }),
   );

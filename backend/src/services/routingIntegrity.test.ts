@@ -1,4 +1,5 @@
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
+import { ROUTE_CACHE } from './routeCache';
 
 // SYNTHETIC provider payloads: these tests do not establish live provider access.
 const from: [number, number] = [21.22, 45.75];
@@ -80,7 +81,7 @@ it('keeps active profile caches separate, coalesces requests and expires success
     expect(init.headers).toEqual({ Authorization: 'synthetic-auth-only', 'Content-Type': 'application/json' });
     expect(JSON.parse(init.body as string)).toEqual({ coordinates: [from, to], instructions: true });
   }
-  vi.advanceTimersByTime(300001);
+  vi.advanceTimersByTime(ROUTE_CACHE.ttlMs + 1);
   await activeDirections('walk', from, to);
   expect(fetcher).toHaveBeenCalledTimes(3);
 });

@@ -12,6 +12,7 @@ import { getRoutes } from './routing';
 import { fossgisRoute } from './fossgis';
 import { validateEndpoints } from './routeValidation';
 import { reportRoutingFailure, RoutingHttpError } from './routingDiagnostics';
+import { ROUTE_CACHE } from './routeCache';
 
 const orsResponse = z.object({
   features: z
@@ -208,11 +209,11 @@ export async function compareJourneys(
   if (running) return running;
   const job = calculate(origin, destination)
     .then((value) => {
-      if (cache.size >= 100) cache.delete(cache.keys().next().value!);
+      if (cache.size >= ROUTE_CACHE.entries) cache.delete(cache.keys().next().value!);
       // A failure gets only a short backoff; successful geometry is retained for five minutes.
       cache.set(key, {
         value,
-        expires: Date.now() + (value.unavailable.length === 0 ? 300000 : 15000),
+        expires: Date.now() + (value.unavailable.length === 0 ? ROUTE_CACHE.ttlMs : 15000),
       });
       return value;
     })

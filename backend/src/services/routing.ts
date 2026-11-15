@@ -11,6 +11,7 @@ import { config } from '../config';
 import { offlineDriving } from './offlineRoutes';
 import { validateEndpoints } from './routeValidation';
 import { reportRoutingFailure, RoutingHttpError } from './routingDiagnostics';
+import { ROUTE_CACHE } from './routeCache';
 
 // No arbitrary upstream URL is accepted from clients. Keys never leave the server.
 const coord = z.tuple([z.number(), z.number()]);
@@ -193,8 +194,8 @@ export async function getRoutes(
   const job = requestRoutes(origin, destination, avoid)
     .then((result) => {
       result.routes.forEach((route) => validateEndpoints(route.geometry, origin, destination));
-      if (cache.size >= 100) cache.delete(cache.keys().next().value!);
-      cache.set(key, { result, expires: Date.now() + 300000 });
+      if (cache.size >= ROUTE_CACHE.entries) cache.delete(cache.keys().next().value!);
+      cache.set(key, { result, expires: Date.now() + ROUTE_CACHE.ttlMs });
       return result;
     })
     .catch((e: unknown) => {
