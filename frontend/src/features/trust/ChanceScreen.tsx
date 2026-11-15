@@ -421,8 +421,177 @@ function WorkedExample({ labelOf }: { labelOf: (id: string) => string }) {
         </li>
       </ol>
       <p className="chance-formula">
-        P(plin) = Π<sub>i=0…C−1</sub> (α + i) / (α + β + i), cu α = μκ = {num(d.alpha)} și β = (1 − μ)κ = {num(d.beta)}
+        P(plin) = Π<sub>i=1…C</sub> (μκ + i − 1) / (κ + i − 1), cu α = μκ = {num(d.alpha)}, β = (1 − μ)κ ={' '}
+        {num(d.beta)} și α + β = κ = {d.kappa}
       </p>
+      <p className="chance-formula">P(cel puțin 1 loc liber) = 1 − P(plin)</p>
+    </section>
+  );
+}
+
+/** The Beta-Binomial step written out: why Beta, the parameters, and the product for "full". */
+function FormulaSection({ kappaKnown, findable }: { kappaKnown: number; findable: number }) {
+  return (
+    <section id="formula" className="flowdata-panel" aria-labelledby="chance-formula-title">
+      <p className="flowdata-eyebrow">
+        <Sigma size={14} /> FORMULA
+      </p>
+      <h2 id="chance-formula-title">De la ocuparea medie la „cel puțin un loc liber”.</h2>
+      <ol className="chance-example-steps">
+        <li>
+          Ocuparea reală a zonei într-o zi, θ, e un procent între 0 și 1 care se schimbă de la o zi la alta. O
+          descriem cu o distribuție <b>Beta</b> cu media μ și concentrarea κ: <i className="chance-sym">α = μκ</i>,{' '}
+          <i className="chance-sym">β = (1 − μ)κ</i>, deci α + β = κ.
+        </li>
+        <li>
+          Într-o zi cu ocuparea θ, fiecare dintre cele C locuri e ocupat cu probabilitatea θ. Numărul de locuri ocupate
+          urmează atunci o lege <b>beta-binomială</b>.
+        </li>
+        <li>
+          Probabilitatea ca toate cele C locuri să fie ocupate se scrie ca un produs:
+          <span className="chance-formula">
+            P(plin) = Π<sub>i=1…C</sub> (α + i − 1) / (α + β + i − 1) = Π<sub>i=1…C</sub> (μκ + i − 1) / (κ + i − 1)
+          </span>
+        </li>
+        <li>
+          Șansa de loc este complementul:
+          <span className="chance-formula">P(cel puțin 1 loc liber) = 1 − P(plin)</span>
+        </li>
+        <li>
+          Pentru parcări de peste {Math.floor(1 / findable)} de locuri cerem cel puțin ⌈{Math.round(findable * 100)}% · C⌉
+          locuri libere, nu unul singur, și adunăm termenii distribuției beta-binomiale. Până la{' '}
+          {Math.floor(1 / findable)} de locuri, formula e exact cea de mai sus.
+        </li>
+      </ol>
+      <p className="flowdata-caption">
+        Azi μ vine din curbe presupuse, iar κ = {kappaKnown} e ales de noi. Cum se calculează κ din date reale e explicat
+        mai jos.
+      </p>
+    </section>
+  );
+}
+
+/** How κ will be estimated once there is history, with the correction for counted spaces. */
+function CalibrationSection({ kappaKnown, kappaUnknown }: { kappaKnown: number; kappaUnknown: number }) {
+  return (
+    <section id="calibrare" className="flowdata-panel" aria-labelledby="chance-calib-title">
+      <p className="flowdata-eyebrow">
+        <Target size={14} /> CALIBRARE
+      </p>
+      <h2 id="chance-calib-title">Cum vom calcula κ din istoric.</h2>
+      <p className="chance-warn">
+        Nu rulează încă: nu avem istoric de ocupare pentru Timișoara. Până atunci folosim κ = {kappaKnown} (κ ={' '}
+        {kappaUnknown} când nu știm capacitatea).
+      </p>
+      <p>
+        Fie p<sub>1</sub>, …, p<sub>N</sub> gradul de ocupare al aceleiași parcări în N zile asemănătoare (aceeași zi a
+        săptămânii și aceeași oră). Prin metoda momentelor:
+      </p>
+      <p className="chance-formula">
+        μ = (1/N) Σ<sub>m</sub> p<sub>m</sub>    σ² = (1/N) Σ<sub>m</sub> (p<sub>m</sub> − μ)²    κ = μ(1 − μ) / σ² − 1
+      </p>
+      <p>
+        Formula e corectă dacă p<sub>m</sub> este ocuparea reală a zonei. Dacă însă p<sub>m</sub> este numărat pe locuri
+        (ocupate ÷ C), o parte din σ² vine doar din numărare și κ iese prea mic. Pentru acest caz folosim versiunea
+        corectată pentru distribuția beta-binomială:
+      </p>
+      <p className="chance-formula">κ = C · (μ(1 − μ) − σ²) / (C · σ² − μ(1 − μ))</p>
+      <details className="chance-details">
+        <summary>De unde vine corecția și când se aplică</summary>
+        <p>
+          Pentru o lege beta-binomială, varianța procentului numărat este σ² = μ(1 − μ)(κ + C) / (C(κ + 1)). Rezolvăm
+          pentru κ și obținem formula de mai sus. Când C e foarte mare, ea devine μ(1 − μ)/σ² − 1.
+        </p>
+        <p>
+          Într-o simulare cu 20 000 de zile se vede de ce contează: pentru 20 de locuri și κ real 8, formula simplă dă κ ≈ 5,5 și o șansă
+          de loc cu 6 puncte prea mică. Formula corectată dă κ ≈ 8.
+        </p>
+        <ul className="data-trust-list">
+          <li>
+            Vom calcula κ numai dacă μ(1 − μ)/C &lt; σ² &lt; μ(1 − μ). Sub limită, zilele nu variază mai mult decât
+            numărarea, iar κ ar fi infinit. Peste limită, datele nu se potrivesc cu o distribuție Beta.
+          </li>
+          <li>
+            Cu puține zile, 1/N subestimează σ² și face modelul prea sigur pe el. Vom folosi 1/(N − 1) și cel puțin 20–30 de
+            zile pe zonă și oră.
+          </li>
+        </ul>
+      </details>
+    </section>
+  );
+}
+
+/** The counting model for when real sensor states exist (FLOW City Pulse). Not running. */
+function CountingSection() {
+  return (
+    <section id="senzori" className="flowdata-panel" aria-labelledby="chance-count-title">
+      <p className="flowdata-eyebrow">
+        <Ruler size={14} /> CU SENZORI
+      </p>
+      <h2 id="chance-count-title">Când vor exista senzori: numărăm, nu estimăm.</h2>
+      <p className="chance-warn">
+        În pregătire, nu rulează încă: Timișoara nu are senzori sau un flux public de ocupare. Exemplele de mai jos sunt
+        un scenariu <QualityBadge quality="simulated" />.
+      </p>
+      <p>
+        C este capacitatea verificată. F sunt locurile confirmate libere, O cele confirmate ocupate, U cele fără o citire
+        valabilă, iar L numărul real de locuri libere.
+      </p>
+      <p className="chance-formula">C = F + O + U    F ≤ L ≤ F + U = C − O</p>
+      <p>
+        Când U = 0, numărul este exact: L = F. Altfel afișăm intervalul, de exemplu „0–1 locuri libere”, nu un număr
+        inventat.
+      </p>
+      <details className="chance-details">
+        <summary>Cum restrâng intervalul contoarele de zonă și de la intrări</summary>
+        <p>
+          Pentru fiecare zonă Z, contorul ei dă limitele z<sub>Z</sub>⁻ și z<sub>Z</sub>⁺ ale locurilor ocupate. La
+          intrările parcării, N = vehicule înăuntru, iar q = vehicule care încă circulă, deci O + q = N.
+        </p>
+        <p className="chance-formula">
+          a<sub>Z</sub> = max(O<sub>Z</sub>, z<sub>Z</sub>⁻)    b<sub>Z</sub> = min(O<sub>Z</sub> + U<sub>Z</sub>,
+          z<sub>Z</sub>⁺)
+        </p>
+        <p className="chance-formula">
+          O⁻ = max(Σ a<sub>Z</sub>, N⁻ − q⁺)    O⁺ = min(Σ b<sub>Z</sub>, N⁺ − q⁻)    [L<sub>min</sub>,
+          L<sub>max</sub>] = [C − O⁺, C − O⁻]
+        </p>
+        <p>Dacă vreun interval este vid, afișăm „Date în conflict”.</p>
+        <div className="chance-table-wrap">
+          <table className="chance-table">
+            <caption>Exemplu: 12 locuri, 7 ocupate, 3 libere, 2 fără citire</caption>
+            <thead>
+              <tr>
+                <th scope="col">Ce aflăm</th>
+                <th scope="col">Locuri ocupate</th>
+                <th scope="col">Pe hartă</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>Doar stările locurilor</td>
+                <td>7–9</td>
+                <td>3–5 libere</td>
+              </tr>
+              <tr>
+                <td>La intrări N = 8, iar q este 0 sau 1</td>
+                <td>7–8</td>
+                <td>4–5 libere</td>
+              </tr>
+              <tr>
+                <td>O citire confirmă q = 0</td>
+                <td>exact 8</td>
+                <td>4 libere</td>
+              </tr>
+              <tr>
+                <td>Altă citire spune q = 2</td>
+                <td>6, sub cele 7 confirmate</td>
+                <td>Date în conflict</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </details>
     </section>
   );
 }
@@ -462,10 +631,13 @@ export function ChanceScreen() {
       <nav className="pdata-toc" aria-label="Pe această pagină">
         <a href="#pe-scurt">Pe scurt</a>
         <a href="#pasi">Cei 6 pași</a>
+        <a href="#formula">Formula</a>
         <a href="#calculator">Calculator</a>
         <a href="#de-ce">De ce așa</a>
         <a href="#limite">Ce nu știe</a>
         <a href="#precizie">Precizie</a>
+        <a href="#calibrare">Calibrare</a>
+        <a href="#senzori">Cu senzori</a>
       </nav>
 
       <section id="pe-scurt" className="flowdata-panel chance-short">
@@ -598,6 +770,7 @@ export function ChanceScreen() {
         </div>
       </section>
 
+      <FormulaSection kappaKnown={p?.kappaKnown ?? 8} findable={p?.findableShare ?? 0.03} />
       <CalculatorSection model={model} />
       <WorkedExample labelOf={labelOf} />
 
@@ -677,7 +850,8 @@ export function ChanceScreen() {
             </li>
             <li>
               <b>Cum îl calibrăm:</b> cu cel puțin 20–30 de observații pe zonă și oră, înlocuim curba presupusă cu cea
-              observată, apoi ajustăm κ după cât de mult variază zilele între ele.
+              observată, apoi calculăm κ din cât de mult variază zilele între ele (vezi{' '}
+              <a href="#calibrare">Calibrare</a>).
             </li>
             <li>
               <b>Ce date ar ajuta cel mai mult:</b> numărul de plăți Timpark (SMS / CityApp) pe zonă și oră, de la Primărie,
@@ -686,6 +860,9 @@ export function ChanceScreen() {
           </ul>
         </div>
       </section>
+
+      <CalibrationSection kappaKnown={p?.kappaKnown ?? 8} kappaUnknown={p?.kappaUnknown ?? 5} />
+      <CountingSection />
 
       <p className="flowdata-footnote">
         Parametrii exacți și curbele: <a href="/date-parcari#sanse">Datele de parcare</a>. Toate sursele aplicației:{' '}

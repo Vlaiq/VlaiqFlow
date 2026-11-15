@@ -351,3 +351,58 @@
 .chance-figure svg {
   max-width: 760px;
 }
+
+/* Formulas inside a list item sit on their own line. */
+.chance-example-steps .chance-formula {
+  display: block;
+  margin: 8px 0 4px;
+}
+.chance-formula {
+  white-space: pre-wrap;
+}
+.chance-details {
+  margin-top: 14px;
+  border-top: 1px solid rgb(var(--border));
+  padding-top: 4px;
+}
+.chance-details > summary {
+  min-height: 44px;
+  display: flex;
+  align-items: center;
+  font-weight: 600;
+  cursor: pointer;
+}
+.chance-details > summary:focus-visible {
+  outline: 3px solid rgb(var(--primary));
+  outline-offset: 2px;
+  border-radius: 6px;
+}
+.chance-details p {
+  line-height: 1.7;
+}
+.chance-table-wrap {
+  overflow-x: auto;
+  margin-top: 12px;
+}
+.chance-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+.chance-table caption {
+  text-align: left;
+  font-weight: 600;
+  padding-bottom: 8px;
+}
+.chance-table th,
+.chance-table td {
+  text-align: left;
+  padding: 8px 10px;
+  border-bottom: 1px solid rgb(var(--border));
+  vertical-align: top;
+}
+.chance-table th {
+  color: rgb(var(--text-muted));
+  font-weight: 600;
+  font-size: 12px;
+}
